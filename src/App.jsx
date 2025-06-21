@@ -4,6 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Properties from './pages/Properties';
 import Listings from './pages/Listings';
 import Bookings from './pages/Bookings';
+import Reports from './pages/Reports';
 
 const App = () => {
   const { loginWithRedirect, logout, isAuthenticated, user, isLoading } = useAuth0();
@@ -12,6 +13,7 @@ const App = () => {
 
   const allowedAdmins = ["atlashomeskphb@gmail.com"];
   const isAuthorized = isAuthenticated && allowedAdmins.includes(user?.email);
+  
 
   return (
     <BrowserRouter>
@@ -19,6 +21,7 @@ const App = () => {
         <Link to="/properties">Properties</Link>{' '}
         <Link to="/listings">Listings</Link>{' '}
         <Link to="/">Bookings</Link>{' '}
+        <Link to="/Reports">Reports</Link>{' '}
         {isAuthenticated ? (
           <>
             <span style={{ marginLeft: 10 }}>👋 {user?.name}</span>{' '}
@@ -38,6 +41,8 @@ const App = () => {
           <Route path="/" element={<Bookings />} />
           <Route path="/listings" element={<Listings />} />
           <Route path="/properties" element={<Properties />} />
+          <Route path="/reports" element={<Reports/>} />
+          {/* Add more routes as needed */}
         </Routes>
       ) : isAuthenticated ? (
         <p style={{ padding: '1rem', color: 'crimson' }}>
