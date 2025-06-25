@@ -8,11 +8,16 @@ const numberOfDays = 10;
 const days = [...Array(numberOfDays)].map((_, i) => startDate.add(i, 'day').format('YYYY-MM-DD'));
 
 function isBookedOn(listing, date) {
-  return listing.bookings.find(b => dayjs(date).isBetween(b.start, b.end, 'day', '[]'));
+  const bookings = Array.isArray(listing.bookings) ? listing.bookings : [];
+  return bookings.find(b =>
+    dayjs(date).isBetween(b.start, b.end, 'day', '[]')
+  );
 }
 
 function MultiCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -20,7 +25,7 @@ function MultiCalendarEarningsReport() {
         const res = await axios.get(
           `${import.meta.env.VITE_API_BASE}/admin/reports/bookings/calendar`
         );
-        setListings(res.data);
+        setListings(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
@@ -32,8 +37,10 @@ function MultiCalendarEarningsReport() {
               `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
             )
           ]);
+          const listData = Array.isArray(listRes.data) ? listRes.data : [];
+          const bookData = Array.isArray(bookRes.data) ? bookRes.data : [];
           const map = {};
-          const listObjects = listRes.data.map((l) => ({
+          const listObjects = listData.map((l) => ({
             id: l.id,
             name: l.name,
             bookings: []
@@ -41,7 +48,7 @@ function MultiCalendarEarningsReport() {
           listObjects.forEach((l) => {
             map[l.id] = l;
           });
-          bookRes.data.forEach((b) => {
+          bookData.forEach((b) => {
             const obj = map[b.listingId];
             if (obj) {
               obj.bookings.push({
@@ -54,11 +61,23 @@ function MultiCalendarEarningsReport() {
           setListings(listObjects);
         } catch (err2) {
           console.error(err2);
+          setError('Failed to load data');
         }
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();
   }, []);
+
+  if (loading) {
+    return <Typography>Loading report...</Typography>;
+  }
+
+  if (error) {
+    return <Typography color="error">{error}</Typography>;
+  }
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>
