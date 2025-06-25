@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, TextField, Autocomplete
 } from '@mui/material';
@@ -7,21 +7,36 @@ import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
-
-const listings = ['Green Villa', 'Ocean Breeze', 'Skyline View', 'Mountain Stay'];
-
-const allData = [
-  { date: '2025-06-20', listing: 'Green Villa', amount: 320 },
-  { date: '2025-06-21', listing: 'Ocean Breeze', amount: 480 },
-  { date: '2025-06-22', listing: 'Skyline View', amount: 260 },
-  { date: '2025-06-23', listing: 'Mountain Stay', amount: 500 },
-  { date: '2025-06-24', listing: 'Green Villa', amount: 410 },
-];
+import axios from 'axios';
 
 function CustomReportGenerator() {
   const [startDate, setStartDate] = useState(dayjs().subtract(7, 'day'));
   const [endDate, setEndDate] = useState(dayjs());
   const [selectedListings, setSelectedListings] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [allData, setAllData] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [listRes, bookRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
+          axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
+        ]);
+        setListings(listRes.data.map(l => l.name));
+        const listingMap = {};
+        listRes.data.forEach(l => { listingMap[l.id] = l.name; });
+        setAllData(bookRes.data.map(b => ({
+          date: b.checkinDate,
+          listing: listingMap[b.listingId] || b.listingId,
+          amount: parseFloat(b.amountReceived) || 0
+        })));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchData();
+  }, []);
 
   const filteredData = allData.filter(item => {
     const date = dayjs(item.date);
