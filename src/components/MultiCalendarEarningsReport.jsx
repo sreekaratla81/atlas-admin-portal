@@ -17,22 +17,40 @@ function MultiCalendarEarningsReport() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [listRes, bookRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
-        ]);
-        const map = {};
-        const listObjects = listRes.data.map(l => ({ id: l.id, name: l.name, bookings: [] }));
-        listObjects.forEach(l => { map[l.id] = l; });
-        bookRes.data.forEach(b => {
-          const obj = map[b.listingId];
-          if (obj) {
-            obj.bookings.push({ start: b.checkinDate, end: b.checkoutDate, amount: parseFloat(b.amountReceived) || 0 });
-          }
-        });
-        setListings(listObjects);
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar`
+        );
+        setListings(res.data);
       } catch (err) {
-        console.error(err);
+        console.warn('Falling back to client aggregation', err);
+        try {
+          const [listRes, bookRes] = await Promise.all([
+            axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
+            axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
+          ]);
+          const map = {};
+          const listObjects = listRes.data.map((l) => ({
+            id: l.id,
+            name: l.name,
+            bookings: []
+          }));
+          listObjects.forEach((l) => {
+            map[l.id] = l;
+          });
+          bookRes.data.forEach((b) => {
+            const obj = map[b.listingId];
+            if (obj) {
+              obj.bookings.push({
+                start: b.checkinDate,
+                end: b.checkoutDate,
+                amount: parseFloat(b.amountReceived) || 0
+              });
+            }
+          });
+          setListings(listObjects);
+        } catch (err2) {
+          console.error(err2);
+        }
       }
     }
     fetchData();

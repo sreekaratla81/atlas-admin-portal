@@ -29,10 +29,21 @@ function DailyPayoutReport() {
   const [payoutData, setPayoutData] = useState([]);
 
   useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/payouts`)
-      .then(res => setPayoutData(res.data))
-      .catch(err => console.error(err));
+    async function fetchData() {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/payouts/daily`
+        );
+        setPayoutData(res.data);
+      } catch (err) {
+        console.warn('Falling back to /payouts', err);
+        axios
+          .get(`${import.meta.env.VITE_API_BASE}/payouts`)
+          .then((res) => setPayoutData(res.data))
+          .catch((err2) => console.error(err2));
+      }
+    }
+    fetchData();
   }, []);
 
   return (
