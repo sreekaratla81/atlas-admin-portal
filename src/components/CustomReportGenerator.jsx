@@ -20,8 +20,12 @@ function CustomReportGenerator() {
     async function fetchData() {
       try {
         const [listRes, bookRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
+          axios.get(
+            `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
+          ),
+          axios.get(
+            `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
+          )
         ]);
         setListings(listRes.data.map(l => l.name));
         const listingMap = {};

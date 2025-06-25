@@ -57,8 +57,12 @@ function MonthlyEarningsReport() {
     async function fetchData() {
       try {
         const [bookRes, listRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_BASE}/bookings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/listings`)
+          axios.get(
+            `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
+          ),
+          axios.get(
+            `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
+          )
         ]);
         setEarningsData(aggregateData(bookRes.data, listRes.data));
       } catch (err) {

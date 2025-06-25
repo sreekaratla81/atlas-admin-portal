@@ -18,15 +18,19 @@ function MultiCalendarEarningsReport() {
     async function fetchData() {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar`
+          `${import.meta.env.VITE_API_BASE}/admin/reports/bookings/calendar`
         );
         setListings(res.data);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
           const [listRes, bookRes] = await Promise.all([
-            axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-            axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
+            axios.get(
+              `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
+            ),
+            axios.get(
+              `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
+            )
           ]);
           const map = {};
           const listObjects = listRes.data.map((l) => ({
