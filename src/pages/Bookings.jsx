@@ -30,13 +30,15 @@ const Bookings = () => {
     createdAt: today,      // Default to today
     paymentDate: today     // Default to today
   });
+  const [formMode, setFormMode] = useState('create');
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [filters, setFilters] = useState({
     listing: '',
     guest: '',
     paymentStatus: '',
   });
-  const [sortField, setSortField] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useState('checkinDate');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -64,7 +66,12 @@ const Bookings = () => {
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_API_BASE}/listings`).then(res => setListings(res.data));
-    axios.get(`${import.meta.env.VITE_API_BASE}/bookings`).then(res => setBookings(res.data));
+    axios.get(`${import.meta.env.VITE_API_BASE}/bookings`).then(res => {
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+      );
+      setBookings(sorted);
+    });
     axios.get(`${import.meta.env.VITE_API_BASE}/guests`).then(res => setGuests(res.data));
   }, []);
 
@@ -84,6 +91,8 @@ const Bookings = () => {
   const reset = () => {
     setGuest({ name: '', phone: '', email: '', idProofUrl: '' });
     setSelectedGuestId('');
+    setFormMode('create');
+    setSelectedBookingId(null);
     setBooking({
       id: null,
       listingId: '',
@@ -126,21 +135,23 @@ const Bookings = () => {
         createdAt: booking.createdAt,
         paymentDate: booking.paymentDate
       };
-      // Remove id if it's null or undefined (for create)
-      if (!booking.id) {
-        const { id, ...rest } = payload;
-        payload = rest;
-      }
-      if (booking.id) {
-        await axios.put(`${import.meta.env.VITE_API_BASE}/bookings/${booking.id}`, payload);
+      if (formMode === 'edit' && selectedBookingId) {
+        await axios.put(
+          `${import.meta.env.VITE_API_BASE}/bookings/${selectedBookingId}`,
+          payload
+        );
         setSuccessMsg('Booking updated successfully!');
       } else {
-        await axios.post(`${import.meta.env.VITE_API_BASE}/bookings`, payload);
+        const { id, ...createPayload } = payload;
+        await axios.post(`${import.meta.env.VITE_API_BASE}/bookings`, createPayload);
         setSuccessMsg('Booking created successfully!');
       }
       reset();
       const updated = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
-      setBookings(updated.data);
+      const sorted = [...updated.data].sort(
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+      );
+      setBookings(sorted);
     } catch (err) {
       setErrorMsg(err?.response?.data?.message || err.message || "Booking failed.");
     } finally {
@@ -149,6 +160,8 @@ const Bookings = () => {
   };
 
   const handleEdit = (bookingToEdit) => {
+    setFormMode('edit');
+    setSelectedBookingId(bookingToEdit.id);
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
@@ -212,11 +225,16 @@ const Bookings = () => {
 
   return (
     <Box>
-      <Card sx={{ mx: 'auto', mt: 2, mb: 2 }}>
+      <Card sx={{ mx: 'auto', mt: 2, mb: 2, bgcolor: formMode === 'edit' ? '#fffbe6' : 'inherit' }}>
         <CardContent>
           <Typography variant="h4" component="h2" gutterBottom>
-            {booking.id ? 'Edit Booking' : 'Create Booking'}
+            {formMode === 'edit' ? 'Edit Booking' : 'Create Booking'}
           </Typography>
+          {formMode === 'edit' && (
+            <Typography variant="subtitle2" color="secondary" gutterBottom>
+              Edit Mode
+            </Typography>
+          )}
 
           <Box ref={messageRef} sx={{ mb: 2 }}>
             {successMsg && (
@@ -268,7 +286,7 @@ const Bookings = () => {
                 <Select
                   value={selectedGuestId}
                   onChange={e => setSelectedGuestId(e.target.value)}
-                  disabled={Boolean(booking.id)}
+                  disabled={formMode === 'edit'}
                   label="Guest"
                 >
                   <MenuItem value="">New Guest</MenuItem>
@@ -296,7 +314,7 @@ const Bookings = () => {
                   placeholder="Guest Name"
                   value={guest.name}
                   onChange={e => setGuest({ ...guest, name: e.target.value })}
-                  disabled={!!selectedGuestId || !!booking.id}
+                  disabled={!!selectedGuestId || formMode === 'edit'}
                 />
               )}
 
@@ -307,7 +325,7 @@ const Bookings = () => {
                   placeholder="Phone"
                   value={guest.phone}
                   onChange={e => setGuest({ ...guest, phone: e.target.value })}
-                  disabled={!!selectedGuestId || !!booking.id}
+                  disabled={!!selectedGuestId || formMode === 'edit'}
                   inputProps={{
                     pattern: "^[0-9+\\-\\s]{7,15}$",
                     title: "Enter a valid phone number"
@@ -332,7 +350,7 @@ const Bookings = () => {
                   type="email"
                   value={guest.email}
                   onChange={e => setGuest({ ...guest, email: e.target.value })}
-                  disabled={!!selectedGuestId || !!booking.id}
+                  disabled={!!selectedGuestId || formMode === 'edit'}
                   inputProps={{
                     title: "Enter a valid email address"
                   }}
@@ -346,7 +364,7 @@ const Bookings = () => {
                   placeholder="ID Proof URL"
                   value={guest.idProofUrl}
                   onChange={e => setGuest({ ...guest, idProofUrl: e.target.value })}
-                  disabled={!!selectedGuestId || !!booking.id}
+                  disabled={!!selectedGuestId || formMode === 'edit'}
                 />
               )}
 
@@ -467,7 +485,7 @@ const Bookings = () => {
               />
 
               {/* Created At - only show if not editing */}
-              {!booking.id && (
+              {formMode !== 'edit' && (
                 <TextField
                   label="Created At"
                   type="date"
@@ -478,7 +496,7 @@ const Bookings = () => {
               )}
 
               {/* Payment Date - only show if not editing */}
-              {!booking.id && (
+              {formMode !== 'edit' && (
                 <TextField
                   label="Payment Date"
                   type="date"
@@ -502,10 +520,10 @@ const Bookings = () => {
                 disabled={loading}
                 sx={{ minWidth: 120 }}
               >
-                {loading ? 'Saving...' : booking.id ? 'Update Booking' : 'Create Booking'}
+                {loading ? 'Saving...' : formMode === 'edit' ? 'Update Booking' : 'Create Booking'}
               </Button>
 
-              {booking.id && (
+              {formMode === 'edit' && (
                 <Button
                   type="button"
                   variant="outlined"
