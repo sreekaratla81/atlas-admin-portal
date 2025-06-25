@@ -32,13 +32,13 @@ function DailyPayoutReport() {
     async function fetchData() {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/reports/payouts/daily`
+          `${import.meta.env.VITE_API_BASE}/admin/reports/payouts/daily`
         );
         setPayoutData(res.data);
       } catch (err) {
         console.warn('Falling back to /payouts', err);
         axios
-          .get(`${import.meta.env.VITE_API_BASE}/payouts`)
+          .get(`${import.meta.env.VITE_API_BASE}/admin/reports/payouts`)
           .then((res) => setPayoutData(res.data))
           .catch((err2) => console.error(err2));
       }
