@@ -1,25 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button, Box, Typography } from '@mui/material';
-
-const earningsData = [
-  {
-    month: 'June 2025',
-    rows: [
-      { listing: 'Green Villa', taxType: 'GST', gross: 5000, fees: 800, net: 4200 },
-      { listing: 'Ocean Breeze', taxType: 'VAT', gross: 6200, fees: 950, net: 5250 },
-      { listing: 'Skyline View', taxType: 'GST', gross: 4000, fees: 700, net: 3300 },
-    ],
-  },
-  {
-    month: 'May 2025',
-    rows: [
-      { listing: 'Green Villa', taxType: 'GST', gross: 4800, fees: 750, net: 4050 },
-      { listing: 'Ocean Breeze', taxType: 'VAT', gross: 6000, fees: 900, net: 5100 },
-    ],
-  },
-];
+import dayjs from 'dayjs';
+import axios from 'axios';
+import Papa from 'papaparse';
+import ReportLayout from './ReportLayout';
 
 function generatePDF(month, rows) {
   const doc = new jsPDF();
@@ -45,27 +31,100 @@ function generatePDF(month, rows) {
 }
 
 function MonthlyEarningsReport() {
-  return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" gutterBottom>
-        📄 Monthly Earnings PDF Reports
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Download Airbnb earnings reports per month with breakdowns by listing and tax type.
-      </Typography>
+  const [startDate, setStartDate] = useState(dayjs().subtract(11, 'month').startOf('month'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
+  const [listings, setListings] = useState([]);
+  const [listingValue, setListingValue] = useState(null);
+  const [earningsData, setEarningsData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/listings`)
+      .then(res => setListings(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          start: startDate.format('YYYY-MM-DD'),
+          end: endDate.format('YYYY-MM-DD')
+        });
+        if (listingValue && listingValue.id) {
+          params.set('listingId', listingValue.id);
+        }
+        const url = `${import.meta.env.VITE_API_BASE}/reports/earnings/monthly?${params.toString()}`;
+        const res = await axios.get(url);
+        setEarningsData(res.data);
+      } catch (err) {
+        setError(err.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [startDate, endDate, listingValue]);
+
+  const exportCSV = () => {
+    const rows = earningsData.flatMap(e =>
+      e.rows.map(r => ({ month: e.month, ...r }))
+    );
+    const csv = Papa.unparse({
+      fields: ['Month', 'Listing', 'Gross ($)', 'Net ($)'],
+      data: rows.map(r => [r.month, r.listing, r.gross, r.net])
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'monthly_earnings.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPDFAll = () => {
+    const doc = new jsPDF();
+    earningsData.forEach((e, idx) => {
+      if (idx !== 0) doc.addPage();
+      doc.text(`${e.month} - Earnings`, 14, 22);
+      autoTable(doc, {
+        startY: 30,
+        head: [['Listing', 'Gross ($)', 'Net ($)']],
+        body: e.rows.map(r => [r.listing, r.gross.toFixed(2), r.net.toFixed(2)])
+      });
+    });
+    doc.save('monthly_earnings.pdf');
+  };
+
+  return (
+    <ReportLayout
+      title="📄 Monthly Earnings PDF Reports"
+      startDate={startDate}
+      endDate={endDate}
+      setStartDate={setStartDate}
+      setEndDate={setEndDate}
+      listings={listings}
+      listingValue={listingValue}
+      setListingValue={setListingValue}
+      onExportCSV={exportCSV}
+      onExportPDF={exportPDFAll}
+      loading={loading}
+      error={error}
+    >
       {earningsData.map((entry, index) => (
         <Box key={index} sx={{ marginBottom: 2 }}>
           <Typography variant="subtitle1">{entry.month}</Typography>
-          <Button
-            variant="outlined"
-            onClick={() => generatePDF(entry.month, entry.rows)}
-          >
+          <Button variant="outlined" onClick={() => generatePDF(entry.month, entry.rows)}>
             Download {entry.month} PDF
           </Button>
         </Box>
       ))}
-    </Box>
+    </ReportLayout>
   );
 }
 

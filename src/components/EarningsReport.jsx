@@ -1,43 +1,115 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
-
-const earningsData = [
-  { month: 'Jan', gross: 5000, fees: 1000, net: 4000 },
-  { month: 'Feb', gross: 6000, fees: 1200, net: 4800 },
-  { month: 'Mar', gross: 5500, fees: 1100, net: 4400 },
-  { month: 'Apr', gross: 7000, fees: 1300, net: 5700 },
-  { month: 'May', gross: 8000, fees: 1400, net: 6600 },
-  { month: 'Jun', gross: 7500, fees: 1250, net: 6250 },
-  { month: 'Jul', gross: 8200, fees: 1500, net: 6700 },
-  { month: 'Aug', gross: 7900, fees: 1450, net: 6450 },
-  { month: 'Sep', gross: 8500, fees: 1600, net: 6900 },
-  { month: 'Oct', gross: 8700, fees: 1650, net: 7050 },
-  { month: 'Nov', gross: 9000, fees: 1700, net: 7300 },
-  { month: 'Dec', gross: 9500, fees: 1800, net: 7700 },
-];
+import dayjs from 'dayjs';
+import axios from 'axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import Papa from 'papaparse';
+import ReportLayout from './ReportLayout';
 
 function EarningsReport() {
+  const [startDate, setStartDate] = useState(dayjs().subtract(11, 'month').startOf('month'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
+  const [listings, setListings] = useState([]);
+  const [listingValue, setListingValue] = useState(null);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/listings`)
+      .then(res => setListings(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          start: startDate.format('YYYY-MM-DD'),
+          end: endDate.format('YYYY-MM-DD')
+        });
+        if (listingValue && listingValue.id) {
+          params.set('listingId', listingValue.id);
+        }
+        const url = `${import.meta.env.VITE_API_BASE}/reports/earnings/monthly?${params.toString()}`;
+        const res = await axios.get(url);
+        setData(res.data);
+      } catch (err) {
+        setError(err.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [startDate, endDate, listingValue]);
+
+  const exportCSV = () => {
+    const csv = Papa.unparse({
+      fields: ['Month', 'Gross ($)', 'Net ($)'],
+      data: data.map(d => [d.month, d.gross, d.net])
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'earnings.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Monthly Earnings', 14, 22);
+    autoTable(doc, {
+      startY: 30,
+      head: [['Month', 'Gross ($)', 'Net ($)']],
+      body: data.map(d => [d.month, d.gross.toFixed(2), d.net.toFixed(2)])
+    });
+    doc.save('earnings.pdf');
+  };
+
   return (
-    <div style={{ width: '100%', height: 500 }}>
-      <h2>📈 12-Month On-Month Earnings Report</h2>
-      <ResponsiveContainer>
-        <BarChart
-          data={earningsData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip formatter={(value) => `$${value}`} />
-          <Legend />
-          <Bar dataKey="gross" fill="#8884d8" name="Gross Earnings" />
-          <Bar dataKey="fees" fill="#ffc658" name="Fees" />
-          <Bar dataKey="net" fill="#82ca9d" name="Net Payout" />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ReportLayout
+      title="📈 12-Month On-Month Earnings Report"
+      startDate={startDate}
+      endDate={endDate}
+      setStartDate={setStartDate}
+      setEndDate={setEndDate}
+      listings={listings}
+      listingValue={listingValue}
+      setListingValue={setListingValue}
+      onExportCSV={exportCSV}
+      onExportPDF={exportPDF}
+      loading={loading}
+      error={error}
+    >
+      <div style={{ width: '100%', height: 500 }}>
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip formatter={(value) => `$${value}`} />
+            <Legend />
+            <Bar dataKey="gross" fill="#8884d8" name="Gross Earnings" />
+            <Bar dataKey="net" fill="#82ca9d" name="Net Payout" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </ReportLayout>
   );
 }
 

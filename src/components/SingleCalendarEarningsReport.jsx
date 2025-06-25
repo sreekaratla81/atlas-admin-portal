@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import { Box, Typography } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parseISO } from 'date-fns';
+import axios from 'axios';
+import dayjs from 'dayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import ReportLayout from './ReportLayout';
 
 // Setup localizer using date-fns
 import { dateFnsLocalizer } from 'react-big-calendar';
@@ -20,41 +24,68 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Sample calendar data (earnings + bookings)
-const events = [
-  {
-    title: 'Green Villa: $250',
-    start: new Date('2025-06-20'),
-    end: new Date('2025-06-20'),
-    listing: 'Green Villa',
-    amount: 250,
-  },
-  {
-    title: 'Ocean Breeze: $400',
-    start: new Date('2025-06-20'),
-    end: new Date('2025-06-22'),
-    listing: 'Ocean Breeze',
-    amount: 800,
-  },
-  {
-    title: 'Skyline View: $300',
-    start: new Date('2025-06-23'),
-    end: new Date('2025-06-24'),
-    listing: 'Skyline View',
-    amount: 600,
-  },
-];
-
 function SingleCalendarEarningsReport() {
-  return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" gutterBottom>
-        📅 Single Calendar Earnings Report
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        View bookings and daily earnings in a calendar format per listing.
-      </Typography>
+  const [startDate, setStartDate] = useState(dayjs().startOf('month'));
+  const [endDate, setEndDate] = useState(dayjs().endOf('month'));
+  const [listings, setListings] = useState([]);
+  const [listingValue, setListingValue] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/listings`)
+      .then(res => setListings(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          start: startDate.format('YYYY-MM-DD'),
+          end: endDate.format('YYYY-MM-DD')
+        });
+        if (listingValue && listingValue.id) {
+          params.set('listingId', listingValue.id);
+        }
+        const url = `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar?${params.toString()}`;
+        const res = await axios.get(url);
+        const listingMap = {};
+        listings.forEach(l => { listingMap[l.id] = l.name; });
+        setEvents(
+          res.data.map(b => ({
+            title: `${listingMap[b.listingId] || b.listingId}: $${b.amount}`,
+            start: new Date(b.start),
+            end: new Date(b.end),
+            listing: listingMap[b.listingId] || b.listingId,
+            amount: parseFloat(b.amount) || 0
+          }))
+        );
+      } catch (err) {
+        setError(err.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [startDate, endDate, listingValue, listings]);
+  return (
+    <ReportLayout
+      title="📅 Single Calendar Earnings Report"
+      startDate={startDate}
+      endDate={endDate}
+      setStartDate={setStartDate}
+      setEndDate={setEndDate}
+      listings={listings}
+      listingValue={listingValue}
+      setListingValue={setListingValue}
+      loading={loading}
+      error={error}
+    >
       <Box sx={{ height: 600, mt: 3 }}>
         <Calendar
           localizer={localizer}
@@ -67,7 +98,7 @@ function SingleCalendarEarningsReport() {
           tooltipAccessor={event => `${event.listing}: $${event.amount}`}
         />
       </Box>
-    </Box>
+    </ReportLayout>
   );
 }
 

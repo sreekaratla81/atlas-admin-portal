@@ -21,7 +21,7 @@ const Reports = () => {
                     <Stack spacing={2}>
                         <CustomReportGenerator />
                         <SingleCalendarEarningsReport />
-                        <MultiCalendarEarningsReport/>
+                        <MultiCalendarEarningsReport />
                     </Stack>
                 </LocalizationProvider>
             </Stack>

@@ -1,30 +1,71 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Box, Typography, Paper, Chip } from '@mui/material';
+import axios from 'axios';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import ReportLayout from './ReportLayout';
 
-const listings = [
-  { name: 'Green Villa', bookings: [{ start: '2025-06-20', end: '2025-06-22', amount: 450 }] },
-  { name: 'Ocean Breeze', bookings: [{ start: '2025-06-21', end: '2025-06-24', amount: 800 }] },
-  { name: 'Skyline View', bookings: [{ start: '2025-06-25', end: '2025-06-27', amount: 600 }] },
-];
-
-const startDate = dayjs('2025-06-20');
-const numberOfDays = 10;
-const days = [...Array(numberOfDays)].map((_, i) => startDate.add(i, 'day').format('YYYY-MM-DD'));
+const defaultStart = dayjs().startOf('month');
 
 function isBookedOn(listing, date) {
   return listing.bookings.find(b => dayjs(date).isBetween(b.start, b.end, 'day', '[]'));
 }
 
 function MultiCalendarEarningsReport() {
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(defaultStart.add(9, 'day'));
+  const [listings, setListings] = useState([]);
+  const [listingValue, setListingValue] = useState(null);
+  const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const arr = [];
+    let d = startDate;
+    while (d.isBefore(endDate) || d.isSame(endDate, 'day')) {
+      arr.push(d.format('YYYY-MM-DD'));
+      d = d.add(1, 'day');
+    }
+    setDays(arr);
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          start: startDate.format('YYYY-MM-DD'),
+          end: endDate.format('YYYY-MM-DD')
+        });
+        if (listingValue && listingValue.id) {
+          params.set('listingId', listingValue.id);
+        }
+        const url = `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar?${params.toString()}`;
+        const res = await axios.get(url);
+        setListings(res.data);
+      } catch (err) {
+        setError(err.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [startDate, endDate, listingValue]);
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" gutterBottom>
-        🗓️ Multi-Calendar Earnings Report
-      </Typography>
-      <Typography variant="body1" gutterBottom>
-        Horizontal scroll view of bookings across listings.
-      </Typography>
+    <ReportLayout
+      title="🗓️ Multi-Calendar Earnings Report"
+      startDate={startDate}
+      endDate={endDate}
+      setStartDate={setStartDate}
+      setEndDate={setEndDate}
+      listings={listings}
+      listingValue={listingValue}
+      setListingValue={setListingValue}
+      loading={loading}
+      error={error}
+    >
 
       {/* Table headers */}
       <Box sx={{ display: 'flex', mt: 3, ml: '120px', overflowX: 'auto' }}>
@@ -71,7 +112,7 @@ function MultiCalendarEarningsReport() {
           </Box>
         </Box>
       ))}
-    </Box>
+    </ReportLayout>
   );
 }
 

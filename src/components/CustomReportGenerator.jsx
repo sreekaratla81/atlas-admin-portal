@@ -1,34 +1,62 @@
-import React, { useState } from 'react';
-import {
-  Box, Typography, Button, TextField, Autocomplete
-} from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, TextField, Autocomplete } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
-
-const listings = ['Green Villa', 'Ocean Breeze', 'Skyline View', 'Mountain Stay'];
-
-const allData = [
-  { date: '2025-06-20', listing: 'Green Villa', amount: 320 },
-  { date: '2025-06-21', listing: 'Ocean Breeze', amount: 480 },
-  { date: '2025-06-22', listing: 'Skyline View', amount: 260 },
-  { date: '2025-06-23', listing: 'Mountain Stay', amount: 500 },
-  { date: '2025-06-24', listing: 'Green Villa', amount: 410 },
-];
+import axios from 'axios';
+import ReportLayout from './ReportLayout';
 
 function CustomReportGenerator() {
   const [startDate, setStartDate] = useState(dayjs().subtract(7, 'day'));
   const [endDate, setEndDate] = useState(dayjs());
   const [selectedListings, setSelectedListings] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [allData, setAllData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const filteredData = allData.filter(item => {
-    const date = dayjs(item.date);
-    return date.isAfter(startDate.subtract(1, 'day')) &&
-           date.isBefore(endDate.add(1, 'day')) &&
-           (selectedListings.length === 0 || selectedListings.includes(item.listing));
-  });
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/listings`)
+      .then(res => setListings(res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          start: startDate.format('YYYY-MM-DD'),
+          end: endDate.format('YYYY-MM-DD')
+        });
+        if (selectedListings.length === 1) {
+          params.set('listingId', selectedListings[0].id || selectedListings[0]);
+        }
+        const url = `${import.meta.env.VITE_API_BASE}/bookings?${params.toString()}`;
+        const res = await axios.get(url);
+        const listingMap = {};
+        listings.forEach(l => { listingMap[l.id] = l.name; });
+        setAllData(
+          res.data.map(b => ({
+            date: b.checkinDate,
+            listing: listingMap[b.listingId] || b.listingId,
+            amount: parseFloat(b.amountReceived) || 0
+          }))
+        );
+      } catch (err) {
+        setError(err.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [startDate, endDate, selectedListings, listings]);
+
+  const filteredData = allData;
 
   const exportToPDF = () => {
     const doc = new jsPDF();
@@ -59,45 +87,25 @@ function CustomReportGenerator() {
   };
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" gutterBottom>✍️ Custom Reports (Date Range + Listings)</Typography>
-      <Typography variant="body1" gutterBottom>
-        Select a date range and listings to generate a PDF or CSV report.
-      </Typography>
-
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <DatePicker
-          label="Start Date"
-          value={startDate}
-          onChange={setStartDate}
-          renderInput={(params) => <TextField {...params} />}
-        />
-        <DatePicker
-          label="End Date"
-          value={endDate}
-          onChange={setEndDate}
-          renderInput={(params) => <TextField {...params} />}
-        />
-      </Box>
-
-      <Autocomplete
-        multiple
-        options={listings}
-        value={selectedListings}
-        onChange={(e, newVal) => setSelectedListings(newVal)}
-        renderInput={(params) => <TextField {...params} label="Select Listings" />}
-        sx={{ mb: 2 }}
-      />
-
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button variant="contained" onClick={exportToPDF}>Export PDF</Button>
-        <Button variant="outlined" onClick={exportToCSV}>Export CSV</Button>
-      </Box>
-
-      <Typography variant="body2" sx={{ mt: 3 }}>
+    <ReportLayout
+      title="✍️ Custom Reports (Date Range + Listings)"
+      startDate={startDate}
+      endDate={endDate}
+      setStartDate={setStartDate}
+      setEndDate={setEndDate}
+      listings={listings}
+      listingValue={selectedListings}
+      setListingValue={setSelectedListings}
+      multiple
+      onExportCSV={exportToCSV}
+      onExportPDF={exportToPDF}
+      loading={loading}
+      error={error}
+    >
+      <Typography variant="body2" sx={{ mt: 1 }}>
         {filteredData.length} records matched.
       </Typography>
-    </Box>
+    </ReportLayout>
   );
 }
 
