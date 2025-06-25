@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import { Box, Typography } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parseISO } from 'date-fns';
+import axios from 'axios';
 
 // Setup localizer using date-fns
 import { dateFnsLocalizer } from 'react-big-calendar';
@@ -20,32 +21,49 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Sample calendar data (earnings + bookings)
-const events = [
-  {
-    title: 'Green Villa: $250',
-    start: new Date('2025-06-20'),
-    end: new Date('2025-06-20'),
-    listing: 'Green Villa',
-    amount: 250,
-  },
-  {
-    title: 'Ocean Breeze: $400',
-    start: new Date('2025-06-20'),
-    end: new Date('2025-06-22'),
-    listing: 'Ocean Breeze',
-    amount: 800,
-  },
-  {
-    title: 'Skyline View: $300',
-    start: new Date('2025-06-23'),
-    end: new Date('2025-06-24'),
-    listing: 'Skyline View',
-    amount: 600,
-  },
-];
-
 function SingleCalendarEarningsReport() {
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar`
+        );
+        setEvents(
+          res.data.map((e) => ({
+            ...e,
+            start: new Date(e.start),
+            end: new Date(e.end)
+          }))
+        );
+      } catch (err) {
+        console.warn('Falling back to client aggregation', err);
+        try {
+          const [bookRes, listRes] = await Promise.all([
+            axios.get(`${import.meta.env.VITE_API_BASE}/bookings`),
+            axios.get(`${import.meta.env.VITE_API_BASE}/listings`)
+          ]);
+          const listingMap = {};
+          listRes.data.forEach((l) => {
+            listingMap[l.id] = l.name;
+          });
+          setEvents(
+            bookRes.data.map((b) => ({
+              title: `${listingMap[b.listingId] || b.listingId}: $${b.amountReceived}`,
+              start: new Date(b.checkinDate),
+              end: new Date(b.checkoutDate),
+              listing: listingMap[b.listingId] || b.listingId,
+              amount: parseFloat(b.amountReceived) || 0
+            }))
+          );
+        } catch (err2) {
+          console.error(err2);
+        }
+      }
+    }
+    fetchData();
+  }, []);
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>

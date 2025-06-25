@@ -1,25 +1,31 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button, Box, Typography } from '@mui/material';
+import dayjs from 'dayjs';
+import axios from 'axios';
 
-const earningsData = [
-  {
-    month: 'June 2025',
-    rows: [
-      { listing: 'Green Villa', taxType: 'GST', gross: 5000, fees: 800, net: 4200 },
-      { listing: 'Ocean Breeze', taxType: 'VAT', gross: 6200, fees: 950, net: 5250 },
-      { listing: 'Skyline View', taxType: 'GST', gross: 4000, fees: 700, net: 3300 },
-    ],
-  },
-  {
-    month: 'May 2025',
-    rows: [
-      { listing: 'Green Villa', taxType: 'GST', gross: 4800, fees: 750, net: 4050 },
-      { listing: 'Ocean Breeze', taxType: 'VAT', gross: 6000, fees: 900, net: 5100 },
-    ],
-  },
-];
+function aggregateData(bookings, listings) {
+  const listingMap = {};
+  listings.forEach(l => { listingMap[l.id] = l.name; });
+  const months = {};
+  bookings.forEach(b => {
+    const monthKey = dayjs(b.paymentDate || b.createdAt).format('MMMM YYYY');
+    if (!months[monthKey]) months[monthKey] = {};
+    if (!months[monthKey][b.listingId]) months[monthKey][b.listingId] = 0;
+    months[monthKey][b.listingId] += parseFloat(b.amountReceived) || 0;
+  });
+  return Object.entries(months).map(([month, entries]) => ({
+    month,
+    rows: Object.entries(entries).map(([listingId, amount]) => ({
+      listing: listingMap[listingId] || listingId,
+      taxType: '',
+      gross: amount,
+      fees: 0,
+      net: amount
+    }))
+  }));
+}
 
 function generatePDF(month, rows) {
   const doc = new jsPDF();
@@ -45,6 +51,23 @@ function generatePDF(month, rows) {
 }
 
 function MonthlyEarningsReport() {
+  const [earningsData, setEarningsData] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [bookRes, listRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_BASE}/bookings`),
+          axios.get(`${import.meta.env.VITE_API_BASE}/listings`)
+        ]);
+        setEarningsData(aggregateData(bookRes.data, listRes.data));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -12,14 +12,7 @@ import {
   Box,
 } from '@mui/material';
 
-const payoutData = [
-  { date: '2025-06-20', listing: 'Green Villa', amount: 320, status: 'Sent' },
-  { date: '2025-06-20', listing: 'Ocean Breeze', amount: 480, status: 'On Hold' },
-  { date: '2025-06-21', listing: 'Skyline View', amount: 260, status: 'Sent' },
-  { date: '2025-06-21', listing: 'Green Villa', amount: 320, status: 'Sent' },
-  { date: '2025-06-22', listing: 'Mountain Stay', amount: 500, status: 'On Hold' },
-  { date: '2025-06-22', listing: 'Ocean Breeze', amount: 400, status: 'Sent' },
-];
+import axios from 'axios';
 
 const getStatusChip = (status) => {
   switch (status) {
@@ -33,6 +26,26 @@ const getStatusChip = (status) => {
 };
 
 function DailyPayoutReport() {
+  const [payoutData, setPayoutData] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/payouts/daily`
+        );
+        setPayoutData(res.data);
+      } catch (err) {
+        console.warn('Falling back to /payouts', err);
+        axios
+          .get(`${import.meta.env.VITE_API_BASE}/payouts`)
+          .then((res) => setPayoutData(res.data))
+          .catch((err2) => console.error(err2));
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>

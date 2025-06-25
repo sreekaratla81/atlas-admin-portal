@@ -1,14 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Box, Typography, Paper, Chip } from '@mui/material';
+import axios from 'axios';
 
-const listings = [
-  { name: 'Green Villa', bookings: [{ start: '2025-06-20', end: '2025-06-22', amount: 450 }] },
-  { name: 'Ocean Breeze', bookings: [{ start: '2025-06-21', end: '2025-06-24', amount: 800 }] },
-  { name: 'Skyline View', bookings: [{ start: '2025-06-25', end: '2025-06-27', amount: 600 }] },
-];
-
-const startDate = dayjs('2025-06-20');
+const startDate = dayjs().startOf('month');
 const numberOfDays = 10;
 const days = [...Array(numberOfDays)].map((_, i) => startDate.add(i, 'day').format('YYYY-MM-DD'));
 
@@ -17,6 +12,49 @@ function isBookedOn(listing, date) {
 }
 
 function MultiCalendarEarningsReport() {
+  const [listings, setListings] = useState([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar`
+        );
+        setListings(res.data);
+      } catch (err) {
+        console.warn('Falling back to client aggregation', err);
+        try {
+          const [listRes, bookRes] = await Promise.all([
+            axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
+            axios.get(`${import.meta.env.VITE_API_BASE}/bookings`)
+          ]);
+          const map = {};
+          const listObjects = listRes.data.map((l) => ({
+            id: l.id,
+            name: l.name,
+            bookings: []
+          }));
+          listObjects.forEach((l) => {
+            map[l.id] = l;
+          });
+          bookRes.data.forEach((b) => {
+            const obj = map[b.listingId];
+            if (obj) {
+              obj.bookings.push({
+                start: b.checkinDate,
+                end: b.checkoutDate,
+                amount: parseFloat(b.amountReceived) || 0
+              });
+            }
+          });
+          setListings(listObjects);
+        } catch (err2) {
+          console.error(err2);
+        }
+      }
+    }
+    fetchData();
+  }, []);
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>
