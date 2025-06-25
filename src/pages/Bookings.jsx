@@ -165,12 +165,26 @@ const Bookings = () => {
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
-      checkinDate: bookingToEdit.checkinDate || '',
-      checkoutDate: bookingToEdit.checkoutDate || '',
-      plannedCheckinTime: bookingToEdit.plannedCheckinTime || '',
-      actualCheckinTime: bookingToEdit.actualCheckinTime || '',
-      plannedCheckoutTime: bookingToEdit.plannedCheckoutTime || '',
-      actualCheckoutTime: bookingToEdit.actualCheckoutTime || '',
+      // Support both camelCase variations returned from the API
+      checkinDate: bookingToEdit.checkinDate || bookingToEdit.checkInDate || '',
+      checkoutDate:
+        bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
+      plannedCheckinTime:
+        bookingToEdit.plannedCheckinTime ||
+        bookingToEdit.plannedInTime ||
+        '',
+      actualCheckinTime:
+        bookingToEdit.actualCheckinTime ||
+        bookingToEdit.actualInTime ||
+        '',
+      plannedCheckoutTime:
+        bookingToEdit.plannedCheckoutTime ||
+        bookingToEdit.plannedOutTime ||
+        '',
+      actualCheckoutTime:
+        bookingToEdit.actualCheckoutTime ||
+        bookingToEdit.actualOutTime ||
+        '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
       paymentStatus: bookingToEdit.paymentStatus || 'unpaid',
       amountReceived: bookingToEdit.amountReceived ?? 0,
