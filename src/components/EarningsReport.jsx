@@ -20,7 +20,7 @@ function buildEmptyMonths() {
 }
 
 function EarningsReport() {
-  const [data, setData] = useState([]);
+  const [earningsData, setEarningsData] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -28,7 +28,16 @@ function EarningsReport() {
         const res = await axios.get(
           `${import.meta.env.VITE_API_BASE}/admin/reports/earnings/monthly`
         );
-        setData(res.data);
+        const normalized = Array.isArray(res.data)
+          ? res.data.map((entry) => ({
+              month: dayjs(entry.month).format('MMM'),
+              gross: entry.totalGross,
+              fees: entry.totalFees,
+              net: entry.totalNet,
+            }))
+          : [];
+        setEarningsData(normalized);
+        console.log('earningsData', normalized);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
@@ -44,7 +53,9 @@ function EarningsReport() {
               months[key].net += amt;
             }
           });
-          setData(Object.values(months));
+          const aggregated = Object.values(months);
+          setEarningsData(aggregated);
+          console.log("earningsData", aggregated);
         } catch (err2) {
           console.error(err2);
         }
@@ -53,12 +64,18 @@ function EarningsReport() {
     fetchData();
   }, []);
 
+  console.log("earningsData", earningsData);
+
+  if (!Array.isArray(earningsData) || earningsData.length === 0) {
+    return <p>No data available</p>;
+  }
+
   return (
     <div style={{ width: '100%', height: 500 }}>
       <h2>📈 12-Month On-Month Earnings Report</h2>
       <ResponsiveContainer>
         <BarChart
-          data={data}
+          data={earningsData}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
