@@ -11,7 +11,13 @@ const App = () => {
 
   if (isLoading) return <p>Loading...</p>;
 
-  const allowedAdmins = ["atlashomeskphb@gmail.com"];
+  // Allowlist of emails permitted to access the admin portal
+  const allowedAdmins = [
+    "atlashomeskphb@gmail.com",
+    "sreekar.atla@gmail.com",
+    "aruna.atla@live.com",
+    "ashokreddy343@gmail.com",
+  ];
   const isAuthorized = isAuthenticated && allowedAdmins.includes(user?.email);
   
 
