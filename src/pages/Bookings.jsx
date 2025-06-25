@@ -35,8 +35,8 @@ const Bookings = () => {
     guest: '',
     paymentStatus: '',
   });
-  const [sortField, setSortField] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useState('checkinDate');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -64,7 +64,12 @@ const Bookings = () => {
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_API_BASE}/listings`).then(res => setListings(res.data));
-    axios.get(`${import.meta.env.VITE_API_BASE}/bookings`).then(res => setBookings(res.data));
+    axios.get(`${import.meta.env.VITE_API_BASE}/bookings`).then(res => {
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+      );
+      setBookings(sorted);
+    });
     axios.get(`${import.meta.env.VITE_API_BASE}/guests`).then(res => setGuests(res.data));
   }, []);
 
@@ -140,7 +145,10 @@ const Bookings = () => {
       }
       reset();
       const updated = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
-      setBookings(updated.data);
+      const sorted = [...updated.data].sort(
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+      );
+      setBookings(sorted);
     } catch (err) {
       setErrorMsg(err?.response?.data?.message || err.message || "Booking failed.");
     } finally {
