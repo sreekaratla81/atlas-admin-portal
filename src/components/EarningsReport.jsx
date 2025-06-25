@@ -26,13 +26,15 @@ function EarningsReport() {
     async function fetchData() {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/reports/earnings/monthly`
+          `${import.meta.env.VITE_API_BASE}/admin/reports/earnings/monthly`
         );
         setData(res.data);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
-          const res = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
+          const res = await axios.get(
+            `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
+          );
           const months = buildEmptyMonths();
           res.data.forEach((b) => {
             const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');

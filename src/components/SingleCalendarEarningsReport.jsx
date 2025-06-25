@@ -28,7 +28,7 @@ function SingleCalendarEarningsReport() {
     async function fetchData() {
       try {
         const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/reports/bookings/calendar`
+          `${import.meta.env.VITE_API_BASE}/admin/reports/bookings/calendar`
         );
         setEvents(
           res.data.map((e) => ({
@@ -41,8 +41,12 @@ function SingleCalendarEarningsReport() {
         console.warn('Falling back to client aggregation', err);
         try {
           const [bookRes, listRes] = await Promise.all([
-            axios.get(`${import.meta.env.VITE_API_BASE}/bookings`),
-            axios.get(`${import.meta.env.VITE_API_BASE}/listings`)
+            axios.get(
+              `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
+            ),
+            axios.get(
+              `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
+            )
           ]);
           const listingMap = {};
           listRes.data.forEach((l) => {
