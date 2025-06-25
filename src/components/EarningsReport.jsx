@@ -25,19 +25,27 @@ function EarningsReport() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
-        const months = buildEmptyMonths();
-        res.data.forEach(b => {
-          const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
-          if (months[key]) {
-            const amt = parseFloat(b.amountReceived) || 0;
-            months[key].gross += amt;
-            months[key].net += amt;
-          }
-        });
-        setData(Object.values(months));
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_BASE}/reports/earnings/monthly`
+        );
+        setData(res.data);
       } catch (err) {
-        console.error(err);
+        console.warn('Falling back to client aggregation', err);
+        try {
+          const res = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
+          const months = buildEmptyMonths();
+          res.data.forEach((b) => {
+            const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
+            if (months[key]) {
+              const amt = parseFloat(b.amountReceived) || 0;
+              months[key].gross += amt;
+              months[key].net += amt;
+            }
+          });
+          setData(Object.values(months));
+        } catch (err2) {
+          console.error(err2);
+        }
       }
     }
     fetchData();
