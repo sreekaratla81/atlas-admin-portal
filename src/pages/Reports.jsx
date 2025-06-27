@@ -7,24 +7,31 @@ import SingleCalendarEarningsReport from '../components/SingleCalendarEarningsRe
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import MultiCalendarEarningsReport from '../components/MultiCalendarEarningsReport';
-import { Stack } from '@mui/material';
 
 const Reports = () => {
     return (
         <div>
             <h1>Reports Page</h1>
-            <Stack spacing={2}>
+            <section style={{ marginBottom: '2rem' }}>
                 <EarningsReport />
+            </section>
+            <section style={{ marginBottom: '2rem' }}>
                 <DailyPayoutReport />
+            </section>
+            <section style={{ marginBottom: '2rem' }}>
                 <MonthlyEarningsReport />
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <Stack spacing={2}>
-                        <CustomReportGenerator />
-                        <SingleCalendarEarningsReport />
-                        <MultiCalendarEarningsReport/>
-                    </Stack>
-                </LocalizationProvider>
-            </Stack>
+            </section>
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <section style={{ marginBottom: '2rem' }}>
+                    <CustomReportGenerator />
+                </section>
+                <section style={{ marginBottom: '2rem' }}>
+                    <SingleCalendarEarningsReport />
+                </section>
+                <section style={{ marginBottom: '2rem' }}>
+                    <MultiCalendarEarningsReport />
+                </section>
+            </LocalizationProvider>
         </div>
     );
 };
