@@ -13,19 +13,16 @@ const Bookings = () => {
   const [guests, setGuests] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
-  const today = new Date().toISOString().slice(0, 10);
   const [booking, setBooking] = useState({
     id: null,
     listingId: '',
     checkinDate: '',
     checkoutDate: '',
     bookingSource: 'Walk-in',
-    paymentStatus: 'unpaid',
     amountGuestPaid: 0,
     commissionAmount: 0,
     amountReceived: 0,
     notes: '',
-    createdAt: today       // Default to today
   });
   const [guestsPlanned, setGuestsPlanned] = useState(2);
   const [guestsActual, setGuestsActual] = useState(2);
@@ -102,12 +99,10 @@ const Bookings = () => {
       checkoutDate: '',
 
       bookingSource: 'Walk-in',
-      paymentStatus: 'unpaid',
       amountGuestPaid: 0,
       commissionAmount: 0,
       amountReceived: 0,
-      notes: '',
-      createdAt: today
+      notes: ''
     });
     setGuestsPlanned(2);
     setGuestsActual(2);
@@ -138,7 +133,6 @@ const Bookings = () => {
         amountGuestPaid: parseFloat(booking.amountGuestPaid),
         commissionAmount: parseFloat(booking.commissionAmount),
         amountReceived: parseFloat(booking.amountReceived),
-        createdAt: booking.createdAt,
         guestsPlanned,
         guestsActual,
         extraGuestCharge
@@ -178,12 +172,10 @@ const Bookings = () => {
       checkoutDate:
         bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
-      paymentStatus: bookingToEdit.paymentStatus || 'unpaid',
       amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
       commissionAmount: bookingToEdit.commissionAmount ?? 0,
       amountReceived: bookingToEdit.amountReceived ?? 0,
-      notes: bookingToEdit.notes || '',
-      createdAt: bookingToEdit.createdAt || today
+      notes: bookingToEdit.notes || ''
     });
     setGuestsPlanned(bookingToEdit.guestsPlanned ?? 2);
     setGuestsActual(bookingToEdit.guestsActual ?? 2);
@@ -384,21 +376,6 @@ const Bookings = () => {
                   <MenuItem value="Others">Others</MenuItem>
                 </Select>
               </FormControl>
-
-              {/* Payment Status */}
-              <FormControl required>
-                <InputLabel>Payment Status</InputLabel>
-                <Select
-                  value={booking.paymentStatus}
-                  onChange={e => setBooking({ ...booking, paymentStatus: e.target.value })}
-                  label="Payment Status"
-                >
-                  <MenuItem value="unpaid">Unpaid</MenuItem>
-                  <MenuItem value="paid">Paid</MenuItem>
-                  <MenuItem value="partial">Partial</MenuItem>
-                </Select>
-              </FormControl>
-
               {/* Gross Amount */}
               <TextField
                 label="Gross Amount"
@@ -448,18 +425,6 @@ const Bookings = () => {
                 rows={2}
                 sx={{ gridColumn: 'span 2' }}
               />
-
-              {/* Created At - only show if not editing */}
-              {formMode !== 'edit' && (
-                <TextField
-                  label="Created At"
-                  type="date"
-                  value={booking.createdAt}
-                  onChange={e => setBooking({ ...booking, createdAt: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              )}
-
             </Box>
 
             <div style={{ marginTop: '1rem' }}>
