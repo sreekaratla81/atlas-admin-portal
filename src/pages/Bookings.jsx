@@ -25,6 +25,11 @@ const Bookings = () => {
     notes: '',
     createdAt: today       // Default to today
   });
+  const [guestsPlanned, setGuestsPlanned] = useState(2);
+  const [guestsActual, setGuestsActual] = useState(2);
+  const [extraGuestCharge, setExtraGuestCharge] = useState(0);
+  const EXTRA_GUEST_RATE = 750;
+  const [showExtras, setShowExtras] = useState(false);
   const [formMode, setFormMode] = useState('create');
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [filters, setFilters] = useState({
@@ -100,6 +105,10 @@ const Bookings = () => {
       notes: '',
       createdAt: today
     });
+    setGuestsPlanned(2);
+    setGuestsActual(2);
+    setExtraGuestCharge(0);
+    setShowExtras(false);
     setSuccessMsg('');
     setErrorMsg('');
   };
@@ -123,7 +132,10 @@ const Bookings = () => {
         guestId,
         listingId: parseInt(booking.listingId),
         amountReceived: parseFloat(booking.amountReceived),
-        createdAt: booking.createdAt
+        createdAt: booking.createdAt,
+        guestsPlanned,
+        guestsActual,
+        extraGuestCharge
       };
       if (formMode === 'edit' && selectedBookingId) {
         await axios.put(
@@ -165,6 +177,10 @@ const Bookings = () => {
       notes: bookingToEdit.notes || '',
       createdAt: bookingToEdit.createdAt || today
     });
+    setGuestsPlanned(bookingToEdit.guestsPlanned ?? 2);
+    setGuestsActual(bookingToEdit.guestsActual ?? 2);
+    setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
+    setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
     setSelectedGuestId(bookingToEdit.guestId.toString());
     const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
     setGuest(guestObj);
@@ -412,6 +428,52 @@ const Bookings = () => {
 
             </Box>
 
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                className="text-sm text-blue-600 underline"
+                onClick={() => setShowExtras(!showExtras)}
+              >
+                {showExtras ? 'Hide Extras' : 'Add Extra Guest Info (optional)'}
+              </button>
+
+              {showExtras && (
+                <div className="grid grid-cols-3 gap-4 mt-3 p-4 border rounded-md bg-gray-50">
+                  <div>
+                    <label>Guests Planned</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={guestsPlanned}
+                      onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label>Guests Actual</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={guestsActual}
+                      onChange={(e) => {
+                        const actual = parseInt(e.target.value);
+                        setGuestsActual(actual);
+                        setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label>Extra Guest Charge (₹)</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={extraGuestCharge}
+                      onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <Box sx={{
               display: 'flex',
@@ -516,7 +578,11 @@ const Bookings = () => {
               <TableCell>Check-in</TableCell>
               <TableCell>Check-out</TableCell>
               <TableCell>Payment</TableCell>
-              <TableCell>Amount</TableCell>
+              <TableCell>Guests</TableCell>
+              <TableCell>Extra Charge (₹)</TableCell>
+              <TableCell>Gross (₹)</TableCell>
+              <TableCell>Commission (₹)</TableCell>
+              <TableCell>Net (₹)</TableCell>
               <TableCell>Source</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell></TableCell>
@@ -537,7 +603,11 @@ const Bookings = () => {
                   <TableCell>{b.checkinDate}</TableCell>
                   <TableCell>{b.checkoutDate}</TableCell>
                   <TableCell>{b.paymentStatus}</TableCell>
-                  <TableCell>{b.amountReceived}</TableCell>
+                  <TableCell>{b.guestsPlanned} → {b.guestsActual}</TableCell>
+                  <TableCell>₹{b.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{b.amountGuestPaid?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{b.commissionAmount?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{b.amountReceived?.toLocaleString("en-IN")}</TableCell>
                   <TableCell>{b.bookingSource}</TableCell>
                   <TableCell>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
