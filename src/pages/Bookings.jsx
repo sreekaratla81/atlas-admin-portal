@@ -13,18 +13,22 @@ const Bookings = () => {
   const [guests, setGuests] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
-  const today = new Date().toISOString().slice(0, 10);
   const [booking, setBooking] = useState({
     id: null,
     listingId: '',
     checkinDate: '',
     checkoutDate: '',
     bookingSource: 'Walk-in',
-    paymentStatus: 'unpaid',
+    amountGuestPaid: 0,
+    commissionAmount: 0,
     amountReceived: 0,
     notes: '',
-    createdAt: today       // Default to today
   });
+  const [guestsPlanned, setGuestsPlanned] = useState(2);
+  const [guestsActual, setGuestsActual] = useState(2);
+  const [extraGuestCharge, setExtraGuestCharge] = useState(0);
+  const EXTRA_GUEST_RATE = 750;
+  const [showExtras, setShowExtras] = useState(false);
   const [formMode, setFormMode] = useState('create');
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [filters, setFilters] = useState({
@@ -93,13 +97,17 @@ const Bookings = () => {
       listingId: '',
       checkinDate: '',
       checkoutDate: '',
-      
+
       bookingSource: 'Walk-in',
-      paymentStatus: 'unpaid',
+      amountGuestPaid: 0,
+      commissionAmount: 0,
       amountReceived: 0,
-      notes: '',
-      createdAt: today
+      notes: ''
     });
+    setGuestsPlanned(2);
+    setGuestsActual(2);
+    setExtraGuestCharge(0);
+    setShowExtras(false);
     setSuccessMsg('');
     setErrorMsg('');
   };
@@ -122,8 +130,12 @@ const Bookings = () => {
         ...booking,
         guestId,
         listingId: parseInt(booking.listingId),
+        amountGuestPaid: parseFloat(booking.amountGuestPaid),
+        commissionAmount: parseFloat(booking.commissionAmount),
         amountReceived: parseFloat(booking.amountReceived),
-        createdAt: booking.createdAt
+        guestsPlanned,
+        guestsActual,
+        extraGuestCharge
       };
       if (formMode === 'edit' && selectedBookingId) {
         await axios.put(
@@ -160,11 +172,15 @@ const Bookings = () => {
       checkoutDate:
         bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
-      paymentStatus: bookingToEdit.paymentStatus || 'unpaid',
+      amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
+      commissionAmount: bookingToEdit.commissionAmount ?? 0,
       amountReceived: bookingToEdit.amountReceived ?? 0,
-      notes: bookingToEdit.notes || '',
-      createdAt: bookingToEdit.createdAt || today
+      notes: bookingToEdit.notes || ''
     });
+    setGuestsPlanned(bookingToEdit.guestsPlanned ?? 2);
+    setGuestsActual(bookingToEdit.guestsActual ?? 2);
+    setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
+    setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
     setSelectedGuestId(bookingToEdit.guestId.toString());
     const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
     setGuest(guestObj);
@@ -360,20 +376,31 @@ const Bookings = () => {
                   <MenuItem value="Others">Others</MenuItem>
                 </Select>
               </FormControl>
+              {/* Gross Amount */}
+              <TextField
+                label="Gross Amount"
+                type="number"
+                placeholder="Gross Amount"
+                value={booking.amountGuestPaid}
+                onChange={e => setBooking({ ...booking, amountGuestPaid: e.target.value })}
+                inputProps={{
+                  min: 0,
+                  step: "0.01"
+                }}
+              />
 
-              {/* Payment Status */}
-              <FormControl required>
-                <InputLabel>Payment Status</InputLabel>
-                <Select
-                  value={booking.paymentStatus}
-                  onChange={e => setBooking({ ...booking, paymentStatus: e.target.value })}
-                  label="Payment Status"
-                >
-                  <MenuItem value="unpaid">Unpaid</MenuItem>
-                  <MenuItem value="paid">Paid</MenuItem>
-                  <MenuItem value="partial">Partial</MenuItem>
-                </Select>
-              </FormControl>
+              {/* Commission Amount */}
+              <TextField
+                label="Commission Amount"
+                type="number"
+                placeholder="Commission Amount"
+                value={booking.commissionAmount}
+                onChange={e => setBooking({ ...booking, commissionAmount: e.target.value })}
+                inputProps={{
+                  min: 0,
+                  step: "0.01"
+                }}
+              />
 
               {/* Amount Received */}
               <TextField
@@ -398,19 +425,53 @@ const Bookings = () => {
                 rows={2}
                 sx={{ gridColumn: 'span 2' }}
               />
-
-              {/* Created At - only show if not editing */}
-              {formMode !== 'edit' && (
-                <TextField
-                  label="Created At"
-                  type="date"
-                  value={booking.createdAt}
-                  onChange={e => setBooking({ ...booking, createdAt: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              )}
-
             </Box>
+
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                className="text-sm text-blue-600 underline"
+                onClick={() => setShowExtras(!showExtras)}
+              >
+                {showExtras ? 'Hide Extras' : 'Add Extra Guest Info (optional)'}
+              </button>
+
+              {showExtras && (
+                <div className="grid grid-cols-3 gap-4 mt-3 p-4 border rounded-md bg-gray-50">
+                  <div>
+                    <label>Guests Planned</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={guestsPlanned}
+                      onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label>Guests Actual</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={guestsActual}
+                      onChange={(e) => {
+                        const actual = parseInt(e.target.value);
+                        setGuestsActual(actual);
+                        setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label>Extra Guest Charge (₹)</label>
+                    <input
+                      type="number"
+                      className="form-input w-full"
+                      value={extraGuestCharge}
+                      onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <Box sx={{
@@ -516,36 +577,45 @@ const Bookings = () => {
               <TableCell>Check-in</TableCell>
               <TableCell>Check-out</TableCell>
               <TableCell>Payment</TableCell>
-              <TableCell>Amount</TableCell>
+              <TableCell>Guests</TableCell>
+              <TableCell>Extra Charge (₹)</TableCell>
+              <TableCell>Gross (₹)</TableCell>
+              <TableCell>Commission (₹)</TableCell>
+              <TableCell>Net (₹)</TableCell>
               <TableCell>Source</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedBookings.map(b => {
-              const guestObj = guests.find(g => g.id === b.guestId) || {};
-              const listingObj = listings.find(l => l.id === b.listingId) || {};
+            {paginatedBookings.map(row => {
+              console.log(row); // check for amountGuestPaid and commissionAmount
+              const guestObj = guests.find(g => g.id === row.guestId) || {};
+              const listingObj = listings.find(l => l.id === row.listingId) || {};
               return (
-                <TableRow key={b.id}>
-                  <TableCell>{listingObj.name || b.listingId}</TableCell>
+                <TableRow key={row.id}>
+                  <TableCell>{listingObj.name || row.listingId}</TableCell>
                   <TableCell>
                     {guestObj.name || ''}<br />
                     {guestObj.phone || ''}<br />
                     {guestObj.email || ''}
                   </TableCell>
-                  <TableCell>{b.checkinDate}</TableCell>
-                  <TableCell>{b.checkoutDate}</TableCell>
-                  <TableCell>{b.paymentStatus}</TableCell>
-                  <TableCell>{b.amountReceived}</TableCell>
-                  <TableCell>{b.bookingSource}</TableCell>
-                  <TableCell>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</TableCell>
+                  <TableCell>{row.checkinDate}</TableCell>
+                  <TableCell>{row.checkoutDate}</TableCell>
+                  <TableCell>{row.paymentStatus}</TableCell>
+                  <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
+                  <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{row.amountGuestPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{row.bookingSource}</TableCell>
+                  <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => handleEdit(b)}
+                        onClick={() => handleEdit(row)}
                         disabled={loading}
                         sx={{ minWidth: 60 }}
                       >
