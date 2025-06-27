@@ -30,6 +30,8 @@ function buildEmptyMonths() {
 
 function EarningsReport() {
   const [monthlyData, setMonthlyData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showZeroMonths, setShowZeroMonths] = useState(false);
 
   useEffect(() => {
     async function fetchMonthlyEarnings() {
@@ -65,53 +67,116 @@ function EarningsReport() {
         } catch (err2) {
           console.error(err2);
         }
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchMonthlyEarnings();
   }, []);
 
-  if (!Array.isArray(monthlyData) || monthlyData.length === 0) {
-    return <p>No data available</p>;
-  }
-
   return (
-    <div style={{ width: '100%', height: 500 }}>
-      <h2>📈 12-Month On-Month Earnings Report</h2>
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart
-          data={monthlyData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+    <section
+      style={{
+        background: '#fff',
+        borderRadius: '0.5rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+        minHeight: '300px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+        }}
+      >
+        <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+          📈 12-Month On-Month Earnings Report
+        </h2>
+        <button
+          style={{
+            fontSize: '0.875rem',
+            color: '#2563eb',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+          onClick={() => setShowZeroMonths(!showZeroMonths)}
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
-          <Legend />
-          <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
-          <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
-        </BarChart>
-      </ResponsiveContainer>
-      <table>
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Total Gross</th>
-            <th>Total Fees</th>
-            <th>Total Net</th>
-          </tr>
-        </thead>
-        <tbody>
-          {monthlyData.map((row) => (
-            <tr key={row.month}>
-              <td>{row.month}</td>
-              <td>₹{Number(row.totalGross).toLocaleString()}</td>
-              <td>₹{Number(row.totalFees).toLocaleString()}</td>
-              <td>₹{Number(row.totalNet).toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          {showZeroMonths ? 'Hide' : 'Show'} Zero Months
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p>Loading earnings data...</p>
+      ) : !Array.isArray(monthlyData) || monthlyData.length === 0 ? (
+        <p>No data available</p>
+      ) : (
+        <>
+          <div style={{ width: '100%', height: 400 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis
+                  tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`}
+                />
+                <Tooltip
+                  formatter={(val, name) => [
+                    `₹${Number(val).toLocaleString('en-IN')}`,
+                    name,
+                  ]}
+                />
+                <Legend />
+                <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
+                <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid #ddd', fontWeight: 600 }}>
+                  <th style={{ padding: '0.5rem 1rem 0.5rem 0' }}>Month</th>
+                  <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Gross</th>
+                  <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Fees</th>
+                  <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyData
+                  .filter((row) => showZeroMonths || row.totalGross > 0)
+                  .map((row, idx) => (
+                    <tr
+                      key={row.month}
+                      style={{
+                        backgroundColor: idx % 2 === 0 ? '#f9fafb' : 'transparent',
+                        opacity: row.totalGross === 0 ? 0.5 : 1,
+                      }}
+                    >
+                      <td style={{ padding: '0.5rem 1rem 0.5rem 0' }}>{row.month}</td>
+                      <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                        ₹{row.totalGross.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                        ₹{row.totalFees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                        ₹{row.totalNet.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
