@@ -85,7 +85,13 @@ function EarningsReport() {
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis />
-          <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
+          <Tooltip
+            formatter={(value) =>
+              `₹${Number(value).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+              })}`
+            }
+          />
           <Legend />
           <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
           <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
@@ -104,9 +110,21 @@ function EarningsReport() {
           {monthlyData.map((row) => (
             <tr key={row.month}>
               <td>{row.month}</td>
-              <td>₹{Number(row.totalGross).toLocaleString()}</td>
-              <td>₹{Number(row.totalFees).toLocaleString()}</td>
-              <td>₹{Number(row.totalNet).toLocaleString()}</td>
+              <td>
+                ₹{row.totalGross.toLocaleString('en-IN', {
+                  minimumFractionDigits: 2,
+                })}
+              </td>
+              <td>
+                ₹{row.totalFees.toLocaleString('en-IN', {
+                  minimumFractionDigits: 2,
+                })}
+              </td>
+              <td>
+                ₹{row.totalNet.toLocaleString('en-IN', {
+                  minimumFractionDigits: 2,
+                })}
+              </td>
             </tr>
           ))}
         </tbody>
