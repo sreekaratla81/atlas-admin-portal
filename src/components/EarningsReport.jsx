@@ -30,6 +30,7 @@ function buildEmptyMonths() {
 
 function EarningsReport() {
   const [monthlyData, setMonthlyData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchMonthlyEarnings() {
@@ -65,71 +66,80 @@ function EarningsReport() {
         } catch (err2) {
           console.error(err2);
         }
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchMonthlyEarnings();
   }, []);
 
-  if (!Array.isArray(monthlyData) || monthlyData.length === 0) {
-    return <p>No data available</p>;
-  }
-
   return (
-    <div style={{ width: '100%', height: 500 }}>
+    <section style={{ minHeight: '300px', marginBottom: '2rem' }}>
       <h2>📈 12-Month On-Month Earnings Report</h2>
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart
-          data={monthlyData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip
-            formatter={(value) =>
-              `₹${Number(value).toLocaleString('en-IN', {
-                minimumFractionDigits: 2,
-              })}`
-            }
-          />
-          <Legend />
-          <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
-          <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
-        </BarChart>
-      </ResponsiveContainer>
-      <table>
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Total Gross</th>
-            <th>Total Fees</th>
-            <th>Total Net</th>
-          </tr>
-        </thead>
-        <tbody>
-          {monthlyData.map((row) => (
-            <tr key={row.month}>
-              <td>{row.month}</td>
-              <td>
-                ₹{row.totalGross.toLocaleString('en-IN', {
-                  minimumFractionDigits: 2,
-                })}
-              </td>
-              <td>
-                ₹{row.totalFees.toLocaleString('en-IN', {
-                  minimumFractionDigits: 2,
-                })}
-              </td>
-              <td>
-                ₹{row.totalNet.toLocaleString('en-IN', {
-                  minimumFractionDigits: 2,
-                })}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+
+      {isLoading ? (
+        <p>Loading earnings data...</p>
+      ) : !Array.isArray(monthlyData) || monthlyData.length === 0 ? (
+        <p>No data available</p>
+      ) : (
+        <>
+          <div style={{ width: '100%', height: 500 }}>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart
+                data={monthlyData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value) =>
+                    `₹${Number(value).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                    })}`
+                  }
+                />
+                <Legend />
+                <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
+                <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Total Gross</th>
+                <th>Total Fees</th>
+                <th>Total Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyData.map((row) => (
+                <tr key={row.month}>
+                  <td>{row.month}</td>
+                  <td>
+                    ₹{row.totalGross.toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td>
+                    ₹{row.totalFees.toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td>
+                    ₹{row.totalNet.toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
   );
 }
 
