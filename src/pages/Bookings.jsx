@@ -12,23 +12,18 @@ const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [guests, setGuests] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
-  const [guest, setGuest] = useState({ name: '', phone: '', email: '', idProofUrl: '' });
+  const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
   const today = new Date().toISOString().slice(0, 10);
   const [booking, setBooking] = useState({
     id: null,
     listingId: '',
     checkinDate: '',
     checkoutDate: '',
-    plannedCheckinTime: '',
-    actualCheckinTime: '',
-    plannedCheckoutTime: '',
-    actualCheckoutTime: '',
     bookingSource: 'Walk-in',
     paymentStatus: 'unpaid',
     amountReceived: 0,
     notes: '',
-    createdAt: today,      // Default to today
-    paymentDate: today     // Default to today
+    createdAt: today       // Default to today
   });
   const [formMode, setFormMode] = useState('create');
   const [selectedBookingId, setSelectedBookingId] = useState(null);
@@ -89,7 +84,7 @@ const Bookings = () => {
   }, [successMsg]);
 
   const reset = () => {
-    setGuest({ name: '', phone: '', email: '', idProofUrl: '' });
+    setGuest({ name: '', phone: '', email: '' });
     setSelectedGuestId('');
     setFormMode('create');
     setSelectedBookingId(null);
@@ -98,16 +93,12 @@ const Bookings = () => {
       listingId: '',
       checkinDate: '',
       checkoutDate: '',
-      plannedCheckinTime: '',
-      actualCheckinTime: '',
-      plannedCheckoutTime: '',
-      actualCheckoutTime: '',
+      
       bookingSource: 'Walk-in',
       paymentStatus: 'unpaid',
       amountReceived: 0,
       notes: '',
-      createdAt: today,
-      paymentDate: today
+      createdAt: today
     });
     setSuccessMsg('');
     setErrorMsg('');
@@ -132,8 +123,7 @@ const Bookings = () => {
         guestId,
         listingId: parseInt(booking.listingId),
         amountReceived: parseFloat(booking.amountReceived),
-        createdAt: booking.createdAt,
-        paymentDate: booking.paymentDate
+        createdAt: booking.createdAt
       };
       if (formMode === 'edit' && selectedBookingId) {
         await axios.put(
@@ -169,31 +159,14 @@ const Bookings = () => {
       checkinDate: bookingToEdit.checkinDate || bookingToEdit.checkInDate || '',
       checkoutDate:
         bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
-      plannedCheckinTime:
-        bookingToEdit.plannedCheckinTime ||
-        bookingToEdit.plannedInTime ||
-        '',
-      actualCheckinTime:
-        bookingToEdit.actualCheckinTime ||
-        bookingToEdit.actualInTime ||
-        '',
-      plannedCheckoutTime:
-        bookingToEdit.plannedCheckoutTime ||
-        bookingToEdit.plannedOutTime ||
-        '',
-      actualCheckoutTime:
-        bookingToEdit.actualCheckoutTime ||
-        bookingToEdit.actualOutTime ||
-        '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
       paymentStatus: bookingToEdit.paymentStatus || 'unpaid',
       amountReceived: bookingToEdit.amountReceived ?? 0,
       notes: bookingToEdit.notes || '',
-      createdAt: bookingToEdit.createdAt || today,
-      paymentDate: bookingToEdit.paymentDate || today
+      createdAt: bookingToEdit.createdAt || today
     });
     setSelectedGuestId(bookingToEdit.guestId.toString());
-    const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '', idProofUrl: '' };
+    const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
     setGuest(guestObj);
     setSuccessMsg('');
   };
@@ -222,9 +195,6 @@ const Bookings = () => {
     } else if (sortField === 'createdAt') {
       aValue = a.createdAt;
       bValue = b.createdAt;
-    } else if (sortField === 'paymentDate') {
-      aValue = a.paymentDate;
-      bValue = b.paymentDate;
     } else {
       return 0;
     }
@@ -371,76 +341,7 @@ const Bookings = () => {
                 />
               )}
 
-              {/* ID Proof URL - only show if no guest selected */}
-              {!selectedGuestId && (
-                <TextField
-                  label="ID Proof URL"
-                  placeholder="ID Proof URL"
-                  value={guest.idProofUrl}
-                  onChange={e => setGuest({ ...guest, idProofUrl: e.target.value })}
-                  disabled={!!selectedGuestId || formMode === 'edit'}
-                />
-              )}
 
-              {/* Planned In Time */}
-              <FormControl>
-                <InputLabel>Planned In Time</InputLabel>
-                <Select
-                  value={booking.plannedCheckinTime}
-                  onChange={e => setBooking({ ...booking, plannedCheckinTime: e.target.value })}
-                  label="Planned In Time"
-                >
-                  <MenuItem value="">Planned In Time</MenuItem>
-                  {timeOptions.map(t => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Actual In Time */}
-              <FormControl>
-                <InputLabel>Actual In Time</InputLabel>
-                <Select
-                  value={booking.actualCheckinTime}
-                  onChange={e => setBooking({ ...booking, actualCheckinTime: e.target.value })}
-                  label="Actual In Time"
-                >
-                  <MenuItem value="">Actual In Time</MenuItem>
-                  {timeOptions.map(t => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Planned Out Time */}
-              <FormControl>
-                <InputLabel>Planned Out Time</InputLabel>
-                <Select
-                  value={booking.plannedCheckoutTime}
-                  onChange={e => setBooking({ ...booking, plannedCheckoutTime: e.target.value })}
-                  label="Planned Out Time"
-                >
-                  <MenuItem value="">Planned Out Time</MenuItem>
-                  {timeOptions.map(t => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Actual Out Time */}
-              <FormControl>
-                <InputLabel>Actual Out Time</InputLabel>
-                <Select
-                  value={booking.actualCheckoutTime}
-                  onChange={e => setBooking({ ...booking, actualCheckoutTime: e.target.value })}
-                  label="Actual Out Time"
-                >
-                  <MenuItem value="">Actual Out Time</MenuItem>
-                  {timeOptions.map(t => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
 
               {/* Booking Source */}
               <FormControl required>
@@ -509,16 +410,6 @@ const Bookings = () => {
                 />
               )}
 
-              {/* Payment Date - only show if not editing */}
-              {formMode !== 'edit' && (
-                <TextField
-                  label="Payment Date"
-                  type="date"
-                  value={booking.paymentDate}
-                  onChange={e => setBooking({ ...booking, paymentDate: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              )}
             </Box>
 
             {/* Action Buttons */}
@@ -613,12 +504,6 @@ const Bookings = () => {
           Sort by Created {sortField === 'createdAt' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
         </Button>
 
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('paymentDate');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
-          Sort by Payment Date {sortField === 'paymentDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-        </Button>
       </Box>
 
       {/* Table to display bookings */}
@@ -634,7 +519,6 @@ const Bookings = () => {
               <TableCell>Amount</TableCell>
               <TableCell>Source</TableCell>
               <TableCell>Created At</TableCell>
-              <TableCell>Payment Date</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
@@ -656,7 +540,6 @@ const Bookings = () => {
                   <TableCell>{b.amountReceived}</TableCell>
                   <TableCell>{b.bookingSource}</TableCell>
                   <TableCell>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</TableCell>
-                  <TableCell>{b.paymentDate ? new Date(b.paymentDate).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
