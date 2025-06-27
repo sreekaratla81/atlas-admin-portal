@@ -21,6 +21,8 @@ const Bookings = () => {
     checkoutDate: '',
     bookingSource: 'Walk-in',
     paymentStatus: 'unpaid',
+    amountGuestPaid: 0,
+    commissionAmount: 0,
     amountReceived: 0,
     notes: '',
     createdAt: today       // Default to today
@@ -98,9 +100,11 @@ const Bookings = () => {
       listingId: '',
       checkinDate: '',
       checkoutDate: '',
-      
+
       bookingSource: 'Walk-in',
       paymentStatus: 'unpaid',
+      amountGuestPaid: 0,
+      commissionAmount: 0,
       amountReceived: 0,
       notes: '',
       createdAt: today
@@ -131,6 +135,8 @@ const Bookings = () => {
         ...booking,
         guestId,
         listingId: parseInt(booking.listingId),
+        amountGuestPaid: parseFloat(booking.amountGuestPaid),
+        commissionAmount: parseFloat(booking.commissionAmount),
         amountReceived: parseFloat(booking.amountReceived),
         createdAt: booking.createdAt,
         guestsPlanned,
@@ -173,6 +179,8 @@ const Bookings = () => {
         bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
       paymentStatus: bookingToEdit.paymentStatus || 'unpaid',
+      amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
+      commissionAmount: bookingToEdit.commissionAmount ?? 0,
       amountReceived: bookingToEdit.amountReceived ?? 0,
       notes: bookingToEdit.notes || '',
       createdAt: bookingToEdit.createdAt || today
@@ -391,6 +399,32 @@ const Bookings = () => {
                 </Select>
               </FormControl>
 
+              {/* Gross Amount */}
+              <TextField
+                label="Gross Amount"
+                type="number"
+                placeholder="Gross Amount"
+                value={booking.amountGuestPaid}
+                onChange={e => setBooking({ ...booking, amountGuestPaid: e.target.value })}
+                inputProps={{
+                  min: 0,
+                  step: "0.01"
+                }}
+              />
+
+              {/* Commission Amount */}
+              <TextField
+                label="Commission Amount"
+                type="number"
+                placeholder="Commission Amount"
+                value={booking.commissionAmount}
+                onChange={e => setBooking({ ...booking, commissionAmount: e.target.value })}
+                inputProps={{
+                  min: 0,
+                  step: "0.01"
+                }}
+              />
+
               {/* Amount Received */}
               <TextField
                 label="Amount Received"
@@ -589,33 +623,34 @@ const Bookings = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {paginatedBookings.map(b => {
-              const guestObj = guests.find(g => g.id === b.guestId) || {};
-              const listingObj = listings.find(l => l.id === b.listingId) || {};
+            {paginatedBookings.map(row => {
+              console.log(row); // check for amountGuestPaid and commissionAmount
+              const guestObj = guests.find(g => g.id === row.guestId) || {};
+              const listingObj = listings.find(l => l.id === row.listingId) || {};
               return (
-                <TableRow key={b.id}>
-                  <TableCell>{listingObj.name || b.listingId}</TableCell>
+                <TableRow key={row.id}>
+                  <TableCell>{listingObj.name || row.listingId}</TableCell>
                   <TableCell>
                     {guestObj.name || ''}<br />
                     {guestObj.phone || ''}<br />
                     {guestObj.email || ''}
                   </TableCell>
-                  <TableCell>{b.checkinDate}</TableCell>
-                  <TableCell>{b.checkoutDate}</TableCell>
-                  <TableCell>{b.paymentStatus}</TableCell>
-                  <TableCell>{b.guestsPlanned} → {b.guestsActual}</TableCell>
-                  <TableCell>₹{b.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{b.amountGuestPaid?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{b.commissionAmount?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{b.amountReceived?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>{b.bookingSource}</TableCell>
-                  <TableCell>{b.createdAt ? new Date(b.createdAt).toLocaleDateString() : ''}</TableCell>
+                  <TableCell>{row.checkinDate}</TableCell>
+                  <TableCell>{row.checkoutDate}</TableCell>
+                  <TableCell>{row.paymentStatus}</TableCell>
+                  <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
+                  <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>₹{row.amountGuestPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>{row.bookingSource}</TableCell>
+                  <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => handleEdit(b)}
+                        onClick={() => handleEdit(row)}
                         disabled={loading}
                         sx={{ minWidth: 60 }}
                       >
