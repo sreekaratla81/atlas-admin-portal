@@ -5,6 +5,7 @@ import Properties from './pages/Properties';
 import Listings from './pages/Listings';
 import Bookings from './pages/Bookings';
 import Reports from './pages/Reports';
+import Guests from './pages/Guests';
 
 const App = () => {
   // const { loginWithRedirect, logout, isAuthenticated, user, isLoading } = useAuth0();
@@ -24,6 +25,7 @@ const App = () => {
       <nav style={{ marginBottom: '1rem' }}>
         <Link to="/properties">Properties</Link>{' '}
         <Link to="/listings">Listings</Link>{' '}
+        <Link to="/guests">Guests</Link>{' '}
         <Link to="/">Bookings</Link>{' '}
         <Link to="/Reports">Reports</Link>{' '}
         {/* Navigation links */}
@@ -47,6 +49,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Bookings />} />
           <Route path="/listings" element={<Listings />} />
+          <Route path="/guests" element={<Guests />} />
           <Route path="/properties" element={<Properties />} />
           <Route path="/reports" element={<Reports/>} />
           {/* Add more routes as needed */}
