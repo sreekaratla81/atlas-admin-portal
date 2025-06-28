@@ -69,6 +69,21 @@ const Guests = () => {
     }
   };
 
+  const remove = async (id) => {
+    if (confirm('Are you sure you want to delete this guest?')) {
+      setLoading(true);
+      setError('');
+      try {
+        await axios.delete(`${import.meta.env.VITE_API_BASE}/guests/${id}`);
+        fetchGuests();
+      } catch (err) {
+        setError('Failed to delete guest.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {error && (
@@ -94,16 +109,12 @@ const Guests = () => {
                 <TableCell>Phone</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>ID Proof URL</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {guests.map(g => (
-                <TableRow
-                  key={g.id}
-                  hover
-                  onClick={() => handleOpen(g)}
-                  sx={{ cursor: 'pointer' }}
-                >
+                <TableRow key={g.id} hover>
                   <TableCell>{g.name}</TableCell>
                   <TableCell>{g.phone}</TableCell>
                   <TableCell>{g.email || '—'}</TableCell>
@@ -114,11 +125,21 @@ const Guests = () => {
                       '—'
                     )}
                   </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button variant="outlined" size="small" onClick={() => handleOpen(g)} disabled={loading}>
+                        Edit
+                      </Button>
+                      <Button variant="outlined" size="small" color="error" onClick={() => remove(g.id)} disabled={loading}>
+                        Delete
+                      </Button>
+                    </Box>
+                  </TableCell>
                 </TableRow>
               ))}
               {guests.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4 }}>
+                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       No guests found.
                     </Typography>
