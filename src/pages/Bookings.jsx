@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
@@ -162,15 +163,19 @@ const Bookings = () => {
   };
 
   const handleEdit = (bookingToEdit) => {
+    console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
       // Support both camelCase variations returned from the API
-      checkinDate: bookingToEdit.checkinDate || bookingToEdit.checkInDate || '',
-      checkoutDate:
-        bookingToEdit.checkoutDate || bookingToEdit.checkOutDate || '',
+      checkinDate: (bookingToEdit.checkinDate || bookingToEdit.checkInDate)
+        ? dayjs(bookingToEdit.checkinDate || bookingToEdit.checkInDate).format('YYYY-MM-DD')
+        : '',
+      checkoutDate: (bookingToEdit.checkoutDate || bookingToEdit.checkOutDate)
+        ? dayjs(bookingToEdit.checkoutDate || bookingToEdit.checkOutDate).format('YYYY-MM-DD')
+        : '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
       amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
       commissionAmount: bookingToEdit.commissionAmount ?? 0,
