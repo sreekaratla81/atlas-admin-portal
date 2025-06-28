@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import {
   Box,
@@ -29,6 +29,8 @@ const Guests = () => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', idProofUrl: '' });
   const [editId, setEditId] = useState(null);
   const [deleteGuest, setDeleteGuest] = useState(null);
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
 
   const fetchGuests = async () => {
     setLoading(true);
@@ -46,6 +48,13 @@ const Guests = () => {
   useEffect(() => {
     fetchGuests();
   }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(query.trim().toLowerCase());
+    }, 200);
+    return () => clearTimeout(t);
+  }, [query]);
 
   const handleOpen = (guest) => {
     if (guest) {
@@ -111,6 +120,18 @@ const Guests = () => {
 
   const cancelDelete = () => setDeleteGuest(null);
 
+  const filteredGuests = useMemo(() => {
+    if (!search) return guests;
+    return guests.filter((g) => {
+      const term = search.toLowerCase();
+      return (
+        (g.name || '').toLowerCase().includes(term) ||
+        (g.phone || '').toLowerCase().includes(term) ||
+        (g.email || '').toLowerCase().includes(term)
+      );
+    });
+  }, [search, guests]);
+
   return (
     <Box sx={{ p: 3 }}>
       {error && (
@@ -122,6 +143,17 @@ const Guests = () => {
       <Button variant="contained" onClick={() => handleOpen()} sx={{ mb: 2 }}>
         New Guest
       </Button>
+
+      <TextField
+        label="Search guests"
+        fullWidth
+        size="small"
+        variant="outlined"
+        placeholder="Search by name, phone, or email"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        sx={{ mb: 2 }}
+      />
 
       {loading && guests.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -140,7 +172,7 @@ const Guests = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {guests.map(g => (
+              {filteredGuests.map(g => (
                 <TableRow
                   key={g.id}
                   hover
@@ -190,7 +222,7 @@ const Guests = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {guests.length === 0 && !loading && (
+              {filteredGuests.length === 0 && !loading && (
                 <TableRow>
                   <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
