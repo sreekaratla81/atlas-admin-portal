@@ -1,10 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
-  Box, Button, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Table, TableBody, TableCell,
-  TableHead, TableRow, TextField, Typography, Paper, Alert
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  Paper,
+  Alert
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const Guests = () => {
   const [guests, setGuests] = useState([]);
@@ -13,6 +28,7 @@ const Guests = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '', idProofUrl: '' });
   const [editId, setEditId] = useState(null);
+  const [deleteGuest, setDeleteGuest] = useState(null);
 
   const fetchGuests = async () => {
     setLoading(true);
@@ -70,19 +86,30 @@ const Guests = () => {
   };
 
   const remove = async (id) => {
-    if (confirm('Are you sure you want to delete this guest?')) {
-      setLoading(true);
-      setError('');
-      try {
-        await axios.delete(`${import.meta.env.VITE_API_BASE}/guests/${id}`);
-        fetchGuests();
-      } catch (err) {
-        setError('Failed to delete guest.');
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    setError('');
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_BASE}/guests/${id}`);
+      fetchGuests();
+    } catch (err) {
+      setError('Failed to delete guest.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleDelete = (guest) => {
+    setDeleteGuest(guest);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteGuest) {
+      await remove(deleteGuest.id);
+      setDeleteGuest(null);
+    }
+  };
+
+  const cancelDelete = () => setDeleteGuest(null);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -114,7 +141,12 @@ const Guests = () => {
             </TableHead>
             <TableBody>
               {guests.map(g => (
-                <TableRow key={g.id} hover>
+                <TableRow
+                  key={g.id}
+                  hover
+                  onClick={() => handleOpen(g)}
+                  sx={{ cursor: 'pointer' }}
+                >
                   <TableCell>{g.name}</TableCell>
                   <TableCell>{g.phone}</TableCell>
                   <TableCell>{g.email || '—'}</TableCell>
@@ -127,10 +159,31 @@ const Guests = () => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button variant="outlined" size="small" onClick={() => handleOpen(g)} disabled={loading}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpen(g);
+                        }}
+                        disabled={loading}
+                        startIcon={<EditIcon />}
+                        sx={{ minWidth: 80 }}
+                      >
                         Edit
                       </Button>
-                      <Button variant="outlined" size="small" color="error" onClick={() => remove(g.id)} disabled={loading}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(g);
+                        }}
+                        disabled={loading}
+                        startIcon={<DeleteIcon />}
+                        sx={{ minWidth: 80 }}
+                      >
                         Delete
                       </Button>
                     </Box>
@@ -182,6 +235,21 @@ const Guests = () => {
           <Button onClick={handleClose} disabled={loading}>Cancel</Button>
           <Button variant="contained" onClick={submit} disabled={loading}>
             {editId ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteGuest)} onClose={cancelDelete}>
+        <DialogTitle>Delete Guest</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete {deleteGuest?.name}?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete} disabled={loading}>Cancel</Button>
+          <Button color="error" onClick={confirmDelete} disabled={loading}>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
