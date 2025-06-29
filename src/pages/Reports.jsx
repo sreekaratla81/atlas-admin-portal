@@ -16,6 +16,12 @@ const Reports = () => {
                 <EarningsReport />
             </section>
             <section style={{ marginBottom: '2rem' }}>
+                <SingleCalendarEarningsReport />
+            </section>
+            <section style={{ marginBottom: '2rem' }}>
+                <MultiCalendarEarningsReport />
+            </section>
+            <section style={{ marginBottom: '2rem' }}>
                 <DailyPayoutReport />
             </section>
             <section style={{ marginBottom: '2rem' }}>
@@ -24,12 +30,6 @@ const Reports = () => {
             <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <section style={{ marginBottom: '2rem' }}>
                     <CustomReportGenerator />
-                </section>
-                <section style={{ marginBottom: '2rem' }}>
-                    <SingleCalendarEarningsReport />
-                </section>
-                <section style={{ marginBottom: '2rem' }}>
-                    <MultiCalendarEarningsReport />
                 </section>
             </LocalizationProvider>
         </div>

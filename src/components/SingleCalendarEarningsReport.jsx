@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import { Box, Typography } from '@mui/material';
+import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
+import { Box, Typography, TextField, MenuItem } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { format, parseISO } from 'date-fns';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
 
-// Setup localizer using date-fns
-import { dateFnsLocalizer } from 'react-big-calendar';
 import { enUS } from 'date-fns/locale';
 
 const locales = {
@@ -15,59 +13,71 @@ const locales = {
 
 const localizer = dateFnsLocalizer({
   format,
-  parse: parseISO,
-  startOfWeek: () => new Date(),
-  getDay: date => date.getDay(),
+  parse,
+  startOfWeek,
+  getDay,
   locales,
 });
 
 function SingleCalendarEarningsReport() {
-  const [events, setEvents] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [selectedListing, setSelectedListing] = useState('');
+  const [earnings, setEarnings] = useState({});
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/admin/reports/bookings/calendar`
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`)
+      .then((res) => setListings(Array.isArray(res.data) ? res.data : []))
+      .catch((err) => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedListing) return;
+    const month = format(currentDate, 'yyyy-MM');
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/api/reports/calendar-earnings`, {
+        params: { listingId: selectedListing, month }
+      })
+      .then((res) => {
+        const map = {};
+        (Array.isArray(res.data) ? res.data : []).forEach((d) => {
+          map[d.date] = d.amount;
+        });
+        setEarnings(map);
+      })
+      .catch((err) => {
+        console.error(err);
+        setEarnings({});
+      });
+  }, [selectedListing, currentDate]);
+
+  const dayPropGetter = (date) => {
+    const key = format(date, 'yyyy-MM-dd');
+    const amount = earnings[key];
+    if (amount > 0) {
+      return { style: { backgroundColor: '#e6ffed' } };
+    }
+    return {};
+  };
+
+  const components = {
+    month: {
+      dateHeader: ({ label, date }) => {
+        const key = format(date, 'yyyy-MM-dd');
+        const amount = earnings[key];
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <div>{label}</div>
+            <div style={{ fontSize: '0.75em' }}>
+              {amount ? `₹${amount}` : '₹0'}
+            </div>
+          </div>
         );
-        setEvents(
-          res.data.map((e) => ({
-            ...e,
-            start: new Date(e.start),
-            end: new Date(e.end)
-          }))
-        );
-      } catch (err) {
-        console.warn('Falling back to client aggregation', err);
-        try {
-          const [bookRes, listRes] = await Promise.all([
-            axios.get(
-              `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
-            ),
-            axios.get(
-              `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
-            )
-          ]);
-          const listingMap = {};
-          listRes.data.forEach((l) => {
-            listingMap[l.id] = l.name;
-          });
-          setEvents(
-            bookRes.data.map((b) => ({
-              title: `${listingMap[b.listingId] || b.listingId}: $${b.amountReceived}`,
-              start: new Date(b.checkinDate),
-              end: new Date(b.checkoutDate),
-              listing: listingMap[b.listingId] || b.listingId,
-              amount: parseFloat(b.amountReceived) || 0
-            }))
-          );
-        } catch (err2) {
-          console.error(err2);
-        }
       }
     }
-    fetchData();
-  }, []);
+  };
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h5" gutterBottom>
@@ -77,16 +87,33 @@ function SingleCalendarEarningsReport() {
         View bookings and daily earnings in a calendar format per listing.
       </Typography>
 
-      <Box sx={{ height: 600, mt: 3 }}>
+      <TextField
+        select
+        label="Listing"
+        value={selectedListing}
+        onChange={(e) => setSelectedListing(e.target.value)}
+        sx={{ my: 2, width: 300 }}
+      >
+        {listings.map((l) => (
+          <MenuItem key={l.id} value={l.id}>
+            {l.name}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      <Box sx={{ height: 600 }}>
         <Calendar
           localizer={localizer}
-          events={events}
+          events={[]}
+          date={currentDate}
+          onNavigate={(date) => setCurrentDate(date)}
           startAccessor="start"
           endAccessor="end"
           defaultView="month"
-          views={['month', 'week', 'day']}
+          views={['month']}
+          dayPropGetter={dayPropGetter}
+          components={components}
           style={{ height: '100%', border: '1px solid #ccc', borderRadius: 8 }}
-          tooltipAccessor={event => `${event.listing}: $${event.amount}`}
         />
       </Box>
     </Box>

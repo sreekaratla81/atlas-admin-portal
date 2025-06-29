@@ -26,10 +26,10 @@ const App = () => {
       <nav style={{ marginBottom: '1rem' }}>
         <Link to="/properties">Properties</Link>{' '}
         <Link to="/listings">Listings</Link>{' '}
+        <Link to="/bank-accounts">Bank Accounts</Link>{' '}
         <Link to="/guests">Guests</Link>{' '}
         <Link to="/">Bookings</Link>{' '}
         <Link to="/Reports">Reports</Link>{' '}
-        <Link to="/bank-accounts">Bank Accounts</Link>{' '}
         {/* Navigation links */}
         {/**
         {isAuthenticated ? (
