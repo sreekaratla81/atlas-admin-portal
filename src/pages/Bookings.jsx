@@ -38,10 +38,9 @@ const Bookings = () => {
   const [filters, setFilters] = useState({
     listing: '',
     guest: '',
-    paymentStatus: '',
   });
-  // Default sorting should be by creation time so the newest bookings appear first
-  const [sortField, setSortField] = useState('createdAt');
+  // Default sorting should be by check-in date so upcoming bookings appear first
+  const [sortField, setSortField] = useState('checkinDate');
   const [sortOrder, setSortOrder] = useState('desc');
 
   const [loading, setLoading] = useState(false);
@@ -75,7 +74,7 @@ const Bookings = () => {
       .get(`${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`)
       .then(res => {
         const sorted = [...res.data].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
         );
         setBookings(sorted);
       });
@@ -162,7 +161,7 @@ const Bookings = () => {
       reset();
       const updated = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
       const sorted = [...updated.data].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
       setBookings(sorted);
     } catch (err) {
@@ -221,8 +220,7 @@ const Bookings = () => {
     const listingObj = listings.find(l => l.id === b.listingId) || {};
     return (
       (!filters.listing || listingObj.name?.toLowerCase().includes(filters.listing.toLowerCase())) &&
-      (!filters.guest || guestObj.name?.toLowerCase().includes(filters.guest.toLowerCase())) &&
-      (!filters.paymentStatus || b.paymentStatus === filters.paymentStatus)
+      (!filters.guest || guestObj.name?.toLowerCase().includes(filters.guest.toLowerCase()))
     );
   });
 
@@ -236,9 +234,6 @@ const Bookings = () => {
     } else if (sortField === 'amountReceived') {
       aValue = a.amountReceived;
       bValue = b.amountReceived;
-    } else if (sortField === 'createdAt') {
-      aValue = a.createdAt;
-      bValue = b.createdAt;
     } else {
       return 0;
     }
@@ -575,19 +570,6 @@ const Bookings = () => {
           onChange={e => setFilters(f => ({ ...f, guest: e.target.value }))}
         />
 
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Payment Status</InputLabel>
-          <Select
-            value={filters.paymentStatus}
-            label="Payment Status"
-            onChange={e => setFilters(f => ({ ...f, paymentStatus: e.target.value }))}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="paid">Paid</MenuItem>
-            <MenuItem value="unpaid">Unpaid</MenuItem>
-            <MenuItem value="partial">Partial</MenuItem>
-          </Select>
-        </FormControl>
 
         <Button variant="outlined" size="small" onClick={() => {
           setSortField('checkinDate');
@@ -603,12 +585,6 @@ const Bookings = () => {
           Sort by Amount {sortField === 'amountReceived' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
         </Button>
 
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('createdAt');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
-          Sort by Created {sortField === 'createdAt' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-        </Button>
 
       </Box>
 
