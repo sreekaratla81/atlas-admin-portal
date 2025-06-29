@@ -68,12 +68,14 @@ const Bookings = () => {
 
   useEffect(() => {
     axios.get(`${import.meta.env.VITE_API_BASE}/listings`).then(res => setListings(res.data));
-    axios.get(`${import.meta.env.VITE_API_BASE}/bookings`).then(res => {
-      const sorted = [...res.data].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
-      );
-      setBookings(sorted);
-    });
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`)
+      .then(res => {
+        const sorted = [...res.data].sort(
+          (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+        );
+        setBookings(sorted);
+      });
     axios.get(`${import.meta.env.VITE_API_BASE}/guests`).then(res => setGuests(res.data));
     axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`).then(res => setBankAccounts(res.data));
   }, []);
@@ -610,6 +612,7 @@ const Bookings = () => {
               <TableCell>Gross (₹)</TableCell>
               <TableCell>Commission (₹)</TableCell>
               <TableCell>Net (₹)</TableCell>
+              <TableCell>Bank Account</TableCell>
               <TableCell>Source</TableCell>
               <TableCell>Created At</TableCell>
               <TableCell></TableCell>
@@ -620,6 +623,10 @@ const Bookings = () => {
               console.log(row); // check for amountGuestPaid and commissionAmount
               const guestObj = guests.find(g => g.id === row.guestId) || {};
               const listingObj = listings.find(l => l.id === row.listingId) || {};
+              const bankAccountObj =
+                row.bankAccount ||
+                bankAccounts.find(b => b.id === row.bankAccountId) ||
+                {};
               return (
                 <TableRow key={row.id}>
                   <TableCell>{listingObj.name || row.listingId}</TableCell>
@@ -636,6 +643,9 @@ const Bookings = () => {
                   <TableCell>₹{row.amountGuestPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
+                  <TableCell>
+                    {bankAccountObj.bankName || bankAccountObj.accountNumber || '-'}
+                  </TableCell>
                   <TableCell>{row.bookingSource}</TableCell>
                   <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
