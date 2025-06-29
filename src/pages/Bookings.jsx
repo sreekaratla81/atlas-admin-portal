@@ -4,8 +4,9 @@ import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
-  TableBody, Paper, Card, CardContent, TablePagination, Alert
+  TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 
 const Bookings = () => {
@@ -46,6 +47,7 @@ const Bookings = () => {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const messageRef = useRef(null);
@@ -199,6 +201,18 @@ const Bookings = () => {
     const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
     setGuest(guestObj);
     setSuccessMsg('');
+  };
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this booking?');
+    if (!confirmed) return;
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_BASE}/bookings/${id}`);
+      setBookings(prev => prev.filter(b => b.id !== id));
+    } catch (err) {
+      console.error(err);
+      setDeleteError(err?.response?.data?.message || err.message || 'Failed to delete booking.');
+    }
   };
 
   // Filtering logic
@@ -658,6 +672,17 @@ const Bookings = () => {
                       >
                         Edit
                       </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(row.id)}
+                        disabled={loading}
+                        startIcon={<DeleteIcon />}
+                        sx={{ minWidth: 80 }}
+                      >
+                        Delete
+                      </Button>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -683,6 +708,17 @@ const Bookings = () => {
           }}
         />
       </Paper>
+
+      <Snackbar
+        open={Boolean(deleteError)}
+        autoHideDuration={3000}
+        onClose={() => setDeleteError('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setDeleteError('')} severity="error" sx={{ width: '100%' }}>
+          {deleteError}
+        </Alert>
+      </Snackbar>
 
     </Box>
   );
