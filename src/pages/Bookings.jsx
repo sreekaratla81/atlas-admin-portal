@@ -12,6 +12,7 @@ const Bookings = () => {
   const [listings, setListings] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [guests, setGuests] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
   const [booking, setBooking] = useState({
@@ -24,6 +25,7 @@ const Bookings = () => {
     commissionAmount: 0,
     amountReceived: 0,
     notes: '',
+    bankAccountId: ''
   });
   const [guestsPlanned, setGuestsPlanned] = useState(2);
   const [guestsActual, setGuestsActual] = useState(2);
@@ -73,6 +75,7 @@ const Bookings = () => {
       setBookings(sorted);
     });
     axios.get(`${import.meta.env.VITE_API_BASE}/guests`).then(res => setGuests(res.data));
+    axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`).then(res => setBankAccounts(res.data));
   }, []);
 
   useEffect(() => {
@@ -103,7 +106,8 @@ const Bookings = () => {
       amountGuestPaid: 0,
       commissionAmount: 0,
       amountReceived: 0,
-      notes: ''
+      notes: '',
+      bankAccountId: ''
     });
     setGuestsPlanned(2);
     setGuestsActual(2);
@@ -131,6 +135,7 @@ const Bookings = () => {
         ...booking,
         guestId,
         listingId: parseInt(booking.listingId),
+        bankAccountId: booking.bankAccountId ? parseInt(booking.bankAccountId) : null,
         amountGuestPaid: parseFloat(booking.amountGuestPaid),
         commissionAmount: parseFloat(booking.commissionAmount),
         amountReceived: parseFloat(booking.amountReceived),
@@ -180,7 +185,8 @@ const Bookings = () => {
       amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
       commissionAmount: bookingToEdit.commissionAmount ?? 0,
       amountReceived: bookingToEdit.amountReceived ?? 0,
-      notes: bookingToEdit.notes || ''
+      notes: bookingToEdit.notes || '',
+      bankAccountId: bookingToEdit.bankAccountId ? bookingToEdit.bankAccountId.toString() : ''
     });
     setGuestsPlanned(bookingToEdit.guestsPlanned ?? 2);
     setGuestsActual(bookingToEdit.guestsActual ?? 2);
@@ -379,6 +385,23 @@ const Bookings = () => {
                   <MenuItem value="Atlas Website">Atlas Website</MenuItem>
                   <MenuItem value="Agent">Agent</MenuItem>
                   <MenuItem value="Others">Others</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Bank Account */}
+              <FormControl>
+                <InputLabel>Bank Account</InputLabel>
+                <Select
+                  value={booking.bankAccountId}
+                  onChange={e => setBooking({ ...booking, bankAccountId: e.target.value })}
+                  label="Bank Account"
+                >
+                  <MenuItem value="">Select Account</MenuItem>
+                  {bankAccounts.map(acc => (
+                    <MenuItem key={acc.id} value={acc.id}>
+                      {`${acc.bankName} - ${acc.accountNumber}`}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               {/* Gross Amount */}
