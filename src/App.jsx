@@ -6,6 +6,7 @@ import Listings from './pages/Listings';
 import Bookings from './pages/Bookings';
 import Reports from './pages/Reports';
 import Guests from './pages/Guests';
+import BankAccountsPage from './pages/BankAccountsPage';
 
 const App = () => {
   // const { loginWithRedirect, logout, isAuthenticated, user, isLoading } = useAuth0();
@@ -28,6 +29,7 @@ const App = () => {
         <Link to="/guests">Guests</Link>{' '}
         <Link to="/">Bookings</Link>{' '}
         <Link to="/Reports">Reports</Link>{' '}
+        <Link to="/bank-accounts">Bank Accounts</Link>{' '}
         {/* Navigation links */}
         {/**
         {isAuthenticated ? (
@@ -50,9 +52,10 @@ const App = () => {
           <Route path="/" element={<Bookings />} />
           <Route path="/listings" element={<Listings />} />
           <Route path="/guests" element={<Guests />} />
-          <Route path="/properties" element={<Properties />} />
-          <Route path="/reports" element={<Reports/>} />
-          {/* Add more routes as needed */}
+        <Route path="/properties" element={<Properties />} />
+        <Route path="/reports" element={<Reports/>} />
+        <Route path="/bank-accounts" element={<BankAccountsPage />} />
+        {/* Add more routes as needed */}
         </Routes>
         {/* ) : isAuthenticated ? (
           <p style={{ padding: '1rem', color: 'crimson' }}>
