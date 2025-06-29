@@ -39,7 +39,8 @@ const Bookings = () => {
     guest: '',
     paymentStatus: '',
   });
-  const [sortField, setSortField] = useState('checkinDate');
+  // Default sorting should be by creation time so the newest bookings appear first
+  const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
 
   const [loading, setLoading] = useState(false);
@@ -72,7 +73,7 @@ const Bookings = () => {
       .get(`${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`)
       .then(res => {
         const sorted = [...res.data].sort(
-          (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setBookings(sorted);
       });
@@ -159,7 +160,7 @@ const Bookings = () => {
       reset();
       const updated = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
       const sorted = [...updated.data].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
       setBookings(sorted);
     } catch (err) {
@@ -614,7 +615,6 @@ const Bookings = () => {
               <TableCell>Net (₹)</TableCell>
               <TableCell>Bank Account</TableCell>
               <TableCell>Source</TableCell>
-              <TableCell>Created At</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
@@ -647,7 +647,6 @@ const Bookings = () => {
                     {bankAccountObj.bankName || bankAccountObj.accountNumber || '-'}
                   </TableCell>
                   <TableCell>{row.bookingSource}</TableCell>
-                  <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : ''}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
