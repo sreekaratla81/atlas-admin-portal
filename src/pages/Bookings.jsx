@@ -4,7 +4,8 @@ import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
-  TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar
+  TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
+  Autocomplete
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
@@ -50,7 +51,10 @@ const Bookings = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const messageRef = useRef(null);
- const handleChangePage = (event, newPage) => {
+  const nights = booking.checkinDate && booking.checkoutDate
+    ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
+    : 0;
+  const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
@@ -260,17 +264,23 @@ const Bookings = () => {
           )}
 
           <Box ref={messageRef} sx={{ mb: 2 }}>
-            {successMsg && (
-              <Alert severity="success" sx={{ mb: 1 }}>
-                {successMsg}
-              </Alert>
-            )}
             {errorMsg && (
               <Alert severity="error" sx={{ mb: 1 }}>
                 {errorMsg}
               </Alert>
             )}
           </Box>
+
+          <Snackbar
+            open={Boolean(successMsg)}
+            autoHideDuration={3000}
+            onClose={() => setSuccessMsg('')}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert onClose={() => setSuccessMsg('')} severity="success" sx={{ width: '100%' }}>
+              {successMsg}
+            </Alert>
+          </Snackbar>
           <form
             onSubmit={e => {
               e.preventDefault();
@@ -288,6 +298,64 @@ const Bookings = () => {
               }
             }}>
 
+              {/* Guest */}
+              <Autocomplete
+                freeSolo
+                options={guests}
+                getOptionLabel={(option) =>
+                  typeof option === 'string'
+                    ? option
+                    : `${option.name} ${option.phone ? `(${option.phone})` : ''}`
+                }
+                value={
+                  selectedGuestId
+                    ? guests.find(g => g.id === parseInt(selectedGuestId)) || null
+                    : guest.name
+                }
+                onChange={(e, val) => {
+                  if (!val || typeof val === 'string') {
+                    setSelectedGuestId('');
+                    setGuest(g => ({ ...g, name: val || '' }));
+                  } else {
+                    setSelectedGuestId(val.id.toString());
+                    setGuest({ name: val.name, phone: val.phone || '', email: val.email || '' });
+                  }
+                }}
+                onInputChange={(e, input) => {
+                  if (!selectedGuestId) {
+                    setGuest(g => ({ ...g, name: input }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Search or Add Guest" />
+                )}
+                disabled={formMode === 'edit'}
+              />
+
+              <TextField
+                label="Phone"
+                value={guest.phone}
+                onChange={e => setGuest({ ...guest, phone: e.target.value })}
+                disabled={!!selectedGuestId}
+                inputProps={{
+                  pattern: "^[0-9+\\-\\s]{7,15}$",
+                  title: "Enter a valid phone number"
+                }}
+              />
+
+              <TextField
+                label="Email"
+                type="email"
+                value={guest.email}
+                onChange={e => setGuest({ ...guest, email: e.target.value })}
+                disabled={!!selectedGuestId}
+                inputProps={{ title: "Enter a valid email address" }}
+              />
+
+              <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
+                Booking Details
+              </Typography>
+
               {/* Listing */}
               <FormControl required>
                 <InputLabel>Listing</InputLabel>
@@ -303,24 +371,6 @@ const Bookings = () => {
                 </Select>
               </FormControl>
 
-              {/* Guest */}
-              <FormControl>
-                <InputLabel>Guest</InputLabel>
-                <Select
-                  value={selectedGuestId}
-                  onChange={e => setSelectedGuestId(e.target.value)}
-                  disabled={formMode === 'edit'}
-                  label="Guest"
-                >
-                  <MenuItem value="">New Guest</MenuItem>
-                  {guests.map(g => (
-                    <MenuItem key={g.id} value={g.id}>
-                      {g.name} ({g.phone})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
               {/* Check-in Date */}
               <TextField
                 label="Check-in Date"
@@ -329,32 +379,6 @@ const Bookings = () => {
                 onChange={e => setBooking({ ...booking, checkinDate: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
-
-              {/* Guest Name - only show if no guest selected */}
-              {!selectedGuestId && (
-                <TextField
-                  label="Guest Name"
-                  placeholder="Guest Name"
-                  value={guest.name}
-                  onChange={e => setGuest({ ...guest, name: e.target.value })}
-                  disabled={!!selectedGuestId || formMode === 'edit'}
-                />
-              )}
-
-              {/* Phone - only show if no guest selected */}
-              {!selectedGuestId && (
-                <TextField
-                  label="Phone"
-                  placeholder="Phone"
-                  value={guest.phone}
-                  onChange={e => setGuest({ ...guest, phone: e.target.value })}
-                  disabled={!!selectedGuestId || formMode === 'edit'}
-                  inputProps={{
-                    pattern: "^[0-9+\\-\\s]{7,15}$",
-                    title: "Enter a valid phone number"
-                  }}
-                />
-              )}
 
               {/* Check-out Date */}
               <TextField
@@ -365,19 +389,10 @@ const Bookings = () => {
                 InputLabelProps={{ shrink: true }}
               />
 
-              {/* Email - only show if no guest selected */}
-              {!selectedGuestId && (
-                <TextField
-                  label="Email"
-                  placeholder="Email"
-                  type="email"
-                  value={guest.email}
-                  onChange={e => setGuest({ ...guest, email: e.target.value })}
-                  disabled={!!selectedGuestId || formMode === 'edit'}
-                  inputProps={{
-                    title: "Enter a valid email address"
-                  }}
-                />
+              {nights > 0 && (
+                <Typography sx={{ alignSelf: 'center' }} color="text.secondary">
+                  {nights} night{nights > 1 ? 's' : ''}
+                </Typography>
               )}
 
 
