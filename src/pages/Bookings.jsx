@@ -54,6 +54,8 @@ const Bookings = () => {
   const nights = booking.checkinDate && booking.checkoutDate
     ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
     : 0;
+  const displayDate = (dateStr) =>
+    dateStr ? dayjs(dateStr).format('YYYY-MM-DD') : '';
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -640,8 +642,8 @@ const Bookings = () => {
                     {guestObj.phone || ''}<br />
                     {guestObj.email || ''}
                   </TableCell>
-                  <TableCell>{row.checkinDate}</TableCell>
-                  <TableCell>{row.checkoutDate}</TableCell>
+                  <TableCell>{displayDate(row.checkinDate || row.checkInDate)}</TableCell>
+                  <TableCell>{displayDate(row.checkoutDate || row.checkOutDate)}</TableCell>
                   <TableCell>{row.paymentStatus}</TableCell>
                   <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
                   <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
