@@ -7,6 +7,8 @@ import {
   TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
   Autocomplete
 } from '@mui/material';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 
@@ -48,6 +50,10 @@ const Bookings = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [deleteError, setDeleteError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+  const [checkinStart, setCheckinStart] = useState(null);
+  const [checkinEnd, setCheckinEnd] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const messageRef = useRef(null);
@@ -75,18 +81,48 @@ const Bookings = () => {
   ];
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_BASE}/listings`).then(res => setListings(res.data));
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`)
-      .then(res => {
-        const sorted = [...res.data].sort(
-          (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
-        );
-        setBookings(sorted);
-      });
-    axios.get(`${import.meta.env.VITE_API_BASE}/guests`).then(res => setGuests(res.data));
-    axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`).then(res => setBankAccounts(res.data));
+    const fetchLookups = async () => {
+      try {
+        const [listRes, guestsRes, bankRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
+          axios.get(`${import.meta.env.VITE_API_BASE}/guests`),
+          axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`)
+        ]);
+        setListings(listRes.data);
+        setGuests(guestsRes.data);
+        setBankAccounts(bankRes.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchLookups();
   }, []);
+
+  const fetchBookings = async (start, end) => {
+    setIsLoading(true);
+    setFetchError('');
+    try {
+      let url = `${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`;
+      if (start && end) {
+        url += `&checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
+      }
+      const res = await axios.get(url);
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+      );
+      setBookings(sorted);
+    } catch (err) {
+      setFetchError('Failed to load bookings.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if ((checkinStart && checkinEnd) || (!checkinStart && !checkinEnd)) {
+      fetchBookings(checkinStart, checkinEnd);
+    }
+  }, [checkinStart, checkinEnd]);
 
   useEffect(() => {
     if (successMsg || errorMsg) {
@@ -587,6 +623,32 @@ const Bookings = () => {
           onChange={e => setFilters(f => ({ ...f, guest: e.target.value }))}
         />
 
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker
+            label="Check-in Start"
+            value={checkinStart}
+            onChange={val => setCheckinStart(val)}
+            slotProps={{ textField: { size: 'small' } }}
+          />
+          <DatePicker
+            label="Check-in End"
+            value={checkinEnd}
+            onChange={val => setCheckinEnd(val)}
+            slotProps={{ textField: { size: 'small' } }}
+          />
+        </LocalizationProvider>
+
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            setCheckinStart(null);
+            setCheckinEnd(null);
+          }}
+        >
+          Clear Dates
+        </Button>
+
 
         <Button variant="outlined" size="small" onClick={() => {
           setSortField('checkinDate');
@@ -606,8 +668,19 @@ const Bookings = () => {
       </Box>
 
       {/* Table to display bookings */}
-      <Paper elevation={2}>
-        <Table className="booking-table">
+      {fetchError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {fetchError}
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Paper elevation={2}>
+          <Table className="booking-table">
           <TableHead>
             <TableRow>
               <TableCell>Listing</TableCell>
@@ -701,6 +774,7 @@ const Bookings = () => {
           }}
         />
       </Paper>
+      )}
 
       <Snackbar
         open={Boolean(deleteError)}
