@@ -617,7 +617,7 @@ const Bookings = () => {
               <TableCell>Payment</TableCell>
               <TableCell>Guests</TableCell>
               <TableCell>Extra Charge (₹)</TableCell>
-              <TableCell>Gross (₹)</TableCell>
+          
               <TableCell>Commission (₹)</TableCell>
               <TableCell>Net (₹)</TableCell>
               <TableCell>Bank Account</TableCell>
