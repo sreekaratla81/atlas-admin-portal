@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, TextField } from '@mui/material';
+import { Box, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
 const BankAccountForm = ({ form, setForm }) => (
   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -21,12 +21,18 @@ const BankAccountForm = ({ form, setForm }) => (
       value={form.ifsc}
       onChange={e => setForm({ ...form, ifsc: e.target.value })}
     />
-    <TextField
-      label="Account Type"
-      required
-      value={form.accountType}
-      onChange={e => setForm({ ...form, accountType: e.target.value })}
-    />
+    <FormControl required>
+      <InputLabel id="account-type-label">Account Type</InputLabel>
+      <Select
+        labelId="account-type-label"
+        label="Account Type"
+        value={form.accountType}
+        onChange={e => setForm({ ...form, accountType: e.target.value })}
+      >
+        <MenuItem value="Current">Current Account</MenuItem>
+        <MenuItem value="Savings">Savings Account</MenuItem>
+      </Select>
+    </FormControl>
   </Box>
 );
 
