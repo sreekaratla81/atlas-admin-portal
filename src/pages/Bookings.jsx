@@ -707,6 +707,11 @@ const Bookings = () => {
                 row.bankAccount ||
                 bankAccounts.find(b => b.id === row.bankAccountId) ||
                 {};
+              const bankName = bankAccountObj?.bankName || '';
+              const accountNumber = bankAccountObj?.accountNumber || '';
+              const prefix = bankName.slice(0, 4).toUpperCase();
+              const suffix = accountNumber.slice(-4);
+              const formattedBank = `${prefix}-${suffix}`;
               return (
                 <TableRow key={row.id}>
                   <TableCell>{listingObj.name || row.listingId}</TableCell>
@@ -723,9 +728,7 @@ const Bookings = () => {
                   <TableCell>₹{row.amountGuestPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>
-                    {bankAccountObj.bankName || bankAccountObj.accountNumber || '-'}
-                  </TableCell>
+                  <TableCell>{formattedBank}</TableCell>
                   <TableCell>{row.bookingSource}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
