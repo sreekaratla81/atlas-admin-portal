@@ -18,6 +18,8 @@ const Bookings = () => {
   const [guests, setGuests] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [selectedListing, setSelectedListing] = useState(null);
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
   const [booking, setBooking] = useState({
     id: null,
@@ -140,6 +142,8 @@ const Bookings = () => {
   const reset = () => {
     setGuest({ name: '', phone: '', email: '' });
     setSelectedGuestId('');
+    setSelectedGuest(null);
+    setSelectedListing(null);
     setFormMode('create');
     setSelectedBookingId(null);
     setBooking({
@@ -168,7 +172,7 @@ const Bookings = () => {
     setSuccessMsg('');
     setErrorMsg('');
     try {
-      let guestId = selectedGuestId;
+      let guestId = selectedGuest ? selectedGuest.id : selectedGuestId;
       if (guestId === '') {
         // Create new guest
         const guestRes = await axios.post(`${import.meta.env.VITE_API_BASE}/guests`, guest);
@@ -177,10 +181,19 @@ const Bookings = () => {
       // Always ensure guestId is a number
       guestId = Number(guestId);
 
+      const listingId = selectedListing ? selectedListing.id : parseInt(booking.listingId);
+
+      if (!guestId || !listingId || !booking.checkinDate || !booking.checkoutDate) {
+        setErrorMsg('Please fill in all required fields.');
+        setLoading(false);
+        return;
+      }
+
       let payload = {
         ...booking,
         guestId,
-        listingId: parseInt(booking.listingId),
+        listingId,
+        notes: booking.notes || '',
         bankAccountId: booking.bankAccountId ? parseInt(booking.bankAccountId) : null,
         amountGuestPaid: parseFloat(booking.amountGuestPaid),
         commissionAmount: parseFloat(booking.commissionAmount),
@@ -217,6 +230,7 @@ const Bookings = () => {
     console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
+    const listingObj = listings.find(l => l.id === bookingToEdit.listingId) || null;
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
@@ -241,6 +255,8 @@ const Bookings = () => {
     setSelectedGuestId(bookingToEdit.guestId.toString());
     const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
     setGuest(guestObj);
+    setSelectedGuest(guestObj);
+    setSelectedListing(listingObj);
     setSuccessMsg('');
   };
 
@@ -353,9 +369,11 @@ const Bookings = () => {
                 onChange={(e, val) => {
                   if (!val || typeof val === 'string') {
                     setSelectedGuestId('');
+                    setSelectedGuest(null);
                     setGuest(g => ({ ...g, name: val || '' }));
                   } else {
                     setSelectedGuestId(val.id.toString());
+                    setSelectedGuest(val);
                     setGuest({ name: val.name, phone: val.phone || '', email: val.email || '' });
                   }
                 }}
@@ -399,7 +417,11 @@ const Bookings = () => {
                 <InputLabel>Listing</InputLabel>
                 <Select
                   value={booking.listingId}
-                  onChange={e => setBooking({ ...booking, listingId: e.target.value })}
+                  onChange={e => {
+                    setBooking({ ...booking, listingId: e.target.value });
+                    const obj = listings.find(l => l.id === parseInt(e.target.value));
+                    setSelectedListing(obj || null);
+                  }}
                   label="Listing"
                 >
                   <MenuItem value="">Select Listing</MenuItem>
