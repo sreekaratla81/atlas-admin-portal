@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { Box, Typography, TextField, MenuItem, CircularProgress } from '@mui/material';
+import {
+  Box,
+  Typography,
+  TextField,
+  MenuItem,
+  CircularProgress,
+} from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
@@ -26,30 +32,31 @@ function SingleCalendarEarningsReport() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
-  const fetchEarnings = (listingId) => {
+  const fetchEarnings = async (listingId, date = currentDate) => {
     if (!listingId) return;
-    const month = format(currentDate, 'yyyy-MM');
+    const month = format(date, 'yyyy-MM');
     setLoading(true);
     setEarnings({});
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`, {
-        params: { listingId, month }
-      })
-      .then((res) => {
-        const data = res.data && typeof res.data === 'object' ? res.data : {};
-        setEarnings(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setEarnings({});
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`,
+        {
+          params: { listingId, month },
+        }
+      );
+      const data = res.data && typeof res.data === 'object' ? res.data : {};
+      setEarnings(data);
+    } catch (err) {
+      console.error(err);
+      setEarnings({});
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleListingChange = (e) => {
-    const id = e.target.value;
+    const id = e.target.value.toString();
     setSelectedListingId(id);
-    fetchEarnings(id);
   };
 
   useEffect(() => {
@@ -64,8 +71,7 @@ function SingleCalendarEarningsReport() {
               const name = l.name.toLowerCase();
               return name.includes('ph') || name.includes('penthouse');
             }) || data[0];
-          setSelectedListingId(defaultListing.id);
-          fetchEarnings(defaultListing.id);
+          setSelectedListingId(defaultListing.id.toString());
         }
       })
       .catch((err) => console.error(err));
@@ -73,10 +79,10 @@ function SingleCalendarEarningsReport() {
 
   useEffect(() => {
     if (selectedListingId) {
-      fetchEarnings(selectedListingId);
+      fetchEarnings(selectedListingId, currentDate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDate]);
+    // intentionally depend on both listing and date
+  }, [selectedListingId, currentDate]);
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
@@ -126,7 +132,7 @@ function SingleCalendarEarningsReport() {
         sx={{ my: 2, width: 300 }}
       >
         {listings.map((l) => (
-          <MenuItem key={l.id} value={l.id}>
+          <MenuItem key={l.id} value={l.id.toString()}>
             {l.name}
           </MenuItem>
         ))}
@@ -164,7 +170,23 @@ function SingleCalendarEarningsReport() {
           components={components}
           style={{ height: '100%', border: '1px solid #ccc', borderRadius: 8 }}
         />
+        {!loading && Object.keys(earnings).length === 0 && (
+          <Typography sx={{ mt: 2 }}>
+            No earnings found for this month
+          </Typography>
+        )}
       </Box>
+      {!loading && Object.keys(earnings).length > 0 && (
+        <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
+          Total:{' '}
+          {Object.values(earnings)
+            .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+            .toLocaleString('en-IN', {
+              style: 'currency',
+              currency: 'INR',
+            })}
+        </Typography>
+      )}
     </Box>
   );
 }
