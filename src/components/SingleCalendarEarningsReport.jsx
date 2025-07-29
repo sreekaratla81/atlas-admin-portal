@@ -1,23 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { Box, Typography, TextField, MenuItem, CircularProgress } from '@mui/material';
+import { Box, Typography, CircularProgress } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
-
 import { enUS } from 'date-fns/locale';
 
-const locales = {
-  'en-US': enUS,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
+const locales = { 'en-US': enUS };
+const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
@@ -26,65 +16,51 @@ function SingleCalendarEarningsReport() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
-  const fetchEarnings = (listingId) => {
-    if (!listingId) return;
+  // Fetch listings
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`)
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : [];
+        const validListings = data.filter((l) => l?.listingId && l?.name);
+        setListings(validListings);
+
+        const defaultListing =
+          validListings.find((l) => l.name.toLowerCase().includes('ph')) ||
+          validListings[0];
+
+        if (defaultListing?.listingId) {
+          setSelectedListingId(String(defaultListing.listingId));
+        }
+      })
+      .catch((err) => console.error('Failed to fetch listings:', err));
+  }, []);
+
+  // Fetch earnings
+  useEffect(() => {
+    if (!selectedListingId) return;
     const month = format(currentDate, 'yyyy-MM');
     setLoading(true);
     setEarnings({});
     axios
       .get(`${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`, {
-        params: { listingId, month }
+        params: { listingId: selectedListingId, month },
       })
       .then((res) => {
         const data = res.data && typeof res.data === 'object' ? res.data : {};
         setEarnings(data);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Failed to fetch earnings:', err);
         setEarnings({});
       })
       .finally(() => setLoading(false));
-  };
-
-  const handleListingChange = (e) => {
-    const id = e.target.value;
-    setSelectedListingId(id);
-    fetchEarnings(id);
-  };
-
-  useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`)
-      .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : [];
-        setListings(data);
-        if (data.length > 0) {
-          const defaultListing =
-            data.find((l) => {
-              const name = l.name.toLowerCase();
-              return name.includes('ph') || name.includes('penthouse');
-            }) || data[0];
-          setSelectedListingId(defaultListing.id);
-          fetchEarnings(defaultListing.id);
-        }
-      })
-      .catch((err) => console.error(err));
-  }, []);
-
-  useEffect(() => {
-    if (selectedListingId) {
-      fetchEarnings(selectedListingId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDate]);
+  }, [selectedListingId, currentDate]);
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
     const amount = parseFloat(earnings[key]);
-    if (amount > 0) {
-      return { style: { backgroundColor: '#e6ffed' } };
-    }
-    return {};
+    return amount > 0 ? { style: { backgroundColor: '#e6ffed' } } : {};
   };
 
   const components = {
@@ -92,21 +68,20 @@ function SingleCalendarEarningsReport() {
       dateHeader: ({ label, date }) => {
         const key = format(date, 'yyyy-MM-dd');
         const amount = parseFloat(earnings[key]);
-        const display =
-          amount && !Number.isNaN(amount)
-            ? amount.toLocaleString('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-              })
-            : '₹0';
+        const display = !isNaN(amount)
+          ? amount.toLocaleString('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+          })
+          : '₹0';
         return (
           <div style={{ textAlign: 'center' }}>
             <div>{label}</div>
             <div style={{ fontSize: '0.75em' }}>{display}</div>
           </div>
         );
-      }
-    }
+      },
+    },
   };
 
   return (
@@ -118,19 +93,20 @@ function SingleCalendarEarningsReport() {
         View bookings and daily earnings in a calendar format per listing.
       </Typography>
 
-      <TextField
-        select
-        label="Listing"
+      <label style={{ display: 'block', margin: '16px 0', fontWeight: 600 }}>
+        Select Listing:
+      </label>
+      <select
         value={selectedListingId}
-        onChange={handleListingChange}
-        sx={{ my: 2, width: 300 }}
+        onChange={(e) => setSelectedListingId(e.target.value)}
+        style={{ width: 300, padding: 8, fontSize: 16 }}
       >
         {listings.map((l) => (
-          <MenuItem key={l.id} value={l.id}>
+          <option key={l.listingId} value={String(l.listingId)}>
             {l.name}
-          </MenuItem>
+          </option>
         ))}
-      </TextField>
+      </select>
 
       <Box sx={{ height: 600, position: 'relative' }}>
         {loading && (
@@ -145,7 +121,7 @@ function SingleCalendarEarningsReport() {
               alignItems: 'center',
               justifyContent: 'center',
               bgcolor: 'rgba(255,255,255,0.7)',
-              zIndex: 1
+              zIndex: 1,
             }}
           >
             <CircularProgress />
@@ -156,15 +132,28 @@ function SingleCalendarEarningsReport() {
           events={[]}
           date={currentDate}
           onNavigate={(date) => setCurrentDate(date)}
-          startAccessor="start"
-          endAccessor="end"
           defaultView="month"
           views={['month']}
           dayPropGetter={dayPropGetter}
           components={components}
           style={{ height: '100%', border: '1px solid #ccc', borderRadius: 8 }}
         />
+        {!loading && Object.keys(earnings).length === 0 && (
+          <Typography sx={{ mt: 2 }}>No earnings found for this month</Typography>
+        )}
       </Box>
+
+      {!loading && Object.keys(earnings).length > 0 && (
+        <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
+          Total:{' '}
+          {Object.values(earnings)
+            .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+            .toLocaleString('en-IN', {
+              style: 'currency',
+              currency: 'INR',
+            })}
+        </Typography>
+      )}
     </Box>
   );
 }
