@@ -11,6 +11,7 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
+import { buildBookingPayload } from '../utils/buildBookingPayload';
 
 const Bookings = () => {
   const [listings, setListings] = useState([]);
@@ -189,19 +190,16 @@ const Bookings = () => {
         return;
       }
 
-      let payload = {
-        ...booking,
-        guestId: Number(guestId),
-        listingId: Number(listingId),
-        notes: booking.notes?.trim() || '-',
-        bankAccountId: booking.bankAccountId ? parseInt(booking.bankAccountId) : null,
-        amountGuestPaid: parseFloat(booking.amountGuestPaid),
-        commissionAmount: parseFloat(booking.commissionAmount),
-        amountReceived: parseFloat(booking.amountReceived),
+      const payload = buildBookingPayload({
+        booking,
+        selectedGuest,
+        selectedGuestId,
+        selectedListing,
         guestsPlanned,
         guestsActual,
         extraGuestCharge
-      };
+      });
+      console.log(payload);
       if (formMode === 'edit' && selectedBookingId) {
         await axios.put(
           `${import.meta.env.VITE_API_BASE}/bookings/${selectedBookingId}`,
@@ -361,11 +359,8 @@ const Bookings = () => {
                     ? option
                     : `${option.name} ${option.phone ? `(${option.phone})` : ''}`
                 }
-                value={
-                  selectedGuestId
-                    ? guests.find(g => g.id === parseInt(selectedGuestId)) || null
-                    : guest.name
-                }
+                isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                value={selectedGuest || guest.name}
                 onChange={(e, val) => {
                   if (!val || typeof val === 'string') {
                     setSelectedGuestId('');
@@ -378,7 +373,7 @@ const Bookings = () => {
                   }
                 }}
                 onInputChange={(e, input) => {
-                  if (!selectedGuestId) {
+                  if (!selectedGuest) {
                     setGuest(g => ({ ...g, name: input }));
                   }
                 }}
@@ -416,17 +411,18 @@ const Bookings = () => {
               <FormControl required>
                 <InputLabel>Listing</InputLabel>
                 <Select
-                  value={booking.listingId}
+                  value={selectedListing || ''}
                   onChange={e => {
-                    setBooking({ ...booking, listingId: e.target.value });
-                    const obj = listings.find(l => l.id === parseInt(e.target.value));
-                    setSelectedListing(obj || null);
+                    const val = e.target.value;
+                    setSelectedListing(val || null);
+                    setBooking({ ...booking, listingId: val ? val.id : '' });
                   }}
                   label="Listing"
+                  renderValue={(selected) => selected?.name || ''}
                 >
                   <MenuItem value="">Select Listing</MenuItem>
                   {listings.map(l => (
-                    <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>
+                    <MenuItem key={l.id} value={l}>{l.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
