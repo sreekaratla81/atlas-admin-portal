@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import {
-  Box,
-  Typography,
-  TextField,
-  MenuItem,
-  CircularProgress,
-} from '@mui/material';
+import { Box, Typography, CircularProgress } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
@@ -127,22 +121,20 @@ function SingleCalendarEarningsReport() {
         View bookings and daily earnings in a calendar format per listing.
       </Typography>
 
-      <TextField
-        select
-        label="Listing"
+      <label style={{ display: 'block', margin: '16px 0', fontWeight: 600 }}>
+        Select Listing:
+      </label>
+      <select
         value={selectedListingId}
         onChange={handleListingChange}
-        sx={{ my: 2, width: 300 }}
+        style={{ width: 300, padding: 8, fontSize: 16 }}
       >
         {listings.map((l, idx) => (
-          <MenuItem
-            key={l.id ?? idx}
-            value={l.id != null ? l.id.toString() : ''}
-          >
+          <option key={l.id ?? idx} value={l.id?.toString() ?? ''}>
             {l.name || l.id || `Listing ${idx + 1}`}
-          </MenuItem>
+          </option>
         ))}
-      </TextField>
+      </select>
 
       <Box sx={{ height: 600, position: 'relative' }}>
         {loading && (
