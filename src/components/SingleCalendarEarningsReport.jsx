@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { Box, Typography, TextField, MenuItem } from '@mui/material';
+import { Box, Typography, TextField, MenuItem, CircularProgress } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
@@ -21,9 +21,10 @@ const localizer = dateFnsLocalizer({
 
 function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
-  const [selectedListing, setSelectedListing] = useState('');
+  const [selectedListingId, setSelectedListingId] = useState('');
   const [earnings, setEarnings] = useState({});
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     axios
@@ -31,25 +32,27 @@ function SingleCalendarEarningsReport() {
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : [];
         setListings(data);
-        if (!selectedListing && data.length > 0) {
-          setSelectedListing(data[0].id);
+        if (!selectedListingId && data.length > 0) {
+          setSelectedListingId(data[0].id);
         }
       })
       .catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
-    if (!selectedListing && listings.length > 0) {
-      setSelectedListing(listings[0].id);
+    if (!selectedListingId && listings.length > 0) {
+      setSelectedListingId(listings[0].id);
     }
   }, [listings]);
 
   useEffect(() => {
-    if (!selectedListing) return;
+    if (!selectedListingId) return;
     const month = format(currentDate, 'yyyy-MM');
+    setLoading(true);
+    setEarnings({});
     axios
-      .get(`${import.meta.env.VITE_API_BASE}/api/reports/calendar-earnings`, {
-        params: { listingId: selectedListing, month }
+      .get(`${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`, {
+        params: { listingId: selectedListingId, month }
       })
       .then((res) => {
         const data = res.data && typeof res.data === 'object' ? res.data : {};
@@ -58,8 +61,9 @@ function SingleCalendarEarningsReport() {
       .catch((err) => {
         console.error(err);
         setEarnings({});
-      });
-  }, [selectedListing, currentDate]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedListingId, currentDate]);
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
@@ -104,8 +108,8 @@ function SingleCalendarEarningsReport() {
       <TextField
         select
         label="Listing"
-        value={selectedListing}
-        onChange={(e) => setSelectedListing(e.target.value)}
+        value={selectedListingId}
+        onChange={(e) => setSelectedListingId(e.target.value)}
         sx={{ my: 2, width: 300 }}
       >
         {listings.map((l) => (
@@ -115,7 +119,25 @@ function SingleCalendarEarningsReport() {
         ))}
       </TextField>
 
-      <Box sx={{ height: 600 }}>
+      <Box sx={{ height: 600, position: 'relative' }}>
+        {loading && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(255,255,255,0.7)',
+              zIndex: 1
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        )}
         <Calendar
           localizer={localizer}
           events={[]}
