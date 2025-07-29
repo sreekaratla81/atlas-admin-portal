@@ -28,9 +28,21 @@ function SingleCalendarEarningsReport() {
   useEffect(() => {
     axios
       .get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`)
-      .then((res) => setListings(Array.isArray(res.data) ? res.data : []))
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : [];
+        setListings(data);
+        if (!selectedListing && data.length > 0) {
+          setSelectedListing(data[0].id);
+        }
+      })
       .catch((err) => console.error(err));
   }, []);
+
+  useEffect(() => {
+    if (!selectedListing && listings.length > 0) {
+      setSelectedListing(listings[0].id);
+    }
+  }, [listings]);
 
   useEffect(() => {
     if (!selectedListing) return;
@@ -40,11 +52,8 @@ function SingleCalendarEarningsReport() {
         params: { listingId: selectedListing, month }
       })
       .then((res) => {
-        const map = {};
-        (Array.isArray(res.data) ? res.data : []).forEach((d) => {
-          map[d.date] = d.amount;
-        });
-        setEarnings(map);
+        const data = res.data && typeof res.data === 'object' ? res.data : {};
+        setEarnings(data);
       })
       .catch((err) => {
         console.error(err);
@@ -54,7 +63,7 @@ function SingleCalendarEarningsReport() {
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
-    const amount = earnings[key];
+    const amount = parseFloat(earnings[key]);
     if (amount > 0) {
       return { style: { backgroundColor: '#e6ffed' } };
     }
@@ -65,13 +74,18 @@ function SingleCalendarEarningsReport() {
     month: {
       dateHeader: ({ label, date }) => {
         const key = format(date, 'yyyy-MM-dd');
-        const amount = earnings[key];
+        const amount = parseFloat(earnings[key]);
+        const display =
+          amount && !Number.isNaN(amount)
+            ? amount.toLocaleString('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+              })
+            : '₹0';
         return (
           <div style={{ textAlign: 'center' }}>
             <div>{label}</div>
-            <div style={{ fontSize: '0.75em' }}>
-              {amount ? `₹${amount}` : '₹0'}
-            </div>
+            <div style={{ fontSize: '0.75em' }}>{display}</div>
           </div>
         );
       }
