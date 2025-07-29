@@ -191,9 +191,9 @@ const Bookings = () => {
 
       let payload = {
         ...booking,
-        guestId,
-        listingId,
-        notes: booking.notes || '',
+        guestId: Number(guestId),
+        listingId: Number(listingId),
+        notes: booking.notes?.trim() || '-',
         bankAccountId: booking.bankAccountId ? parseInt(booking.bankAccountId) : null,
         amountGuestPaid: parseFloat(booking.amountGuestPaid),
         commissionAmount: parseFloat(booking.commissionAmount),
