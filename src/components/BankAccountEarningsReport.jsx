@@ -9,9 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { getBankAccountEarnings } from '../api/bankAccountsApi';
+import { getBankAccountEarnings, getBankAccounts } from '../api/bankAccountsApi';
 
-const BankAccountEarningsReport = () => {
+const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,13 +19,29 @@ const BankAccountEarningsReport = () => {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await getBankAccountEarnings();
-        const arr = Array.isArray(res) ? res : [];
-        const normalized = arr.map((entry) => ({
-          label: `${entry.bankName} ${entry.accountNumber}`,
-          tooltip: `${entry.bankName} (${String(entry.accountNumber).slice(-4)})`,
-          amount: parseFloat(entry.amountReceived) || 0,
-        }));
+        const [accountsRes, earningsRes] = await Promise.all([
+          externalAccounts ? Promise.resolve(externalAccounts) : getBankAccounts(),
+          getBankAccountEarnings(),
+        ]);
+
+        const accounts = Array.isArray(accountsRes) ? accountsRes : [];
+        const earningsArr = Array.isArray(earningsRes) ? earningsRes : [];
+
+        const earningsMap = {};
+        earningsArr.forEach((e) => {
+          const key =
+            e.accountDisplay || `${e.bank} - ${String(e.accountNumber || '').slice(-4)}`;
+          earningsMap[key] = parseFloat(e.amountReceived) || 0;
+        });
+
+        const normalized = accounts.map((acc) => {
+          const label = `${acc.bankName} - ${String(acc.accountNumber).slice(-4)}`;
+          return {
+            label,
+            amount: earningsMap[label] ?? 0,
+          };
+        });
+
         setData(normalized);
       } catch (err) {
         console.error(err);
@@ -35,7 +51,7 @@ const BankAccountEarningsReport = () => {
       }
     }
     fetchData();
-  }, []);
+  }, [externalAccounts]);
 
   return (
     <Paper elevation={2} sx={{ p: 3, mt: 4 }}>
@@ -54,13 +70,21 @@ const BankAccountEarningsReport = () => {
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" />
-              <YAxis tickFormatter={(v) => `₹${v.toLocaleString('en-IN')}`} />
+              <YAxis
+                tickFormatter={(v) =>
+                  v.toLocaleString('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                  })
+                }
+              />
               <Tooltip
-                formatter={(val) => `₹${Number(val).toLocaleString('en-IN')}`}
-                labelFormatter={(label, payload) => {
-                  const item = payload && payload[0] && payload[0].payload;
-                  return item ? item.tooltip : label;
-                }}
+                formatter={(val) =>
+                  Number(val).toLocaleString('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                  })
+                }
               />
               <Bar dataKey="amount" fill="#4caf50" />
             </BarChart>
