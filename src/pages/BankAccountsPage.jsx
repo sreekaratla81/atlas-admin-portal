@@ -24,6 +24,7 @@ import {
   deleteBankAccount
 } from '../api/bankAccountsApi';
 import BankAccountForm from '../components/BankAccountForm';
+import BankAccountEarningsReport from '../components/BankAccountEarningsReport';
 
 const BankAccountsPage = () => {
   const [accounts, setAccounts] = useState([]);
@@ -162,6 +163,8 @@ const BankAccountsPage = () => {
           </Table>
         </Paper>
       )}
+
+      <BankAccountEarningsReport />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Bank Account' : 'New Bank Account'}</DialogTitle>
