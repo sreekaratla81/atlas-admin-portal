@@ -55,7 +55,8 @@ function SingleCalendarEarningsReport() {
   };
 
   const handleListingChange = (e) => {
-    const id = e.target.value.toString();
+    const value = e?.target?.value;
+    const id = value != null ? value.toString() : '';
     setSelectedListingId(id);
   };
 
@@ -68,10 +69,12 @@ function SingleCalendarEarningsReport() {
         if (data.length > 0) {
           const defaultListing =
             data.find((l) => {
-              const name = l.name.toLowerCase();
+              const name = (l.name || '').toLowerCase();
               return name.includes('ph') || name.includes('penthouse');
             }) || data[0];
-          setSelectedListingId(defaultListing.id.toString());
+          if (defaultListing && defaultListing.id != null) {
+            setSelectedListingId(defaultListing.id.toString());
+          }
         }
       })
       .catch((err) => console.error(err));
@@ -131,9 +134,12 @@ function SingleCalendarEarningsReport() {
         onChange={handleListingChange}
         sx={{ my: 2, width: 300 }}
       >
-        {listings.map((l) => (
-          <MenuItem key={l.id} value={l.id.toString()}>
-            {l.name}
+        {listings.map((l, idx) => (
+          <MenuItem
+            key={l.id ?? idx}
+            value={l.id != null ? l.id.toString() : ''}
+          >
+            {l.name || l.id || `Listing ${idx + 1}`}
           </MenuItem>
         ))}
       </TextField>
