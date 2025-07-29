@@ -24,7 +24,7 @@ export const deleteBankAccount = async (id) => {
 
 export const getBankAccountEarnings = async () => {
   const res = await axios.get(
-    `${API_BASE}/api/reports/bank-account-earnings`
+    `${API_BASE}/reports/bank-account-earnings`
   );
   return res.data;
 };

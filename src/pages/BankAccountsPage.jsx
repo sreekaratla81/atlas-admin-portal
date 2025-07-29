@@ -164,7 +164,7 @@ const BankAccountsPage = () => {
         </Paper>
       )}
 
-      <BankAccountEarningsReport />
+      <BankAccountEarningsReport accounts={accounts} />
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Bank Account' : 'New Bank Account'}</DialogTitle>
