@@ -6,19 +6,25 @@ export function percentile(arr, p) {
 }
 
 export function computeThresholds(earnings) {
-  const values = Object.values(earnings).map(v => parseFloat(v)).filter(v => v > 0);
+  const values = Object.values(earnings)
+    .map((v) => {
+      if (v && typeof v === 'object') {
+        return parseFloat(v.amount);
+      }
+      return parseFloat(v);
+    })
+    .filter((v) => !isNaN(v) && v > 0);
   const top = percentile(values, 95);
   const bottom = percentile(values, 5);
   return { top, bottom };
 }
 
-export function getHighlightClass(price, thresholds) {
-  const classes = ['text-lg', 'font-bold'];
+export function getHighlightStyle(price, thresholds, isCurrentMonth = true) {
   if (price >= thresholds.top) {
-    classes.push('bg-blue-100', 'text-blue-900', 'rounded', 'px-1');
+    return { color: 'blue' };
   }
-  if (price <= thresholds.bottom) {
-    classes.push('bg-red-100', 'text-red-900', 'rounded', 'px-1');
+  if (price <= thresholds.bottom && isCurrentMonth) {
+    return { color: 'red' };
   }
-  return classes.join(' ');
+  return {};
 }
