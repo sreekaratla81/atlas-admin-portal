@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { percentile, computeThresholds, getHighlightClass } from './percentile';
+import { percentile, computeThresholds, getHighlightStyle } from './percentile';
 
 describe('percentile', () => {
   it('calculates percentile correctly', () => {
@@ -21,13 +21,25 @@ describe('computeThresholds', () => {
     expect(result.top).toBe(100);
     expect(result.bottom).toBe(10);
   });
+
+  it('works with earnings objects containing amount property', () => {
+    const earnings = {
+      '2024-01-01': { amount: 10 },
+      '2024-01-02': { amount: 0 },
+      '2024-01-03': { amount: 100 },
+      '2024-01-04': { amount: 50 }
+    };
+    const result = computeThresholds(earnings);
+    expect(result.top).toBe(100);
+    expect(result.bottom).toBe(10);
+  });
 });
 
-describe('getHighlightClass', () => {
-  it('returns classes based on thresholds', () => {
-    const cls = getHighlightClass(100, { top: 80, bottom: 20 });
-    expect(cls).toContain('bg-blue-100');
-    const cls2 = getHighlightClass(10, { top: 80, bottom: 20 });
-    expect(cls2).toContain('bg-red-100');
+describe('getHighlightStyle', () => {
+  it('returns style based on thresholds', () => {
+    const style = getHighlightStyle(100, { top: 80, bottom: 20 });
+    expect(style).toEqual({ color: '#add8e6' });
+    const style2 = getHighlightStyle(10, { top: 80, bottom: 20 });
+    expect(style2).toEqual({ color: '#f8d7da' });
   });
 });
