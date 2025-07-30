@@ -5,7 +5,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
 import { enUS } from 'date-fns/locale';
-import { computeThresholds, getHighlightClass } from '../utils/percentile';
+import { computeThresholds, getHighlightStyle } from '../utils/percentile';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -63,15 +63,21 @@ function SingleCalendarEarningsReport() {
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
-    const amount = parseFloat(earnings[key]);
+    const entry = earnings[key];
+    const amount = entry && typeof entry === 'object' ? parseFloat(entry.amount) : parseFloat(entry);
     if (isNaN(amount) || amount <= 0) return {};
 
-    if (amount >= thresholds.top) {
-      return { style: { backgroundColor: '#add8e6' } };
-    }
-
-    if (amount <= thresholds.bottom) {
-      return { style: { backgroundColor: '#f8d7da' } };
+    if (entry && typeof entry === 'object') {
+      const source = String(entry.source || '').toLowerCase();
+      if (source === 'airbnb') {
+        return { style: { backgroundColor: '#FD5C63' } };
+      }
+      if (source === 'booking.com') {
+        return { style: { backgroundColor: '#499FDD' } };
+      }
+      if (source === 'agoda') {
+        return { style: { backgroundColor: '#FDB812' } };
+      }
     }
 
     return { style: { backgroundColor: '#e6ffed' } };
@@ -81,15 +87,22 @@ function SingleCalendarEarningsReport() {
     month: {
       dateHeader: ({ label, date }) => {
         const key = format(date, 'yyyy-MM-dd');
-        const amount = parseFloat(earnings[key]);
+        const entry = earnings[key];
+        const amount = entry && typeof entry === 'object' ? parseFloat(entry.amount) : parseFloat(entry);
         const price = isNaN(amount) ? 0 : amount;
         const display = `₹${price.toLocaleString('en-IN')}`;
-        const highlightClass = getHighlightClass(price, thresholds);
+        const highlightStyle = getHighlightStyle(price, thresholds);
+        const source = entry && typeof entry === 'object' ? entry.source : null;
         return (
           <div style={{ textAlign: 'center' }}>
             <div>{label}</div>
+            {source && (
+              <div style={{ fontSize: '0.75em', textTransform: 'capitalize' }}>
+                {source}
+              </div>
+            )}
             <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
-              <span className={highlightClass}>{display}</span>
+              <span style={highlightStyle}>{display}</span>
             </div>
           </div>
         );
@@ -160,7 +173,10 @@ function SingleCalendarEarningsReport() {
         <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
           Total:{' '}
           {Object.values(earnings)
-            .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+            .reduce((sum, val) => {
+              const amt = val && typeof val === 'object' ? parseFloat(val.amount) : parseFloat(val);
+              return sum + (isNaN(amt) ? 0 : amt);
+            }, 0)
             .toLocaleString('en-IN', {
               style: 'currency',
               currency: 'INR',
