@@ -5,6 +5,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import axios from 'axios';
 import { enUS } from 'date-fns/locale';
+import { computeThresholds, getHighlightClass } from '../utils/percentile';
 
 const locales = { 'en-US': enUS };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -13,6 +14,7 @@ function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
   const [selectedListingId, setSelectedListingId] = useState('');
   const [earnings, setEarnings] = useState({});
+  const [thresholds, setThresholds] = useState({ top: 0, bottom: 0 });
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
@@ -49,10 +51,12 @@ function SingleCalendarEarningsReport() {
       .then((res) => {
         const data = res.data && typeof res.data === 'object' ? res.data : {};
         setEarnings(data);
+        setThresholds(computeThresholds(data));
       })
       .catch((err) => {
         console.error('Failed to fetch earnings:', err);
         setEarnings({});
+        setThresholds({ top: 0, bottom: 0 });
       })
       .finally(() => setLoading(false));
   }, [selectedListingId, currentDate]);
@@ -68,16 +72,15 @@ function SingleCalendarEarningsReport() {
       dateHeader: ({ label, date }) => {
         const key = format(date, 'yyyy-MM-dd');
         const amount = parseFloat(earnings[key]);
-        const display = !isNaN(amount)
-          ? amount.toLocaleString('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-          })
-          : '₹0';
+        const price = isNaN(amount) ? 0 : amount;
+        const display = `₹${price.toLocaleString('en-IN')}`;
+        const highlightClass = getHighlightClass(price, thresholds);
         return (
           <div style={{ textAlign: 'center' }}>
             <div>{label}</div>
-            <div style={{ fontSize: '0.75em' }}>{display}</div>
+            <div style={{ fontSize: '0.75em' }}>
+              <span className={highlightClass}>{display}</span>
+            </div>
           </div>
         );
       },
