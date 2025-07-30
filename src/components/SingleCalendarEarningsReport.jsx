@@ -2,7 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  parseISO,
+} from 'date-fns';
 import axios from 'axios';
 import { enUS } from 'date-fns/locale';
 import { computeThresholds, getHighlightStyle } from '../utils/percentile';
@@ -17,6 +26,7 @@ function SingleCalendarEarningsReport() {
   const [thresholds, setThresholds] = useState({ top: 0, bottom: 0 });
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
+  const [monthlyTotals, setMonthlyTotals] = useState([]);
 
   // Fetch listings
   useEffect(() => {
@@ -76,6 +86,68 @@ function SingleCalendarEarningsReport() {
       })
       .finally(() => setLoading(false));
   }, [selectedListingId, currentDate]);
+
+  // Compute monthly totals across listings for the current month
+  useEffect(() => {
+    async function fetchTotals() {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      try {
+        const [bookRes, listRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_BASE}/admin/reports/bookings`),
+          axios.get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`),
+        ]);
+
+        const bookings = Array.isArray(bookRes.data) ? bookRes.data : [];
+        const listData = Array.isArray(listRes.data) ? listRes.data : [];
+        const listingMap = {};
+        listData.forEach((l) => {
+          const id = l.listingId || l.id;
+          if (id) listingMap[id] = l.name;
+        });
+
+        const totals = {};
+        bookings.forEach((b) => {
+          const checkin = b.checkinDate || b.checkInDate;
+          if (!checkin) return;
+          const checkDate = parseISO(checkin);
+          if (!isWithinInterval(checkDate, { start: monthStart, end: monthEnd }))
+            return;
+
+          const listingId = b.listingId || b.listing_id;
+          if (!listingId) return;
+
+          const amount = parseFloat(b.amountReceived) || 0;
+          const source = String(b.bookingSource || b.source || '').toLowerCase();
+
+          if (!totals[listingId]) {
+            totals[listingId] = {
+              name: listingMap[listingId] || listingId,
+              total: 0,
+              airbnb: 0,
+              bookingcom: 0,
+              agoda: 0,
+              other: 0,
+            };
+          }
+
+          totals[listingId].total += amount;
+          if (source === 'airbnb') totals[listingId].airbnb += amount;
+          else if (source === 'booking.com' || source === 'booking')
+            totals[listingId].bookingcom += amount;
+          else if (source === 'agoda') totals[listingId].agoda += amount;
+          else totals[listingId].other += amount;
+        });
+
+        setMonthlyTotals(Object.values(totals));
+      } catch (err) {
+        console.error('Failed to load monthly totals', err);
+        setMonthlyTotals([]);
+      }
+    }
+
+    fetchTotals();
+  }, [currentDate]);
 
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
@@ -199,6 +271,87 @@ function SingleCalendarEarningsReport() {
               currency: 'INR',
             })}
         </Typography>
+      )}
+
+      {!loading && monthlyTotals.length > 0 && (
+        <Box sx={{ mt: 4, overflowX: 'auto' }}>
+          <Typography variant="h6" gutterBottom>
+            Monthly Revenue by Listing
+          </Typography>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+                <th style={{ padding: '8px' }}>Listing</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Airbnb</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Booking.com</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Agoda</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>Other</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyTotals.map((row, idx) => (
+                <tr
+                  key={idx}
+                  style={{ backgroundColor: idx % 2 === 0 ? '#fafafa' : 'white' }}
+                >
+                  <td style={{ padding: '8px' }}>{row.name}</td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.total.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.airbnb.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.bookingcom.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.agoda.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.other.toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              ))}
+
+              {monthlyTotals.length > 0 && (
+                <tr style={{ borderTop: '2px solid #ccc', fontWeight: 'bold' }}>
+                  <td style={{ padding: '8px' }}>All Listings</td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.total, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.airbnb, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.bookingcom, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.agoda, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.other, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Box>
       )}
     </Box>
   );
