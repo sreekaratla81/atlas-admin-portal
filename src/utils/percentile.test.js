@@ -39,7 +39,12 @@ describe('getHighlightStyle', () => {
   it('returns style based on thresholds', () => {
     const style = getHighlightStyle(100, { top: 80, bottom: 20 });
     expect(style).toEqual({ color: 'blue' });
-    const style2 = getHighlightStyle(10, { top: 80, bottom: 20 });
+    const style2 = getHighlightStyle(10, { top: 80, bottom: 20 }, true);
     expect(style2).toEqual({ color: 'red' });
+  });
+
+  it('ignores bottom highlight for other months', () => {
+    const style = getHighlightStyle(10, { top: 80, bottom: 20 }, false);
+    expect(style).toEqual({});
   });
 });
