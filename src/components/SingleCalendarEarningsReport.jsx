@@ -49,7 +49,23 @@ function SingleCalendarEarningsReport() {
         params: { listingId: selectedListingId, month },
       })
       .then((res) => {
-        const data = res.data && typeof res.data === 'object' ? res.data : {};
+        let data = res.data;
+        if (Array.isArray(data)) {
+          const map = {};
+          data.forEach((entry) => {
+            const date = entry && entry.date;
+            if (date) {
+              map[date] = {
+                amount: parseFloat(entry.amount) || 0,
+                source: entry.source || null,
+              };
+            }
+          });
+          data = map;
+        }
+
+        if (!data || typeof data !== 'object') data = {};
+
         setEarnings(data);
         setThresholds(computeThresholds(data));
       })
