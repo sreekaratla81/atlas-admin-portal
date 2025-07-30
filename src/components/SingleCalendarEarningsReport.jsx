@@ -91,7 +91,8 @@ function SingleCalendarEarningsReport() {
         const amount = entry && typeof entry === 'object' ? parseFloat(entry.amount) : parseFloat(entry);
         const price = isNaN(amount) ? 0 : amount;
         const display = `₹${price.toLocaleString('en-IN')}`;
-        const highlightStyle = getHighlightStyle(price, thresholds);
+        const sameMonth = format(date, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
+        const highlightStyle = getHighlightStyle(price, thresholds, sameMonth);
         const source = entry && typeof entry === 'object' ? entry.source : null;
         return (
           <div style={{ textAlign: 'center' }}>
