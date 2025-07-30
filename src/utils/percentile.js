@@ -21,10 +21,10 @@ export function computeThresholds(earnings) {
 
 export function getHighlightStyle(price, thresholds) {
   if (price >= thresholds.top) {
-    return { color: '#add8e6' };
+    return { color: 'blue' };
   }
   if (price <= thresholds.bottom) {
-    return { color: '#f8d7da' };
+    return { color: 'red' };
   }
   return {};
 }

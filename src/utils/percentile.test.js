@@ -38,8 +38,8 @@ describe('computeThresholds', () => {
 describe('getHighlightStyle', () => {
   it('returns style based on thresholds', () => {
     const style = getHighlightStyle(100, { top: 80, bottom: 20 });
-    expect(style).toEqual({ color: '#add8e6' });
+    expect(style).toEqual({ color: 'blue' });
     const style2 = getHighlightStyle(10, { top: 80, bottom: 20 });
-    expect(style2).toEqual({ color: '#f8d7da' });
+    expect(style2).toEqual({ color: 'red' });
   });
 });
