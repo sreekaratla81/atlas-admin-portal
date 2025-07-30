@@ -64,7 +64,17 @@ function SingleCalendarEarningsReport() {
   const dayPropGetter = (date) => {
     const key = format(date, 'yyyy-MM-dd');
     const amount = parseFloat(earnings[key]);
-    return amount > 0 ? { style: { backgroundColor: '#e6ffed' } } : {};
+    if (isNaN(amount) || amount <= 0) return {};
+
+    if (amount >= thresholds.top) {
+      return { style: { backgroundColor: '#add8e6' } };
+    }
+
+    if (amount <= thresholds.bottom) {
+      return { style: { backgroundColor: '#f8d7da' } };
+    }
+
+    return { style: { backgroundColor: '#e6ffed' } };
   };
 
   const components = {
@@ -78,7 +88,7 @@ function SingleCalendarEarningsReport() {
         return (
           <div style={{ textAlign: 'center' }}>
             <div>{label}</div>
-            <div style={{ fontSize: '0.75em' }}>
+            <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
               <span className={highlightClass}>{display}</span>
             </div>
           </div>
