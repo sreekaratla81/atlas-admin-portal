@@ -28,7 +28,6 @@ const Bookings = () => {
     checkinDate: '',
     checkoutDate: '',
     bookingSource: 'Walk-in',
-    amountGuestPaid: 0,
     commissionAmount: 0,
     amountReceived: 0,
     notes: '',
@@ -154,7 +153,6 @@ const Bookings = () => {
       checkoutDate: '',
 
       bookingSource: 'Walk-in',
-      amountGuestPaid: 0,
       commissionAmount: 0,
       amountReceived: 0,
       notes: '',
@@ -240,7 +238,6 @@ const Bookings = () => {
         ? dayjs(bookingToEdit.checkoutDate || bookingToEdit.checkOutDate).format('YYYY-MM-DD')
         : '',
       bookingSource: bookingToEdit.bookingSource || 'Walk-in',
-      amountGuestPaid: bookingToEdit.amountGuestPaid ?? 0,
       commissionAmount: bookingToEdit.commissionAmount ?? 0,
       amountReceived: bookingToEdit.amountReceived ?? 0,
       notes: bookingToEdit.notes || '',
@@ -487,19 +484,6 @@ const Bookings = () => {
                   ))}
                 </Select>
               </FormControl>
-              {/* Gross Amount */}
-              <TextField
-                label="Gross Amount"
-                type="number"
-                placeholder="Gross Amount"
-                value={booking.amountGuestPaid}
-                onChange={e => setBooking({ ...booking, amountGuestPaid: e.target.value })}
-                inputProps={{
-                  min: 0,
-                  step: "0.01"
-                }}
-              />
-
               {/* Commission Amount */}
               <TextField
                 label="Commission Amount"
@@ -525,6 +509,14 @@ const Bookings = () => {
                   step: "0.01"
                 }}
               />
+
+              {/* Total Amount (Net + Commission) */}
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Total: ₹{(
+                  Number(booking.amountReceived || 0) +
+                  Number(booking.commissionAmount || 0)
+                ).toFixed(2)}
+              </Typography>
 
               {/* Notes */}
               <TextField
@@ -708,7 +700,7 @@ const Bookings = () => {
               <TableCell>Payment</TableCell>
               <TableCell>Guests</TableCell>
               <TableCell>Extra Charge (₹)</TableCell>
-              <TableCell>Gross (₹)</TableCell>
+              <TableCell>Total (₹)</TableCell>
               <TableCell>Commission (₹)</TableCell>
               <TableCell>Net (₹)</TableCell>
               <TableCell>Bank Account</TableCell>
@@ -718,7 +710,6 @@ const Bookings = () => {
           </TableHead>
           <TableBody>
             {paginatedBookings.map(row => {
-              console.log(row); // check for amountGuestPaid and commissionAmount
               const guestObj = guests.find(g => g.id === row.guestId) || {};
               const listingObj = listings.find(l => l.id === row.listingId) || {};
               const bankAccountObj =
@@ -730,6 +721,8 @@ const Bookings = () => {
               const prefix = bankName.slice(0, 4).toUpperCase();
               const suffix = accountNumber.slice(-4);
               const formattedBank = `${prefix}-${suffix}`;
+              const totalAmount =
+                Number(row.amountReceived || 0) + Number(row.commissionAmount || 0);
               return (
                 <TableRow key={row.id}>
                   <TableCell>{listingObj.name || row.listingId}</TableCell>
@@ -743,7 +736,7 @@ const Bookings = () => {
                   <TableCell>{row.paymentStatus}</TableCell>
                   <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
                   <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{row.amountGuestPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell>₹{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
                   <TableCell>{formattedBank}</TableCell>

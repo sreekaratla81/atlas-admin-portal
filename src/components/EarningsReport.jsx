@@ -20,7 +20,6 @@ function buildEmptyMonths() {
     const d = dayjs().subtract(i, 'month');
     months[d.format('YYYY-MM')] = {
       month: d.format('MMM'),
-      totalGross: 0,
       totalFees: 0,
       totalNet: 0,
     };
@@ -41,7 +40,6 @@ function EarningsReport() {
         const normalized = Array.isArray(data)
           ? data.map((entry) => ({
               month: dayjs(entry.month).format('MMM'),
-              totalGross: entry.totalGross,
               totalFees: entry.totalFees,
               totalNet: entry.totalNet,
             }))
@@ -57,9 +55,10 @@ function EarningsReport() {
           res.data.forEach((b) => {
             const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
             if (months[key]) {
-              const amt = parseFloat(b.amountReceived) || 0;
-              months[key].totalGross += amt;
-              months[key].totalNet += amt;
+              const net = parseFloat(b.amountReceived) || 0;
+              const fees = parseFloat(b.commissionAmount) || 0;
+              months[key].totalNet += net;
+              months[key].totalFees += fees;
             }
           });
           const aggregated = Object.values(months);
@@ -143,25 +142,25 @@ function EarningsReport() {
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid #ddd', fontWeight: 600 }}>
                   <th style={{ padding: '0.5rem 1rem 0.5rem 0' }}>Month</th>
-                  <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Gross</th>
+                  <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total</th>
                   <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Fees</th>
                   <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Net</th>
                 </tr>
               </thead>
               <tbody>
                 {monthlyData
-                  .filter((row) => showZeroMonths || row.totalGross > 0)
+                  .filter((row) => showZeroMonths || (row.totalNet + row.totalFees) > 0)
                   .map((row, idx) => (
                     <tr
                       key={row.month}
                       style={{
                         backgroundColor: idx % 2 === 0 ? '#f9fafb' : 'transparent',
-                        opacity: row.totalGross === 0 ? 0.5 : 1,
+                        opacity: (row.totalNet + row.totalFees) === 0 ? 0.5 : 1,
                       }}
                     >
                       <td style={{ padding: '0.5rem 1rem 0.5rem 0' }}>{row.month}</td>
                       <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
-                        ₹{row.totalGross.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{(row.totalNet + row.totalFees).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
                         ₹{row.totalFees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
