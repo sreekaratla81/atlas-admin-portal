@@ -7,23 +7,28 @@ import axios from 'axios';
 
 function aggregateData(bookings, listings) {
   const listingMap = {};
-  listings.forEach(l => { listingMap[l.id] = l.name; });
+  listings.forEach(l => {
+    listingMap[l.id] = l.name;
+  });
   const months = {};
   bookings.forEach(b => {
     const monthKey = dayjs(b.paymentDate || b.createdAt).format('MMMM YYYY');
     if (!months[monthKey]) months[monthKey] = {};
-    if (!months[monthKey][b.listingId]) months[monthKey][b.listingId] = 0;
-    months[monthKey][b.listingId] += parseFloat(b.amountReceived) || 0;
+    if (!months[monthKey][b.listingId]) {
+      months[monthKey][b.listingId] = { net: 0, fees: 0 };
+    }
+    months[monthKey][b.listingId].net += parseFloat(b.amountReceived) || 0;
+    months[monthKey][b.listingId].fees += parseFloat(b.commissionAmount) || 0;
   });
   return Object.entries(months).map(([month, entries]) => ({
     month,
-    rows: Object.entries(entries).map(([listingId, amount]) => ({
+    rows: Object.entries(entries).map(([listingId, amounts]) => ({
       listing: listingMap[listingId] || listingId,
       taxType: '',
-      gross: amount,
-      fees: 0,
-      net: amount
-    }))
+      total: amounts.net + amounts.fees,
+      fees: amounts.fees,
+      net: amounts.net,
+    })),
   }));
 }
 
@@ -35,11 +40,11 @@ function generatePDF(month, rows) {
 
   autoTable(doc, {
     startY: 30,
-    head: [['Listing', 'Tax Type', 'Gross ($)', 'Fees ($)', 'Net ($)']],
+    head: [['Listing', 'Tax Type', 'Total ($)', 'Fees ($)', 'Net ($)']],
     body: rows.map((row) => [
       row.listing,
       row.taxType,
-      row.gross.toFixed(2),
+      row.total.toFixed(2),
       row.fees.toFixed(2),
       row.net.toFixed(2),
     ]),

@@ -18,7 +18,6 @@ export function buildBookingPayload({
     listingId: Number(listingId),
     notes: booking.notes?.trim() || '-',
     bankAccountId: booking.bankAccountId ? parseInt(booking.bankAccountId) : null,
-    amountGuestPaid: parseFloat(booking.amountGuestPaid),
     commissionAmount: parseFloat(booking.commissionAmount),
     amountReceived: parseFloat(booking.amountReceived),
     guestsPlanned,

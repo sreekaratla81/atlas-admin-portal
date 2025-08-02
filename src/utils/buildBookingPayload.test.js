@@ -9,7 +9,6 @@ describe('buildBookingPayload', () => {
       checkinDate: '2024-01-01',
       checkoutDate: '2024-01-02',
       bookingSource: 'Walk-in',
-      amountGuestPaid: '100',
       commissionAmount: '10',
       amountReceived: '90',
       notes: '',
