@@ -510,18 +510,6 @@ const Bookings = () => {
                 }}
               />
 
-              {/* Total */}
-              <TextField
-                label="Total"
-                type="number"
-                value={Number(booking.amountReceived || 0) + Number(booking.commissionAmount || 0)}
-                InputProps={{ readOnly: true }}
-                inputProps={{
-                  min: 0,
-                  step: "0.01"
-                }}
-              />
-
               {/* Notes */}
               <TextField
                 label="Notes"
@@ -704,7 +692,6 @@ const Bookings = () => {
               <TableCell>Payment</TableCell>
               <TableCell>Guests</TableCell>
               <TableCell>Extra Charge (₹)</TableCell>
-              <TableCell>Total (₹)</TableCell>
               <TableCell>Commission (₹)</TableCell>
               <TableCell>Net (₹)</TableCell>
               <TableCell>Bank Account</TableCell>
@@ -738,9 +725,6 @@ const Bookings = () => {
                   <TableCell>{row.paymentStatus}</TableCell>
                   <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
                   <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>
-                    ₹{(Number(row.amountReceived ?? 0) + Number(row.commissionAmount ?? 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </TableCell>
                   <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
                   <TableCell>{formattedBank}</TableCell>
