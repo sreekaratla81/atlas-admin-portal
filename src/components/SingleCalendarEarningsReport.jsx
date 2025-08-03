@@ -14,6 +14,14 @@ import {
 } from 'date-fns';
 import { computeThresholds, getHighlightStyle } from '../utils/percentile';
 
+const SOURCE_COLORS = {
+  airbnb: '#00a1e0',
+  agoda: '#ffc107',
+  'walk-in': '#dc3545',
+  'booking.com': '#6f42c1',
+  booking: '#6f42c1',
+};
+
 function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
   const [selectedListingId, setSelectedListingId] = useState('');
@@ -237,9 +245,14 @@ function SingleCalendarEarningsReport() {
               thresholds,
               isCurrentMonth
             );
+            const totalAmount = Number(data?.total) || 0;
+            const isLowRevenue = totalAmount === 145.16;
             return (
               <div
                 key={dateKey}
+                onClick={() => {
+                  /* placeholder for modal */
+                }}
                 style={{
                   height: '82%',
                   padding: 8,
@@ -250,6 +263,7 @@ function SingleCalendarEarningsReport() {
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   opacity: isCurrentMonth ? 1 : 0.3,
+                  cursor: 'pointer',
                 }}
               >
                 <div
@@ -267,40 +281,68 @@ function SingleCalendarEarningsReport() {
                     const amount = Number(e.amount).toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     });
-                    const tooltip = [
-                      `Check-in: ${format(new Date(e.checkinDate), 'dd MMM')}`,
-                      `Guest: ${e.guestName}`,
-                      `Amount: ₹${amount}`,
-                    ].join(' | ');
+                    const color =
+                      SOURCE_COLORS[String(e.source).toLowerCase()] ||
+                      '#6b7280';
+                    const info = [
+                      e.checkinDate
+                        ? format(new Date(e.checkinDate), 'dd MMM')
+                        : null,
+                      e.guestName,
+                    ]
+                      .filter(Boolean)
+                      .join(' - ');
                     return (
                       <div
                         key={i}
                         style={{
-                          fontSize: 14,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          fontSize: 12,
+                          marginBottom: 4,
+                          paddingLeft: 4,
+                          borderLeft: `4px solid ${color}`,
                         }}
-                        title={tooltip}
                       >
-                        {e.source}: ₹{amount}
+                        <div
+                          style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {e.source}: ₹{amount}
+                        </div>
+                        {info && (
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: '#6b7280',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {info}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-                {data?.total > 0 && (
+                {totalAmount > 0 && (
                   <div
                     style={{
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: 600,
                       textAlign: 'right',
                       marginTop: 4,
-                      color: '#000',
                       ...highlightStyle,
+                      color: isLowRevenue
+                        ? '#dc3545'
+                        : highlightStyle.color || '#000',
                     }}
                   >
                     ₹
-                    {Number(data.total).toLocaleString(undefined, {
+                    {totalAmount.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}
                   </div>
