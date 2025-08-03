@@ -241,7 +241,7 @@ function SingleCalendarEarningsReport() {
               <div
                 key={dateKey}
                 style={{
-                  height: '90%',
+                  height: '82%',
                   padding: 8,
                   border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
                   borderRadius: 4,
@@ -276,7 +276,7 @@ function SingleCalendarEarningsReport() {
                       <div
                         key={i}
                         style={{
-                          fontSize: 11,
+                          fontSize: 14,
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -291,7 +291,7 @@ function SingleCalendarEarningsReport() {
                 {data?.total > 0 && (
                   <div
                     style={{
-                      fontSize: 14,
+                      fontSize: 18,
                       fontWeight: 600,
                       textAlign: 'right',
                       marginTop: 4,
