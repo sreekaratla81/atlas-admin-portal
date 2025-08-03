@@ -18,7 +18,7 @@ const Reports = () => {
             <section style={{ marginBottom: '2rem' }}>
                 <SingleCalendarEarningsReport />
             </section>
-            <section style={{ marginBottom: '2rem' }}>
+            {/*            <section style={{ marginBottom: '2rem' }}>
                 <MultiCalendarEarningsReport />
             </section>
             <section style={{ marginBottom: '2rem' }}>
@@ -32,6 +32,7 @@ const Reports = () => {
                     <CustomReportGenerator />
                 </section>
             </LocalizationProvider>
+            */}
         </div>
     );
 };
