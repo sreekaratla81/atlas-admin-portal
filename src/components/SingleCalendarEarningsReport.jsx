@@ -263,23 +263,30 @@ function SingleCalendarEarningsReport() {
                   {format(date, 'd')}
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', marginTop: 4 }}>
-                  {(data?.earnings || []).map((e, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        fontSize: 11,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                      title={`Booking #${e.bookingId}${e.guestName ? ` • ${e.guestName}` : ''}`}
-                    >
-                      {e.source}: ₹
-                      {Number(e.amount).toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                    </div>
-                  ))}
+                  {(data?.earnings || []).map((e, i) => {
+                    const amount = Number(e.amount).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    });
+                    const tooltip = [
+                      `Check-in: ${format(new Date(e.checkinDate), 'dd MMM')}`,
+                      `Guest: ${e.guestName}`,
+                      `Amount: ₹${amount}`,
+                    ].join(' | ');
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          fontSize: 11,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={tooltip}
+                      >
+                        {e.source}: ₹{amount}
+                      </div>
+                    );
+                  })}
                 </div>
                 {data?.total > 0 && (
                   <div
