@@ -1,23 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { Box, Typography, CircularProgress } from '@mui/material';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { Box, Typography, CircularProgress, IconButton } from '@mui/material';
+import { ArrowBack, ArrowForward } from '@mui/icons-material';
 import {
   format,
-  parse,
   startOfWeek,
-  getDay,
   startOfMonth,
   endOfMonth,
   isWithinInterval,
   parseISO,
+  addDays,
+  addMonths,
 } from 'date-fns';
 import axios from 'axios';
-import { enUS } from 'date-fns/locale';
 import { computeThresholds, getHighlightStyle } from '../utils/percentile';
-
-const locales = { 'en-US': enUS };
-const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
@@ -152,76 +147,10 @@ function SingleCalendarEarningsReport() {
     fetchTotals();
   }, [currentDate]);
 
-  const components = {
-    month: {
-      dateHeader: ({ date }) => {
-        const dateKey = format(date, 'yyyy-MM-dd');
-        const data = earningsMap.get(dateKey);
-        const isToday = dateKey === format(new Date(), 'yyyy-MM-dd');
-        const sameMonth = format(date, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
-        const highlightStyle = getHighlightStyle(data?.total || 0, thresholds, sameMonth);
-
-        return (
-          <div
-            style={{
-              padding: 4,
-              border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
-              borderRadius: 4,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              opacity: sameMonth ? 1 : 0.4,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 'bold' }}>{format(date, 'd')}</div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-                overflowY: 'auto',
-                maxHeight: 100,
-                flexGrow: 1,
-              }}
-            >
-              {(data?.earnings || []).map((e, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontSize: 10,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    lineHeight: 1.1,
-                  }}
-                  title={`Booking #${e.bookingId}${e.guestName ? ` • ${e.guestName}` : ''} • ₹${Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-                >
-                  {e.source}: ₹
-                  {Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </div>
-              ))}
-            </div>
-            {data?.total > 0 && (
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  marginTop: 2,
-                  ...highlightStyle,
-                }}
-              >
-                ₹
-                {Number(data.total).toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-  };
+  const calendarDates = React.useMemo(() => {
+    const start = startOfWeek(startOfMonth(currentDate));
+    return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+  }, [currentDate]);
 
   return (
     <Box sx={{ padding: 4 }}>
@@ -247,39 +176,103 @@ function SingleCalendarEarningsReport() {
         ))}
       </select>
 
-      <Box sx={{ height: 600, position: 'relative' }}>
-        {loading && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(255,255,255,0.7)',
-              zIndex: 1,
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        )}
-        <Calendar
-          localizer={localizer}
-          events={[]}
-          date={currentDate}
-          onNavigate={(date) => setCurrentDate(date)}
-          defaultView="month"
-          views={['month']}
-          components={components}
-          style={{ height: '100%', border: '1px solid #ccc', borderRadius: 8 }}
-        />
-        {!loading && earnings.length === 0 && (
-          <Typography sx={{ mt: 2 }}>No earnings found for this month</Typography>
-        )}
+    <Box sx={{ height: 600, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {loading && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(255,255,255,0.7)',
+            zIndex: 1,
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <IconButton aria-label="Previous month" onClick={() => setCurrentDate(addMonths(currentDate, -1))} size="small">
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {format(currentDate, 'MMMM yyyy')}
+        </Typography>
+        <IconButton aria-label="Next month" onClick={() => setCurrentDate(addMonths(currentDate, 1))} size="small">
+          <ArrowForward />
+        </IconButton>
       </Box>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gridAutoRows: '1fr',
+          gap: 1,
+          backgroundColor: '#e5e7eb',
+          flexGrow: 1,
+        }}
+      >
+        {calendarDates.map((date) => {
+          const dateKey = format(date, 'yyyy-MM-dd');
+          const data = earningsMap.get(dateKey);
+          const isToday = dateKey === format(new Date(), 'yyyy-MM-dd');
+          const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+          const highlightStyle = getHighlightStyle(data?.total || 0, thresholds, isCurrentMonth);
+
+          return (
+            <div
+              key={dateKey}
+              style={{
+                padding: 8,
+                border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
+                borderRadius: 4,
+                background: 'white',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                opacity: isCurrentMonth ? 1 : 0.3,
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', color: '#374151' }}>
+                {format(date, 'd')}
+              </div>
+              <div style={{ flexGrow: 1, overflowY: 'auto', marginTop: 4 }}>
+                {(data?.earnings || []).map((e, i) => (
+                  <div
+                    key={i}
+                    style={{ fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    title={`Booking #${e.bookingId} • ${e.guestName}`}
+                  >
+                    {e.source}: ₹{Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </div>
+                ))}
+              </div>
+              {data?.total > 0 && (
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textAlign: 'right',
+                    marginTop: 4,
+                    ...highlightStyle,
+                  }}
+                >
+                  ₹{Number(data.total).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {!loading && earnings.length === 0 && (
+        <Typography sx={{ mt: 2 }}>No earnings found for this month</Typography>
+      )}
+    </Box>
 
       {!loading && earnings.length > 0 && (
         <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
