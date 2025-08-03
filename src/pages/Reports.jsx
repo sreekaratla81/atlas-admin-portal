@@ -13,26 +13,28 @@ const Reports = () => {
         <div>
             <h1>Reports Page</h1>
             <section style={{ marginBottom: '2rem' }}>
-                <EarningsReport />
-            </section>
-            <section style={{ marginBottom: '2rem' }}>
                 <SingleCalendarEarningsReport />
             </section>
-            {/*            <section style={{ marginBottom: '2rem' }}>
-                <MultiCalendarEarningsReport />
-            </section>
             <section style={{ marginBottom: '2rem' }}>
-                <DailyPayoutReport />
+                <EarningsReport />
             </section>
-            <section style={{ marginBottom: '2rem' }}>
-                <MonthlyEarningsReport />
-            </section>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <section style={{ marginBottom: '2rem' }}>
-                    <CustomReportGenerator />
+            {
+                /*            <section style={{ marginBottom: '2rem' }}>
+                    <MultiCalendarEarningsReport />
                 </section>
-            </LocalizationProvider>
-            */}
+                <section style={{ marginBottom: '2rem' }}>
+                    <DailyPayoutReport />
+                </section>
+                <section style={{ marginBottom: '2rem' }}>
+                    <MonthlyEarningsReport />
+                </section>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <section style={{ marginBottom: '2rem' }}>
+                        <CustomReportGenerator />
+                    </section>
+                </LocalizationProvider>
+                */
+            }
         </div>
     );
 };
