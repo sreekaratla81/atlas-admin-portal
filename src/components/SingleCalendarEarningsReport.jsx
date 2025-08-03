@@ -246,7 +246,7 @@ function SingleCalendarEarningsReport() {
               isCurrentMonth
             );
             const totalAmount = Number(data?.total) || 0;
-            const isLowRevenue = totalAmount === 145.16;
+            const isLowRevenue = totalAmount < 2000;
             return (
               <div
                 key={dateKey}
@@ -296,7 +296,7 @@ function SingleCalendarEarningsReport() {
                       <div
                         key={i}
                         style={{
-                          fontSize: 12,
+                          fontSize: 14,
                           marginBottom: 4,
                           paddingLeft: 4,
                           borderLeft: `4px solid ${color}`,
@@ -331,7 +331,7 @@ function SingleCalendarEarningsReport() {
                 {totalAmount > 0 && (
                   <div
                     style={{
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: 600,
                       textAlign: 'right',
                       marginTop: 4,
