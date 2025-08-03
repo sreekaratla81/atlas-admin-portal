@@ -241,7 +241,7 @@ function SingleCalendarEarningsReport() {
               <div
                 key={dateKey}
                 style={{
-                  height: '100%',
+                  height: '90%',
                   padding: 8,
                   border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
                   borderRadius: 4,
