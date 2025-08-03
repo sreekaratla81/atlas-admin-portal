@@ -192,7 +192,7 @@ function SingleCalendarEarningsReport() {
         ))}
       </select>
 
-      <Box sx={{ height: 600, position: 'relative' }}>
+      <Box sx={{ position: 'relative' }}>
         {loading && (
           <Box
             sx={{
