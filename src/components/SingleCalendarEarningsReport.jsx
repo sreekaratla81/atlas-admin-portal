@@ -195,6 +195,7 @@ function SingleCalendarEarningsReport() {
                     textOverflow: 'ellipsis',
                     lineHeight: 1.1,
                   }}
+                  title={`Booking #${e.bookingId}${e.guestName ? ` • ${e.guestName}` : ''} • ₹${Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                 >
                   {e.source}: ₹
                   {Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
