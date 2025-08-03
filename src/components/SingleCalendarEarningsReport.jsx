@@ -54,6 +54,18 @@ function SingleCalendarEarningsReport() {
     return dates;
   }, [currentDate]);
 
+  const calendarTotal = React.useMemo(() => {
+    return earnings
+      .filter((val) => {
+        const d = new Date(val.date);
+        return (
+          d.getFullYear() === currentDate.getFullYear() &&
+          d.getMonth() === currentDate.getMonth()
+        );
+      })
+      .reduce((sum, val) => sum + (parseFloat(val.total) || 0), 0);
+  }, [earnings, currentDate]);
+
   // Fetch listings
   useEffect(() => {
     axios
@@ -359,12 +371,10 @@ function SingleCalendarEarningsReport() {
       {!loading && earnings.length > 0 && (
         <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
           Total:{' '}
-          {earnings
-            .reduce((sum, val) => sum + (parseFloat(val.total) || 0), 0)
-            .toLocaleString('en-IN', {
-              style: 'currency',
-              currency: 'INR',
-            })}
+          {calendarTotal.toLocaleString('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+          })}
         </Typography>
       )}
 
