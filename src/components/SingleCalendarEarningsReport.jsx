@@ -22,11 +22,22 @@ const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales
 function SingleCalendarEarningsReport() {
   const [listings, setListings] = useState([]);
   const [selectedListingId, setSelectedListingId] = useState('');
-  const [earnings, setEarnings] = useState({});
+  const [earnings, setEarnings] = useState([]);
   const [thresholds, setThresholds] = useState({ top: 0, bottom: 0 });
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [monthlyTotals, setMonthlyTotals] = useState([]);
+
+  const earningsMap = React.useMemo(() => {
+    const map = new Map();
+    (earnings || []).forEach((entry) => {
+      if (entry?.date) {
+        const dateKey = entry.date.split('T')[0];
+        map.set(dateKey, entry);
+      }
+    });
+    return map;
+  }, [earnings]);
 
   // Fetch listings
   useEffect(() => {
@@ -53,35 +64,27 @@ function SingleCalendarEarningsReport() {
     if (!selectedListingId) return;
     const month = format(currentDate, 'yyyy-MM');
     setLoading(true);
-    setEarnings({});
+    setEarnings([]);
     axios
       .get(`${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`, {
         params: { listingId: selectedListingId, month },
       })
       .then((res) => {
-        let data = res.data;
-        if (Array.isArray(data)) {
-          const map = {};
-          data.forEach((entry) => {
-            const date = entry && entry.date;
-            if (date) {
-              map[date] = {
-                amount: parseFloat(entry.amount) || 0,
-                source: entry.source || null,
-              };
-            }
-          });
-          data = map;
-        }
-
-        if (!data || typeof data !== 'object') data = {};
-
+        const data = Array.isArray(res.data) ? res.data : [];
         setEarnings(data);
-        setThresholds(computeThresholds(data));
+
+        const totalsObj = {};
+        data.forEach((entry) => {
+          if (entry?.date) {
+            const dateKey = entry.date.split('T')[0];
+            totalsObj[dateKey] = { amount: entry.total || 0 };
+          }
+        });
+        setThresholds(computeThresholds(totalsObj));
       })
       .catch((err) => {
         console.error('Failed to fetch earnings:', err);
-        setEarnings({});
+        setEarnings([]);
         setThresholds({ top: 0, bottom: 0 });
       })
       .finally(() => setLoading(false));
@@ -149,50 +152,70 @@ function SingleCalendarEarningsReport() {
     fetchTotals();
   }, [currentDate]);
 
-  const dayPropGetter = (date) => {
-    const key = format(date, 'yyyy-MM-dd');
-    const entry = earnings[key];
-    const amount = entry && typeof entry === 'object' ? parseFloat(entry.amount) : parseFloat(entry);
-    if (isNaN(amount) || amount <= 0) return {};
-
-    if (entry && typeof entry === 'object') {
-      const source = String(entry.source || '').toLowerCase();
-      if (source === 'airbnb') {
-        return { style: { backgroundColor: '#FD5C63' } };
-      }
-      if (source === 'booking.com') {
-        return { style: { backgroundColor: '#499FDD' } };
-      }
-      if (source === 'agoda') {
-        return { style: { backgroundColor: '#FDB812' } };
-      }
-    }
-
-    return { style: { backgroundColor: '#e6ffed' } };
-  };
-
   const components = {
     month: {
-      dateHeader: ({ label, date }) => {
-        const key = format(date, 'yyyy-MM-dd');
-        const entry = earnings[key];
-        const amount = entry && typeof entry === 'object' ? parseFloat(entry.amount) : parseFloat(entry);
-        const price = isNaN(amount) ? 0 : amount;
-        const display = `₹${price.toLocaleString('en-IN')}`;
+      dateHeader: ({ date }) => {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const data = earningsMap.get(dateKey);
+        const isToday = dateKey === format(new Date(), 'yyyy-MM-dd');
         const sameMonth = format(date, 'yyyy-MM') === format(currentDate, 'yyyy-MM');
-        const highlightStyle = getHighlightStyle(price, thresholds, sameMonth);
-        const source = entry && typeof entry === 'object' ? entry.source : null;
+        const highlightStyle = getHighlightStyle(data?.total || 0, thresholds, sameMonth);
+
         return (
-          <div style={{ textAlign: 'center' }}>
-            <div>{label}</div>
-            {source && (
-              <div style={{ fontSize: '0.75em', textTransform: 'capitalize' }}>
-                {source}
+          <div
+            style={{
+              padding: 4,
+              border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
+              borderRadius: 4,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              opacity: sameMonth ? 1 : 0.4,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 'bold' }}>{format(date, 'd')}</div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                overflowY: 'auto',
+                maxHeight: 100,
+                flexGrow: 1,
+              }}
+            >
+              {(data?.earnings || []).map((e, i) => (
+                <div
+                  key={i}
+                  style={{
+                    fontSize: 10,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {e.source}: ₹
+                  {Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </div>
+              ))}
+            </div>
+            {data?.total > 0 && (
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  marginTop: 2,
+                  ...highlightStyle,
+                }}
+              >
+                ₹
+                {Number(data.total).toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}
               </div>
             )}
-            <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>
-              <span style={highlightStyle}>{display}</span>
-            </div>
           </div>
         );
       },
@@ -249,23 +272,19 @@ function SingleCalendarEarningsReport() {
           onNavigate={(date) => setCurrentDate(date)}
           defaultView="month"
           views={['month']}
-          dayPropGetter={dayPropGetter}
           components={components}
           style={{ height: '100%', border: '1px solid #ccc', borderRadius: 8 }}
         />
-        {!loading && Object.keys(earnings).length === 0 && (
+        {!loading && earnings.length === 0 && (
           <Typography sx={{ mt: 2 }}>No earnings found for this month</Typography>
         )}
       </Box>
 
-      {!loading && Object.keys(earnings).length > 0 && (
+      {!loading && earnings.length > 0 && (
         <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
           Total:{' '}
-          {Object.values(earnings)
-            .reduce((sum, val) => {
-              const amt = val && typeof val === 'object' ? parseFloat(val.amount) : parseFloat(val);
-              return sum + (isNaN(amt) ? 0 : amt);
-            }, 0)
+          {earnings
+            .reduce((sum, val) => sum + (parseFloat(val.total) || 0), 0)
             .toLocaleString('en-IN', {
               style: 'currency',
               currency: 'INR',
