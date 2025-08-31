@@ -8,14 +8,15 @@ const api = axios.create({
 
 export function useApiClient() {
   const { getAccessTokenSilently } = useAtlasAuth();
+  const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+
   api.interceptors.request.use(async (config) => {
-    if (!BYPASS) {
-      const token = await getAccessTokenSilently({
-        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE }
-      });
+    if (!BYPASS && audience) {
+      const token = await getAccessTokenSilently({ authorizationParams: { audience } });
       if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
     }
     return config;
   });
+
   return api;
 }
