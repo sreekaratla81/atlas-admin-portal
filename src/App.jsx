@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
 import Properties from './pages/Properties';
 import Listings from './pages/Listings';
 import Bookings from './pages/Bookings';
@@ -9,9 +8,11 @@ import Guests from './pages/Guests';
 import BankAccountsPage from './pages/BankAccountsPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import AuthCallback from './pages/AuthCallback';
+import { useAtlasAuth } from './auth/useAtlasAuth';
+import { BYPASS } from './auth/config';
 
 const App = () => {
-  const { isAuthenticated, user, logout } = useAuth0();
+  const { isAuthenticated, user, logout } = useAtlasAuth();
 
   return (
     <BrowserRouter>
@@ -22,6 +23,11 @@ const App = () => {
         <Link to="/guests">Guests</Link>{' '}
         <Link to="/">Bookings</Link>{' '}
         <Link to="/reports">Reports</Link>{' '}
+        {BYPASS && (
+          <span style={{ marginLeft: 10, fontSize: '0.75rem', padding: '2px 4px', borderRadius: 4, backgroundColor: '#FEF08A' }}>
+            AUTH BYPASS (LOCAL)
+          </span>
+        )}
         {isAuthenticated && (
           <span style={{ marginLeft: 10 }}>
             {user?.email}{' '}

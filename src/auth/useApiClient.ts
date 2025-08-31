@@ -1,34 +1,21 @@
 import axios from 'axios';
-import { useAuth0 } from '@auth0/auth0-react';
-import { useEffect } from 'react';
+import { BYPASS } from './config';
+import { useAtlasAuth } from './useAtlasAuth';
 
 const api = axios.create({
-  baseURL: 'https://atlas-homes-api-gxdqfjc2btc0atbv.centralus-01.azurewebsites.net',
+  baseURL: 'https://atlas-homes-api-gxdqfjc2btc0atbv.centralus-01.azurewebsites.net'
 });
 
-export const useApiClient = () => {
-  const { getAccessTokenSilently } = useAuth0();
-
-  useEffect(() => {
-    const interceptor = api.interceptors.request.use(async (config) => {
+export function useApiClient() {
+  const { getAccessTokenSilently } = useAtlasAuth();
+  api.interceptors.request.use(async (config) => {
+    if (!BYPASS) {
       const token = await getAccessTokenSilently({
-        authorizationParams: {
-          audience: import.meta.env.VITE_AUTH0_AUDIENCE,
-        },
+        authorizationParams: { audience: import.meta.env.VITE_AUTH0_AUDIENCE }
       });
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
-      return config;
-    });
-
-    return () => {
-      api.interceptors.request.eject(interceptor);
-    };
-  }, [getAccessTokenSilently]);
-
+      if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
+    }
+    return config;
+  });
   return api;
-};
-
-export default useApiClient;
+}
