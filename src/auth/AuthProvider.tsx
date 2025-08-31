@@ -1,33 +1,21 @@
-import React from 'react';
 import { Auth0Provider } from '@auth0/auth0-react';
+import { AUTH0 } from './config';
 
-interface Props {
-  children: React.ReactNode;
-}
-
-const AuthProvider: React.FC<Props> = ({ children }) => {
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN as string;
-  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID as string;
-  const audience = import.meta.env.VITE_AUTH0_AUDIENCE as string;
-
-  const onRedirectCallback = (appState?: any) => {
-    const returnTo = appState?.returnTo || window.location.pathname;
-    window.history.replaceState({}, document.title, returnTo);
-  };
-
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <Auth0Provider
-      domain={domain}
-      clientId={clientId}
+      domain={AUTH0.domain}
+      clientId={AUTH0.clientId}
       authorizationParams={{
-        audience,
+        audience: AUTH0.audience,
+        scope: 'openid profile email',
         redirect_uri: window.location.origin + '/auth/callback',
       }}
-      onRedirectCallback={onRedirectCallback}
+      onRedirectCallback={({ appState }) =>
+        window.history.replaceState({}, document.title, appState?.returnTo || window.location.pathname)
+      }
     >
       {children}
     </Auth0Provider>
   );
-};
-
-export default AuthProvider;
+}
