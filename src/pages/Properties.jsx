@@ -4,7 +4,7 @@ import {
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, Alert
 } from '@mui/material';
-import axios from 'axios';
+import { http } from '../api/http';
 
 const Properties = () => {
   const [list, setList] = useState([]);
@@ -19,7 +19,7 @@ const Properties = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE}/properties`);
+        const response = await http.get(`/properties`);
       setList(response.data);
     } catch (err) {
       setErrorMsg('Failed to fetch properties. Please try again.');
@@ -48,12 +48,12 @@ const Properties = () => {
         ...form,
         commissionPercent: parseFloat(form.commissionPercent)
       };
-      const url = `${import.meta.env.VITE_API_BASE}/properties`;
-      if (editId) {
-        await axios.put(`${url}/${editId}`, payload);
-      } else {
-        await axios.post(url, payload);
-      }
+        const url = `/properties`;
+        if (editId) {
+          await http.put(`${url}/${editId}`, payload);
+        } else {
+          await http.post(url, payload);
+        }
       resetForm();
       fetchData();
     } catch (err) {
@@ -74,7 +74,7 @@ const Properties = () => {
       setLoading(true);
       setErrorMsg('');
       try {
-        await axios.delete(`${import.meta.env.VITE_API_BASE}/properties/${id}`);
+          await http.delete(`/properties/${id}`);
         fetchData();
       } catch (err) {
         setErrorMsg('Failed to delete property. Please try again.');

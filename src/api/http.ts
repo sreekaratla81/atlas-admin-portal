@@ -1,51 +1,15 @@
-import axios from 'axios';
-import { useEffect } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
-import { useEffectiveAuth } from '../auth/useEffectiveAuth';
+import axios from "axios";
 
-const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:7071/api',
-});
+const envUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const fallbackUrl = (import.meta.env.VITE_DEFAULT_API_BASE_URL || "").trim();
 
-export function useHttp() {
-  const { getAccessTokenSilently, loginWithRedirect } = useAuth0();
-  const { bypassEnabled } = useEffectiveAuth();
-  const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+// Dev uses Vite proxy (/api). Non-dev falls back to configured default if env missing.
+const baseURL = envUrl || (import.meta.env.DEV ? "/api" : fallbackUrl);
 
-  useEffect(() => {
-    if (bypassEnabled) return;
+export const http = axios.create({ baseURL });
 
-    const reqInterceptor = http.interceptors.request.use(async (config) => {
-      if (audience) {
-        const token = await getAccessTokenSilently({
-          authorizationParams: { audience },
-        });
-        if (token)
-          config.headers = {
-            ...config.headers,
-            Authorization: `Bearer ${token}`,
-          };
-      }
-      return config;
-    });
-
-    const resInterceptor = http.interceptors.response.use(
-      (res) => res,
-      (error) => {
-        if (error.response?.status === 401) {
-          void loginWithRedirect();
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      http.interceptors.request.eject(reqInterceptor);
-      http.interceptors.response.eject(resInterceptor);
-    };
-  }, [getAccessTokenSilently, loginWithRedirect, audience, bypassEnabled]);
-
-  return http;
+// Defensive guard: never allow localhost in non-dev
+if (!import.meta.env.DEV && http.defaults.baseURL.startsWith("http://localhost")) {
+  console.warn("Overriding localhost baseURL in non-dev to VITE_DEFAULT_API_BASE_URL");
+  http.defaults.baseURL = fallbackUrl;
 }
-
-export default http;

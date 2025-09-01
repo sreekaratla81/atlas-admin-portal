@@ -10,9 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import dayjs from 'dayjs';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE;
+import { http } from '../api/http';
 
 function buildEmptyMonths() {
   const months = {};
@@ -35,8 +33,8 @@ function EarningsReport() {
   useEffect(() => {
     async function fetchMonthlyEarnings() {
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/reports/earnings/monthly`);
-        const data = await res.json();
+          const res = await http.get(`/admin/reports/earnings/monthly`);
+          const data = res.data;
         const normalized = Array.isArray(data)
           ? data.map((entry) => ({
               month: dayjs(entry.month).format('MMM'),
@@ -48,11 +46,11 @@ function EarningsReport() {
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
-          const res = await axios.get(
-            `${API_BASE_URL}/admin/reports/bookings`
-          );
-          const months = buildEmptyMonths();
-          res.data.forEach((b) => {
+            const res = await http.get(
+              `/admin/reports/bookings`
+            );
+            const months = buildEmptyMonths();
+            res.data.forEach((b) => {
             const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
             if (months[key]) {
               const net = parseFloat(b.amountReceived) || 0;

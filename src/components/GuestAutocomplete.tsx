@@ -1,95 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { Autocomplete, TextField, CircularProgress, Box, Typography, Button } from '@mui/material';
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import useGuestSearch from '../hooks/useGuestSearch';
-import { GuestListItem } from '../api/guests';
+import { useState } from "react";
+import { useLocalGuestSearch } from "../hooks/useLocalGuestSearch";
+import type { GuestLite } from "../api/guests";
 
-type Props = {
-  onSelect: (guest: GuestListItem) => void;
-  onAddNew: () => void;
-  value?: string;
-};
+export default function GuestAutocomplete({
+  onSelect, onAddNew
+}: { onSelect: (g: GuestLite) => void; onAddNew: () => void; }) {
 
-const GuestAutocomplete: React.FC<Props> = ({ onSelect, onAddNew, value = '' }) => {
-  const [input, setInput] = useState(value);
-  useEffect(() => {
-    setInput(value);
-  }, [value]);
-  const { results, isLoading, isError, refetch } = useGuestSearch(input);
-
-  const formatPhone = (phone?: string) => {
-    if (!phone) return '';
-    try {
-      return parsePhoneNumberFromString(phone, 'IN')?.formatInternational() || phone;
-    } catch {
-      return phone;
-    }
-  };
+  const [q, setQ] = useState("");
+  const { results, loading, ensureLoaded } =
+    useLocalGuestSearch(q, { maxRecords: 2000, pageSize: 200 });
 
   return (
-    <Autocomplete<GuestListItem>
-      freeSolo
-      options={results}
-      getOptionLabel={(o) => o.name}
-      filterOptions={(x) => x}
-      onChange={(_e, val) => { if (val) onSelect(val); }}
-      inputValue={input}
-      onInputChange={(_e, val) => setInput(val)}
-      loading={isLoading}
-      noOptionsText={
-        isError ? (
-          <Box sx={{ p: 1 }}>
-            <Typography color="error" variant="body2">Error loading</Typography>
-            <Button onMouseDown={(e)=>{e.preventDefault(); refetch();}}>Retry</Button>
-            <Button onMouseDown={(e)=>{e.preventDefault(); onAddNew();}}>+ Add new guest</Button>
-          </Box>
-        ) : (
-          <Box sx={{ p: 1 }}>
-            <Typography variant="body2">No results</Typography>
-            <Button onMouseDown={(e)=>{e.preventDefault(); onAddNew();}}>+ Add new guest</Button>
-          </Box>
-        )
-      }
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Search or Add Guest"
-          role="combobox"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
-        />
+    <div className="relative">
+      <input
+        placeholder="Search or Add Guest"
+        value={q}
+        onFocus={ensureLoaded}
+        onChange={(e) => setQ(e.target.value)}
+        className="input"
+      />
+      {q && (
+        <div className="dropdown">
+          {loading && <div className="item">Loading guests…</div>}
+          {!loading && results.map(r => (
+            <div key={r.id} className="item" onClick={() => onSelect(r)}>
+              <strong>{r.name}</strong> &nbsp;·&nbsp; {r.phone ?? ""} &nbsp;·&nbsp; {r.email ?? ""}
+            </div>
+          ))}
+          {!loading && <div className="item add" onClick={onAddNew}>+ Add new guest</div>}
+        </div>
       )}
-      renderOption={(props, option) => {
-        const q = input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(${q})`, 'ig');
-        const nameParts = option.name.split(regex);
-        return (
-          <li {...props} key={option.id}>
-            <span>
-              {nameParts.map((part, i) =>
-                regex.test(part) ? <mark key={i}>{part}</mark> : part
-              )}
-              {option.phone && <> • {formatPhone(option.phone)}</>}
-              {option.email && <> • {option.email}</>}
-            </span>
-          </li>
-        );
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && results.length > 0) {
-          e.preventDefault();
-          onSelect(results[0]);
-        }
-      }}
-    />
+    </div>
   );
-};
-
-export default GuestAutocomplete;
+}

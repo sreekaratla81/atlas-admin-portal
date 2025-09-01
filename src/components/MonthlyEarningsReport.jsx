@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button, Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
-import axios from 'axios';
+import { http } from '../api/http';
 
 function aggregateData(bookings, listings) {
   const listingMap = {};
@@ -61,14 +61,10 @@ function MonthlyEarningsReport() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [bookRes, listRes] = await Promise.all([
-          axios.get(
-            `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
-          ),
-          axios.get(
-            `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
-          )
-        ]);
+          const [bookRes, listRes] = await Promise.all([
+            http.get(`/admin/reports/bookings`),
+            http.get(`/admin/reports/listings`)
+          ]);
         setEarningsData(aggregateData(bookRes.data, listRes.data));
       } catch (err) {
         console.error(err);

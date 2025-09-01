@@ -1,30 +1,26 @@
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { http } from './http';
 
 export const getBankAccounts = async () => {
-  const res = await axios.get(`${API_BASE}/bankaccounts`);
+  const res = await http.get(`/bankaccounts`);
   return res.data;
 };
 
 export const createBankAccount = async (data) => {
-  const res = await axios.post(`${API_BASE}/bankaccounts`, data);
+  const res = await http.post(`/bankaccounts`, data);
   return res.data;
 };
 
 export const updateBankAccount = async (id, data) => {
-  const res = await axios.put(`${API_BASE}/bankaccounts/${id}`, data);
+  const res = await http.put(`/bankaccounts/${id}`, data);
   return res.data;
 };
 
 export const deleteBankAccount = async (id) => {
-  const res = await axios.delete(`${API_BASE}/bankaccounts/${id}`);
+  const res = await http.delete(`/bankaccounts/${id}`);
   return res.data;
 };
 
 export const getBankAccountEarnings = async () => {
-  const res = await axios.get(
-    `${API_BASE}/reports/bank-account-earnings`
-  );
+  const res = await http.get(`/reports/bank-account-earnings`);
   return res.data;
 };
