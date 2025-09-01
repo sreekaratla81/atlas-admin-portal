@@ -1,7 +1,3 @@
-import React from 'react';
-
-const AuthCallback: React.FC = () => {
-  return <div>Loading...</div>;
-};
-
-export default AuthCallback;
+export default function AuthCallback() {
+  return <div>Signing you in…</div>;
+}
