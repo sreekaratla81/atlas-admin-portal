@@ -22,5 +22,6 @@ export default function ProtectedRoute({ children }: { children: JSX.Element }) 
   // In prod, after redirectWithLogin call we render nothing here.
   if (!effectiveIsAuthenticated) return null;
 
+  if (bypassEnabled) return <>{children}</>;
   return <RequireAuth user={effectiveUser}>{children}</RequireAuth>;
 }

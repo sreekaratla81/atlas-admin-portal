@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getAuthConfig } from '@/lib/env';
 
 interface BypassUser {
   sub: string;
@@ -12,10 +13,11 @@ export function useAuthMaybeBypass() {
 
   useEffect(() => {
     let cancelled = false;
+    const cfg = getAuthConfig();
 
     async function loadBypass() {
       if (!import.meta.env.DEV) return;
-      if (import.meta.env.VITE_AUTH_BYPASS !== 'true') return;
+      if (!cfg.bypass) return;
 
       try {
         const resp = await fetch('/auth-bypass.json', { cache: 'no-store' });

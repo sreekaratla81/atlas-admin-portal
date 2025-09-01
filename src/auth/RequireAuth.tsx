@@ -1,5 +1,5 @@
 import React from "react";
-import { getAllowedEmails } from "../utils/env";
+import { getAllowedEmails } from "@/lib/env";
 import { safeSome } from "../utils/array";
 
 export function isEmailAllowed(email?: string | null): boolean {
