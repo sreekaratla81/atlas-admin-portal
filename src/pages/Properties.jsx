@@ -4,7 +4,7 @@ import {
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, Alert
 } from '@mui/material';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 
 const Properties = () => {
   const [list, setList] = useState([]);
@@ -19,8 +19,8 @@ const Properties = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-        const response = await http.get(`/properties`);
-      setList(response.data);
+        const { data } = await api.get(`/properties`);
+      setList(asArray(data, 'properties'));
     } catch (err) {
       setErrorMsg('Failed to fetch properties. Please try again.');
     } finally {
@@ -50,9 +50,9 @@ const Properties = () => {
       };
         const url = `/properties`;
         if (editId) {
-          await http.put(`${url}/${editId}`, payload);
+          await api.put(`${url}/${editId}`, payload);
         } else {
-          await http.post(url, payload);
+          await api.post(url, payload);
         }
       resetForm();
       fetchData();
@@ -74,7 +74,7 @@ const Properties = () => {
       setLoading(true);
       setErrorMsg('');
       try {
-          await http.delete(`/properties/${id}`);
+          await api.delete(`/properties/${id}`);
         fetchData();
       } catch (err) {
         setErrorMsg('Failed to delete property. Please try again.');

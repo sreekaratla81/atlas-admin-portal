@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import {
   Box,
   Button,
@@ -36,8 +36,8 @@ const Guests = () => {
     setLoading(true);
     setError('');
       try {
-        const res = await http.get(`/guests`);
-        setGuests(res.data);
+        const { data } = await api.get(`/guests`);
+        setGuests(asArray(data, 'guests'));
       } catch (err) {
       setError('Failed to fetch guests.');
     } finally {
@@ -81,9 +81,9 @@ const Guests = () => {
     setError('');
     try {
         if (editId) {
-          await http.put(`/guests/${editId}`, form);
+          await api.put(`/guests/${editId}`, form);
         } else {
-          await http.post(`/guests`, form);
+          await api.post(`/guests`, form);
         }
       handleClose();
       fetchGuests();
@@ -98,7 +98,7 @@ const Guests = () => {
     setLoading(true);
     setError('');
     try {
-        await http.delete(`/guests/${id}`);
+        await api.delete(`/guests/${id}`);
       fetchGuests();
     } catch (err) {
       setError('Failed to delete guest.');

@@ -11,11 +11,12 @@ import AppRouter from "@/router/AppRouter";
 vi.mock("@/auth/ProtectedRoute", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock("@/api/http", () => ({
-  http: {
+vi.mock("@/lib/api", () => ({
+  api: {
     get: vi.fn(() => Promise.resolve({ data: [] })),
     post: vi.fn(() => Promise.resolve({ data: {} })),
   },
+  asArray: (v: unknown) => (Array.isArray(v) ? v : []),
 }));
 
 test("renders BookingsPage for /bookings", () => {

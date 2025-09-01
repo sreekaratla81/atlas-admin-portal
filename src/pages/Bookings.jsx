@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
@@ -89,11 +89,11 @@ const Bookings = () => {
     const fetchLookups = async () => {
       try {
           const [listRes, bankRes] = await Promise.all([
-            http.get(`/listings`),
-            http.get(`/bankaccounts`)
+            api.get(`/listings`),
+            api.get(`/bankaccounts`)
           ]);
-        setListings(listRes.data);
-        setBankAccounts(bankRes.data);
+        setListings(asArray(listRes.data, 'listings'));
+        setBankAccounts(asArray(bankRes.data, 'bankaccounts'));
       } catch (err) {
         console.error(err);
       }
@@ -108,7 +108,7 @@ const Bookings = () => {
 
   const saveNewGuest = async () => {
       try {
-        const res = await http.post(`/guests`, newGuest);
+        const res = await api.post(`/guests`, newGuest);
         const g = res.data;
       setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
       setSelectedGuestId(g.id.toString());
@@ -127,8 +127,8 @@ const Bookings = () => {
         if (start && end) {
           url += `&checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
         }
-        const res = await http.get(url);
-      const sorted = [...res.data].sort(
+        const { data } = await api.get(url);
+      const sorted = [...asArray(data, 'bookings')].sort(
         (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
       setBookings(sorted);
@@ -210,19 +210,19 @@ const Bookings = () => {
       });
       console.log(payload);
       if (formMode === 'edit' && selectedBookingId) {
-        await http.put(
+        await api.put(
           `/bookings/${selectedBookingId}`,
           payload
         );
         setSuccessMsg('Booking updated successfully!');
       } else {
         const { id, ...createPayload } = payload;
-        await http.post(`/bookings`, createPayload);
+        await api.post(`/bookings`, createPayload);
         setSuccessMsg('Booking created successfully!');
       }
       reset();
-      const updated = await http.get(`/bookings`);
-      const sorted = [...updated.data].sort(
+      const { data: updatedData } = await api.get(`/bookings`);
+      const sorted = [...asArray(updatedData, 'bookings')].sort(
         (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
       setBookings(sorted);
@@ -270,7 +270,7 @@ const Bookings = () => {
     const confirmed = window.confirm('Are you sure you want to delete this booking?');
     if (!confirmed) return;
     try {
-      await http.delete(`/bookings/${id}`);
+      await api.delete(`/bookings/${id}`);
       setBookings(prev => prev.filter(b => b.id !== id));
     } catch (err) {
       console.error(err);
