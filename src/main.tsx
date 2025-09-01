@@ -9,6 +9,11 @@ import "./style.css";
 
 const queryClient = new QueryClient();
 
+if (import.meta.env.PROD) {
+  // eslint-disable-next-line no-console
+  console.log("diag: typeof AppRoutes", typeof AppRoutes);
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>

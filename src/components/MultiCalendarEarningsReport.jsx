@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Box, Typography, Paper, Chip } from '@mui/material';
 import { http } from '../api/http';
+import { safeFind } from '../utils/array';
 
 const startDate = dayjs().startOf('month');
 const numberOfDays = 10;
 const days = [...Array(numberOfDays)].map((_, i) => startDate.add(i, 'day').format('YYYY-MM-DD'));
 
 function isBookedOn(listing, date) {
-  const bookings = Array.isArray(listing.bookings) ? listing.bookings : [];
-  return bookings.find(b =>
+  return safeFind(listing?.bookings, (b) =>
     dayjs(date).isBetween(b.start, b.end, 'day', '[]')
   );
 }
