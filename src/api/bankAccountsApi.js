@@ -1,26 +1,26 @@
-import { http } from './http';
+import { api, asArray } from '@/lib/api';
 
 export const getBankAccounts = async () => {
-  const res = await http.get(`/bankaccounts`);
-  return res.data;
+  const { data } = await api.get(`/bankaccounts`);
+  return asArray(data, 'bankaccounts');
 };
 
 export const createBankAccount = async (data) => {
-  const res = await http.post(`/bankaccounts`, data);
+  const res = await api.post(`/bankaccounts`, data);
   return res.data;
 };
 
 export const updateBankAccount = async (id, data) => {
-  const res = await http.put(`/bankaccounts/${id}`, data);
+  const res = await api.put(`/bankaccounts/${id}`, data);
   return res.data;
 };
 
 export const deleteBankAccount = async (id) => {
-  const res = await http.delete(`/bankaccounts/${id}`);
+  const res = await api.delete(`/bankaccounts/${id}`);
   return res.data;
 };
 
 export const getBankAccountEarnings = async () => {
-  const res = await http.get(`/reports/bank-account-earnings`);
-  return res.data;
+  const { data } = await api.get(`/reports/bank-account-earnings`);
+  return asArray(data, 'bank-account-earnings');
 };

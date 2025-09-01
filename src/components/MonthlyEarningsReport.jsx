@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button, Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 
 function aggregateData(bookings, listings) {
   const listingMap = {};
@@ -62,10 +62,10 @@ function MonthlyEarningsReport() {
     async function fetchData() {
       try {
           const [bookRes, listRes] = await Promise.all([
-            http.get(`/admin/reports/bookings`),
-            http.get(`/admin/reports/listings`)
+            api.get(`/admin/reports/bookings`),
+            api.get(`/admin/reports/listings`)
           ]);
-        setEarningsData(aggregateData(bookRes.data, listRes.data));
+        setEarningsData(aggregateData(asArray(bookRes.data, 'bookings'), asArray(listRes.data, 'listings')));
       } catch (err) {
         console.error(err);
       }

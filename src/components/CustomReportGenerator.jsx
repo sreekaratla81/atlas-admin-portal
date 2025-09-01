@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import { safeIncludes } from '../utils/array';
 
 function CustomReportGenerator() {
@@ -21,13 +21,15 @@ function CustomReportGenerator() {
     async function fetchData() {
       try {
           const [listRes, bookRes] = await Promise.all([
-            http.get(`/admin/reports/listings`),
-            http.get(`/admin/reports/bookings`)
+            api.get(`/admin/reports/listings`),
+            api.get(`/admin/reports/bookings`)
           ]);
-        setListings(listRes.data.map(l => l.name));
+        const listArr = asArray(listRes.data, 'listings');
+        setListings(listArr.map(l => l.name));
         const listingMap = {};
-        listRes.data.forEach(l => { listingMap[l.id] = l.name; });
-        setAllData(bookRes.data.map(b => ({
+        listArr.forEach(l => { listingMap[l.id] = l.name; });
+        const bookArr = asArray(bookRes.data, 'bookings');
+        setAllData(bookArr.map(b => ({
           date: b.checkinDate,
           listing: listingMap[b.listingId] || b.listingId,
           amount: parseFloat(b.amountReceived) || 0
