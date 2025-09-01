@@ -1,11 +1,11 @@
 import React from "react";
 import AppRouter from "@/router/AppRouter";
-import Sidebar from "@/components/Sidebar/Sidebar";
+import NavBar from "@/components/NavBar";
 
 export default function App() {
   return (
     <>
-      <Sidebar />
+      <NavBar />
       <AppRouter />
     </>
   );
