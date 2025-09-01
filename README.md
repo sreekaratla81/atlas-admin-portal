@@ -3,7 +3,7 @@ Admin dashboard for managers and staff to manage listings, bookings, guests, and
 
 ## API configuration
 
-Create a `.env.local` file and set `VITE_API_BASE_URL` to the base URL of the Atlas API. If this variable is omitted the app will default to `http://localhost:7071/api` for local development. The reports page fetches data from REST endpoints such as:
+Create a `.env.local` file to configure the API base URL. `VITE_API_BASE_URL` is optional in development where requests are proxied to `/api`. For production, set `VITE_API_BASE_URL` or provide `VITE_DEFAULT_API_BASE_URL` as a fallback. The reports page fetches data from REST endpoints such as:
 
 ```
 GET /admin/reports/earnings/monthly
@@ -14,6 +14,8 @@ GET /admin/reports/bookings/calendar
 If these endpoints are unavailable the application will automatically fall back
 to the standard `/admin/reports/bookings`, `/admin/reports/listings` and
 `/admin/reports/payouts` endpoints.
+
+Set `VITE_GUEST_SEARCH_MODE=local` to enable client-side guest search.
 
 # Go to the directory where you want to store all repos
 cd ~/Projects/AtlasHomestays  # or any preferred location

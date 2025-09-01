@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
-import axios from 'axios';
+import { http } from '../api/http';
 
 function CustomReportGenerator() {
   const [startDate, setStartDate] = useState(dayjs().subtract(7, 'day'));
@@ -19,14 +19,10 @@ function CustomReportGenerator() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [listRes, bookRes] = await Promise.all([
-          axios.get(
-            `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
-          ),
-          axios.get(
-            `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
-          )
-        ]);
+          const [listRes, bookRes] = await Promise.all([
+            http.get(`/admin/reports/listings`),
+            http.get(`/admin/reports/bookings`)
+          ]);
         setListings(listRes.data.map(l => l.name));
         const listingMap = {};
         listRes.data.forEach(l => { listingMap[l.id] = l.name; });

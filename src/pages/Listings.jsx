@@ -4,7 +4,7 @@ import {
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, Grid, Alert
 } from '@mui/material';
-import axios from 'axios';
+import { http } from '../api/http';
 
 const Listings = () => {
   const [listings, setListings] = useState([]);
@@ -22,10 +22,10 @@ const Listings = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const [listRes, propRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-        axios.get(`${import.meta.env.VITE_API_BASE}/properties`)
-      ]);
+        const [listRes, propRes] = await Promise.all([
+          http.get(`/listings`),
+          http.get(`/properties`)
+        ]);
       setListings(listRes.data);
       setProperties(propRes.data);
     } catch (err) {
@@ -59,12 +59,12 @@ const Listings = () => {
         floor: parseInt(form.floor),
         maxGuests: parseInt(form.maxGuests)
       };
-      const url = `${import.meta.env.VITE_API_BASE}/listings`;
-      if (editId) {
-        await axios.put(`${url}/${editId}`, payload);
-      } else {
-        await axios.post(url, payload);
-      }
+        const url = `/listings`;
+        if (editId) {
+          await http.put(`${url}/${editId}`, payload);
+        } else {
+          await http.post(url, payload);
+        }
       resetForm();
       fetchData();
     } catch (err) {
@@ -85,7 +85,7 @@ const Listings = () => {
       setLoading(true);
       setErrorMsg('');
       try {
-        await axios.delete(`${import.meta.env.VITE_API_BASE}/listings/${id}`);
+          await http.delete(`/listings/${id}`);
         fetchData();
       } catch (err) {
         setErrorMsg('Failed to delete listing. Please try again.');

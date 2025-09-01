@@ -12,7 +12,7 @@ import {
   Box,
 } from '@mui/material';
 
-import axios from 'axios';
+import { http } from '../api/http';
 
 const getStatusChip = (status) => {
   switch (status) {
@@ -30,18 +30,18 @@ function DailyPayoutReport() {
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/admin/reports/payouts/daily`
-        );
-        setPayoutData(res.data);
-      } catch (err) {
-        console.warn('Falling back to /payouts', err);
-        axios
-          .get(`${import.meta.env.VITE_API_BASE}/admin/reports/payouts`)
-          .then((res) => setPayoutData(res.data))
-          .catch((err2) => console.error(err2));
-      }
+        try {
+          const res = await http.get(
+            `/admin/reports/payouts/daily`
+          );
+          setPayoutData(res.data);
+        } catch (err) {
+          console.warn('Falling back to /payouts', err);
+          http
+            .get(`/admin/reports/payouts`)
+            .then((res) => setPayoutData(res.data))
+            .catch((err2) => console.error(err2));
+        }
     }
     fetchData();
   }, []);
