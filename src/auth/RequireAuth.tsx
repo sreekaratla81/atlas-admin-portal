@@ -1,11 +1,11 @@
 import React from "react";
 import { getAllowedEmails } from "../utils/env";
+import { safeSome } from "../utils/array";
 
 export function isEmailAllowed(email?: string | null): boolean {
   if (!email) return false;
   const allowed = getAllowedEmails();
-  if (!Array.isArray(allowed) || allowed.length === 0) return false;
-  return allowed.some((x) => x.toLowerCase() === email.toLowerCase());
+  return safeSome(allowed, (x: string) => x.toLowerCase() === email.toLowerCase());
 }
 
 export default function RequireAuth({ user, children }: { user: any; children: React.ReactNode }) {

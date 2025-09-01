@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 import { buildBookingPayload } from '../utils/buildBookingPayload';
 import GuestAutocomplete from '../components/GuestAutocomplete';
+import { safeFind } from '../utils/array';
 
 const Bookings = () => {
   const [listings, setListings] = useState([]);
@@ -236,7 +237,7 @@ const Bookings = () => {
     console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
-    const listingObj = listings.find(l => l.id === bookingToEdit.listingId) || null;
+    const listingObj = safeFind(listings, (l) => l.id === bookingToEdit.listingId) || null;
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
@@ -280,7 +281,7 @@ const Bookings = () => {
   // Filtering logic
   const filteredBookings = bookings.filter(b => {
     const guestObj = b.guest || {};
-    const listingObj = listings.find(l => l.id === b.listingId) || {};
+    const listingObj = safeFind(listings, (l) => l.id === b.listingId) || {};
     return (
       (!filters.listing || listingObj.name?.toLowerCase().includes(filters.listing.toLowerCase())) &&
       (!filters.guest || guestObj.name?.toLowerCase().includes(filters.guest.toLowerCase()))
@@ -673,10 +674,10 @@ const Bookings = () => {
           <TableBody>
             {paginatedBookings.map(row => {
               const guestObj = row.guest || {};
-              const listingObj = listings.find(l => l.id === row.listingId) || {};
+              const listingObj = safeFind(listings, (l) => l.id === row.listingId) || {};
               const bankAccountObj =
                 row.bankAccount ||
-                bankAccounts.find(b => b.id === row.bankAccountId) ||
+                safeFind(bankAccounts, (b) => b.id === row.bankAccountId) ||
                 {};
               const bankName = bankAccountObj?.bankName || '';
               const accountNumber = bankAccountObj?.accountNumber || '';

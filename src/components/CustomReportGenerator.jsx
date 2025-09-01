@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
 import { http } from '../api/http';
+import { safeIncludes } from '../utils/array';
 
 function CustomReportGenerator() {
   const [startDate, setStartDate] = useState(dayjs().subtract(7, 'day'));
@@ -42,7 +43,7 @@ function CustomReportGenerator() {
     const date = dayjs(item.date);
     return date.isAfter(startDate.subtract(1, 'day')) &&
            date.isBefore(endDate.add(1, 'day')) &&
-           (selectedListings.length === 0 || selectedListings.includes(item.listing));
+           (selectedListings.length === 0 || safeIncludes(selectedListings, item.listing));
   });
 
   const exportToPDF = () => {

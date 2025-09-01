@@ -5,6 +5,7 @@ import {
   TableBody, Paper, Grid, Alert
 } from '@mui/material';
 import { http } from '../api/http';
+import { safeFind } from '../utils/array';
 
 const Listings = () => {
   const [listings, setListings] = useState([]);
@@ -322,7 +323,7 @@ const Listings = () => {
           <TableBody>
             {listings.map(l => (
               <TableRow key={l.id}>
-                <TableCell>{properties.find(p => p.id === l.propertyId)?.name || '—'}</TableCell>
+                <TableCell>{safeFind(properties, (p) => p.id === l.propertyId)?.name || '—'}</TableCell>
                 <TableCell>{l.name}</TableCell>
                 <TableCell>{l.floor}</TableCell>
                 <TableCell>{l.type}</TableCell>

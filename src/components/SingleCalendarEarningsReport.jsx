@@ -13,6 +13,7 @@ import {
   parseISO,
 } from 'date-fns';
 import { computeThresholds, getHighlightStyle } from '../utils/percentile';
+import { safeFind } from '../utils/array';
 
 const SOURCE_COLORS = {
   airbnb: '#00a1e0',
@@ -76,7 +77,7 @@ function SingleCalendarEarningsReport() {
         setListings(validListings);
 
         const defaultListing =
-          validListings.find((l) => l.name.toLowerCase().includes('ph')) ||
+          safeFind(validListings, (l) => l.name.toLowerCase().includes('ph')) ||
           validListings[0];
 
         if (defaultListing?.listingId) {
