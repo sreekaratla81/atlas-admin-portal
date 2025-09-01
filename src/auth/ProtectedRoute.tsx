@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useEffectiveAuth } from './useEffectiveAuth';
+import RequireAuth from './RequireAuth';
 
 export default function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { isLoading, effectiveIsAuthenticated, loginWithRedirect, bypassEnabled } = useEffectiveAuth();
+  const { isLoading, effectiveIsAuthenticated, effectiveUser, loginWithRedirect, bypassEnabled } = useEffectiveAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -21,5 +22,5 @@ export default function ProtectedRoute({ children }: { children: JSX.Element }) 
   // In prod, after redirectWithLogin call we render nothing here.
   if (!effectiveIsAuthenticated) return null;
 
-  return children;
+  return <RequireAuth user={effectiveUser}>{children}</RequireAuth>;
 }
