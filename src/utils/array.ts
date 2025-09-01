@@ -21,3 +21,7 @@ export function safeIncludes<T extends string | number>(
 ): boolean {
   return Array.isArray(xs) ? (xs as T[]).includes(value) : false;
 }
+
+export function safeMap<T, R>(val: unknown, fn: (x: T, i: number, a: T[]) => R): R[] {
+  return Array.isArray(val) ? (val as T[]).map(fn) : [];
+}
