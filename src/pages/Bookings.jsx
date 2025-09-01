@@ -5,23 +5,25 @@ import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
-  Autocomplete
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 import { buildBookingPayload } from '../utils/buildBookingPayload';
+import GuestAutocomplete from '../components/GuestAutocomplete';
 
 const Bookings = () => {
   const [listings, setListings] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [guests, setGuests] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [selectedListing, setSelectedListing] = useState(null);
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
+  const [addGuestOpen, setAddGuestOpen] = useState(false);
+  const [newGuest, setNewGuest] = useState({ name: '', phone: '', email: '' });
   const [booking, setBooking] = useState({
     id: null,
     listingId: '',
@@ -85,13 +87,11 @@ const Bookings = () => {
   useEffect(() => {
     const fetchLookups = async () => {
       try {
-        const [listRes, guestsRes, bankRes] = await Promise.all([
+        const [listRes, bankRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/guests`),
           axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`)
         ]);
         setListings(listRes.data);
-        setGuests(guestsRes.data);
         setBankAccounts(bankRes.data);
       } catch (err) {
         console.error(err);
@@ -100,11 +100,29 @@ const Bookings = () => {
     fetchLookups();
   }, []);
 
+  const handleAddNewGuest = () => {
+    setNewGuest({ name: '', phone: '', email: '' });
+    setAddGuestOpen(true);
+  };
+
+  const saveNewGuest = async () => {
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE}/guests`, newGuest);
+      const g = res.data;
+      setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
+      setSelectedGuestId(g.id.toString());
+      setSelectedGuest(g);
+      setAddGuestOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchBookings = async (start, end) => {
     setIsLoading(true);
     setFetchError('');
     try {
-      let url = `${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount`;
+      let url = `${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount,guest`;
       if (start && end) {
         url += `&checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
       }
@@ -171,15 +189,7 @@ const Bookings = () => {
     setSuccessMsg('');
     setErrorMsg('');
     try {
-      let guestId = selectedGuest ? selectedGuest.id : selectedGuestId;
-      if (guestId === '') {
-        // Create new guest
-        const guestRes = await axios.post(`${import.meta.env.VITE_API_BASE}/guests`, guest);
-        guestId = guestRes.data.id;
-      }
-      // Always ensure guestId is a number
-      guestId = Number(guestId);
-
+      const guestId = Number(selectedGuestId);
       const listingId = selectedListing ? selectedListing.id : parseInt(booking.listingId);
 
       if (!guestId || !listingId || !booking.checkinDate || !booking.checkoutDate) {
@@ -248,7 +258,7 @@ const Bookings = () => {
     setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
     setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
     setSelectedGuestId(bookingToEdit.guestId.toString());
-    const guestObj = guests.find(g => g.id === bookingToEdit.guestId) || { name: '', phone: '', email: '' };
+    const guestObj = bookingToEdit.guest || { name: '', phone: '', email: '' };
     setGuest(guestObj);
     setSelectedGuest(guestObj);
     setSelectedListing(listingObj);
@@ -269,7 +279,7 @@ const Bookings = () => {
 
   // Filtering logic
   const filteredBookings = bookings.filter(b => {
-    const guestObj = guests.find(g => g.id === b.guestId) || {};
+    const guestObj = b.guest || {};
     const listingObj = listings.find(l => l.id === b.listingId) || {};
     return (
       (!filters.listing || listingObj.name?.toLowerCase().includes(filters.listing.toLowerCase())) &&
@@ -348,57 +358,19 @@ const Bookings = () => {
             }}>
 
               {/* Guest */}
-              <Autocomplete
-                freeSolo
-                options={guests}
-                getOptionLabel={(option) =>
-                  typeof option === 'string'
-                    ? option
-                    : `${option.name} ${option.phone ? `(${option.phone})` : ''}`
-                }
-                isOptionEqualToValue={(opt, val) => opt.id === val.id}
-                value={selectedGuest || guest.name}
-                onChange={(e, val) => {
-                  if (!val || typeof val === 'string') {
-                    setSelectedGuestId('');
-                    setSelectedGuest(null);
-                    setGuest(g => ({ ...g, name: val || '' }));
-                  } else {
-                    setSelectedGuestId(val.id.toString());
-                    setSelectedGuest(val);
-                    setGuest({ name: val.name, phone: val.phone || '', email: val.email || '' });
-                  }
+              <GuestAutocomplete
+                value={guest.name}
+                onSelect={(g) => {
+                  setSelectedGuestId(g.id.toString());
+                  setSelectedGuest(g);
+                  setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
                 }}
-                onInputChange={(e, input) => {
-                  if (!selectedGuest) {
-                    setGuest(g => ({ ...g, name: input }));
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Search or Add Guest" />
-                )}
-                disabled={formMode === 'edit'}
+                onAddNew={handleAddNewGuest}
               />
 
-              <TextField
-                label="Phone"
-                value={guest.phone}
-                onChange={e => setGuest({ ...guest, phone: e.target.value })}
-                disabled={!!selectedGuestId}
-                inputProps={{
-                  pattern: "^[0-9+\\-\\s]{7,15}$",
-                  title: "Enter a valid phone number"
-                }}
-              />
+              <TextField label="Phone" value={guest.phone} InputProps={{ readOnly: true }} />
 
-              <TextField
-                label="Email"
-                type="email"
-                value={guest.email}
-                onChange={e => setGuest({ ...guest, email: e.target.value })}
-                disabled={!!selectedGuestId}
-                inputProps={{ title: "Enter a valid email address" }}
-              />
+              <TextField label="Email" type="email" value={guest.email} InputProps={{ readOnly: true }} />
 
               <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
                 Booking Details
@@ -701,7 +673,7 @@ const Bookings = () => {
           </TableHead>
           <TableBody>
             {paginatedBookings.map(row => {
-              const guestObj = guests.find(g => g.id === row.guestId) || {};
+              const guestObj = row.guest || {};
               const listingObj = listings.find(l => l.id === row.listingId) || {};
               const bankAccountObj =
                 row.bankAccount ||
@@ -788,6 +760,32 @@ const Bookings = () => {
           {deleteError}
         </Alert>
       </Snackbar>
+
+      <Dialog open={addGuestOpen} onClose={() => setAddGuestOpen(false)}>
+        <DialogTitle>Add Guest</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField
+            label="Name"
+            value={newGuest.name}
+            onChange={e => setNewGuest({ ...newGuest, name: e.target.value })}
+          />
+          <TextField
+            label="Phone"
+            value={newGuest.phone}
+            onChange={e => setNewGuest({ ...newGuest, phone: e.target.value })}
+          />
+          <TextField
+            label="Email"
+            type="email"
+            value={newGuest.email}
+            onChange={e => setNewGuest({ ...newGuest, email: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddGuestOpen(false)}>Cancel</Button>
+          <Button onClick={saveNewGuest} disabled={!newGuest.name}>Save</Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );
