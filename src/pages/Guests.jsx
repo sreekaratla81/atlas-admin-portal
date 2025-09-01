@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
+import { http } from '../api/http';
 import {
   Box,
   Button,
@@ -35,10 +35,10 @@ const Guests = () => {
   const fetchGuests = async () => {
     setLoading(true);
     setError('');
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE}/guests`);
-      setGuests(res.data);
-    } catch (err) {
+      try {
+        const res = await http.get(`/guests`);
+        setGuests(res.data);
+      } catch (err) {
       setError('Failed to fetch guests.');
     } finally {
       setLoading(false);
@@ -80,11 +80,11 @@ const Guests = () => {
     setLoading(true);
     setError('');
     try {
-      if (editId) {
-        await axios.put(`${import.meta.env.VITE_API_BASE}/guests/${editId}`, form);
-      } else {
-        await axios.post(`${import.meta.env.VITE_API_BASE}/guests`, form);
-      }
+        if (editId) {
+          await http.put(`/guests/${editId}`, form);
+        } else {
+          await http.post(`/guests`, form);
+        }
       handleClose();
       fetchGuests();
     } catch (err) {
@@ -98,7 +98,7 @@ const Guests = () => {
     setLoading(true);
     setError('');
     try {
-      await axios.delete(`${import.meta.env.VITE_API_BASE}/guests/${id}`);
+        await http.delete(`/guests/${id}`);
       fetchGuests();
     } catch (err) {
       setError('Failed to delete guest.');

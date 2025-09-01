@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Box, Typography, Paper, Chip } from '@mui/material';
-import axios from 'axios';
+import { http } from '../api/http';
 
 const startDate = dayjs().startOf('month');
 const numberOfDays = 10;
@@ -21,22 +21,22 @@ function MultiCalendarEarningsReport() {
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE}/admin/reports/bookings/calendar`
-        );
+        try {
+          const res = await http.get(
+            `/admin/reports/bookings/calendar`
+          );
         setListings(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
-          const [listRes, bookRes] = await Promise.all([
-            axios.get(
-              `${import.meta.env.VITE_API_BASE}/admin/reports/listings`
-            ),
-            axios.get(
-              `${import.meta.env.VITE_API_BASE}/admin/reports/bookings`
-            )
-          ]);
+            const [listRes, bookRes] = await Promise.all([
+              http.get(
+                `/admin/reports/listings`
+              ),
+              http.get(
+                `/admin/reports/bookings`
+              )
+            ]);
           const listData = Array.isArray(listRes.data) ? listRes.data : [];
           const bookData = Array.isArray(bookRes.data) ? bookRes.data : [];
           const map = {};

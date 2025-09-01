@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
+import { http } from '../api/http';
 import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
@@ -87,10 +87,10 @@ const Bookings = () => {
   useEffect(() => {
     const fetchLookups = async () => {
       try {
-        const [listRes, bankRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_BASE}/listings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/bankaccounts`)
-        ]);
+          const [listRes, bankRes] = await Promise.all([
+            http.get(`/listings`),
+            http.get(`/bankaccounts`)
+          ]);
         setListings(listRes.data);
         setBankAccounts(bankRes.data);
       } catch (err) {
@@ -106,9 +106,9 @@ const Bookings = () => {
   };
 
   const saveNewGuest = async () => {
-    try {
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE}/guests`, newGuest);
-      const g = res.data;
+      try {
+        const res = await http.post(`/guests`, newGuest);
+        const g = res.data;
       setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
       setSelectedGuestId(g.id.toString());
       setSelectedGuest(g);
@@ -122,11 +122,11 @@ const Bookings = () => {
     setIsLoading(true);
     setFetchError('');
     try {
-      let url = `${import.meta.env.VITE_API_BASE}/bookings?include=bankAccount,guest`;
-      if (start && end) {
-        url += `&checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
-      }
-      const res = await axios.get(url);
+        let url = `/bookings?include=bankAccount,guest`;
+        if (start && end) {
+          url += `&checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
+        }
+        const res = await http.get(url);
       const sorted = [...res.data].sort(
         (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
@@ -209,18 +209,18 @@ const Bookings = () => {
       });
       console.log(payload);
       if (formMode === 'edit' && selectedBookingId) {
-        await axios.put(
-          `${import.meta.env.VITE_API_BASE}/bookings/${selectedBookingId}`,
+        await http.put(
+          `/bookings/${selectedBookingId}`,
           payload
         );
         setSuccessMsg('Booking updated successfully!');
       } else {
         const { id, ...createPayload } = payload;
-        await axios.post(`${import.meta.env.VITE_API_BASE}/bookings`, createPayload);
+        await http.post(`/bookings`, createPayload);
         setSuccessMsg('Booking created successfully!');
       }
       reset();
-      const updated = await axios.get(`${import.meta.env.VITE_API_BASE}/bookings`);
+      const updated = await http.get(`/bookings`);
       const sorted = [...updated.data].sort(
         (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
@@ -269,7 +269,7 @@ const Bookings = () => {
     const confirmed = window.confirm('Are you sure you want to delete this booking?');
     if (!confirmed) return;
     try {
-      await axios.delete(`${import.meta.env.VITE_API_BASE}/bookings/${id}`);
+      await http.delete(`/bookings/${id}`);
       setBookings(prev => prev.filter(b => b.id !== id));
     } catch (err) {
       console.error(err);
@@ -359,7 +359,6 @@ const Bookings = () => {
 
               {/* Guest */}
               <GuestAutocomplete
-                value={guest.name}
                 onSelect={(g) => {
                   setSelectedGuestId(g.id.toString());
                   setSelectedGuest(g);

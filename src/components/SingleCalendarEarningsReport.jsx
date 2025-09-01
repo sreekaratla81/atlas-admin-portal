@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import axios from 'axios';
+import { http } from '../api/http';
 import {
   format,
   startOfWeek,
@@ -67,10 +67,10 @@ function SingleCalendarEarningsReport() {
   }, [earnings, currentDate]);
 
   // Fetch listings
-  useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`)
-      .then((res) => {
+    useEffect(() => {
+      http
+        .get(`/admin/reports/listings`)
+        .then((res) => {
         const data = Array.isArray(res.data) ? res.data : [];
         const validListings = data.filter((l) => l?.listingId && l?.name);
         setListings(validListings);
@@ -87,16 +87,16 @@ function SingleCalendarEarningsReport() {
   }, []);
 
   // Fetch earnings
-  useEffect(() => {
-    if (!selectedListingId) return;
-    const month = format(currentDate, 'yyyy-MM');
-    setLoading(true);
-    setEarnings([]);
-    axios
-      .get(`${import.meta.env.VITE_API_BASE}/reports/calendar-earnings`, {
-        params: { listingId: selectedListingId, month },
-      })
-      .then((res) => {
+    useEffect(() => {
+      if (!selectedListingId) return;
+      const month = format(currentDate, 'yyyy-MM');
+      setLoading(true);
+      setEarnings([]);
+      http
+        .get(`/reports/calendar-earnings`, {
+          params: { listingId: selectedListingId, month },
+        })
+        .then((res) => {
         const data = Array.isArray(res.data) ? res.data : [];
         setEarnings(data);
 
@@ -124,9 +124,9 @@ function SingleCalendarEarningsReport() {
       const monthEnd = endOfMonth(currentDate);
       try {
         const [bookRes, listRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_BASE}/admin/reports/bookings`),
-          axios.get(`${import.meta.env.VITE_API_BASE}/admin/reports/listings`),
-        ]);
+            http.get(`/admin/reports/bookings`),
+            http.get(`/admin/reports/listings`),
+          ]);
 
         const bookings = Array.isArray(bookRes.data) ? bookRes.data : [];
         const listData = Array.isArray(listRes.data) ? listRes.data : [];
