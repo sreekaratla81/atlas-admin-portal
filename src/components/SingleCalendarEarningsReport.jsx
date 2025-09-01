@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import {
   format,
   startOfWeek,
@@ -69,10 +69,10 @@ function SingleCalendarEarningsReport() {
 
   // Fetch listings
     useEffect(() => {
-      http
+      api
         .get(`/admin/reports/listings`)
         .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : [];
+        const data = asArray(res.data, 'listings');
         const validListings = data.filter((l) => l?.listingId && l?.name);
         setListings(validListings);
 
@@ -93,12 +93,12 @@ function SingleCalendarEarningsReport() {
       const month = format(currentDate, 'yyyy-MM');
       setLoading(true);
       setEarnings([]);
-      http
+      api
         .get(`/reports/calendar-earnings`, {
           params: { listingId: selectedListingId, month },
         })
         .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : [];
+        const data = asArray(res.data, 'earnings');
         setEarnings(data);
 
         const totalsObj = {};
@@ -125,12 +125,12 @@ function SingleCalendarEarningsReport() {
       const monthEnd = endOfMonth(currentDate);
       try {
         const [bookRes, listRes] = await Promise.all([
-            http.get(`/admin/reports/bookings`),
-            http.get(`/admin/reports/listings`),
+            api.get(`/admin/reports/bookings`),
+            api.get(`/admin/reports/listings`),
           ]);
 
-        const bookings = Array.isArray(bookRes.data) ? bookRes.data : [];
-        const listData = Array.isArray(listRes.data) ? listRes.data : [];
+        const bookings = asArray(bookRes.data, 'bookings');
+        const listData = asArray(listRes.data, 'listings');
         const listingMap = {};
         listData.forEach((l) => {
           const id = l.listingId || l.id;

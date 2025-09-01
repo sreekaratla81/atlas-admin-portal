@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { Box, Typography, Paper, Chip } from '@mui/material';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import { safeFind } from '../utils/array';
 
 const startDate = dayjs().startOf('month');
@@ -22,23 +22,23 @@ function MultiCalendarEarningsReport() {
   useEffect(() => {
     async function fetchData() {
         try {
-          const res = await http.get(
+          const res = await api.get(
             `/admin/reports/bookings/calendar`
           );
-        setListings(Array.isArray(res.data) ? res.data : []);
+        setListings(asArray(res.data, 'listings'));
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
             const [listRes, bookRes] = await Promise.all([
-              http.get(
+              api.get(
                 `/admin/reports/listings`
               ),
-              http.get(
+              api.get(
                 `/admin/reports/bookings`
               )
             ]);
-          const listData = Array.isArray(listRes.data) ? listRes.data : [];
-          const bookData = Array.isArray(bookRes.data) ? bookRes.data : [];
+          const listData = asArray(listRes.data, 'listings');
+          const bookData = asArray(bookRes.data, 'bookings');
           const map = {};
           const listObjects = listData.map((l) => ({
             id: l.id,

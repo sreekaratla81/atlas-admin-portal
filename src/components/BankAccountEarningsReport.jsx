@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { asArray } from '@/lib/api';
 import { getBankAccountEarnings, getBankAccounts } from '../api/bankAccountsApi';
 
 const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
@@ -24,8 +25,8 @@ const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
           getBankAccountEarnings(),
         ]);
 
-        const accounts = Array.isArray(accountsRes) ? accountsRes : [];
-        const earningsArr = Array.isArray(earningsRes) ? earningsRes : [];
+        const accounts = asArray(accountsRes, 'bankaccounts');
+        const earningsArr = asArray(earningsRes, 'bankaccount earnings');
 
         const earningsMap = {};
         earningsArr.forEach((e) => {

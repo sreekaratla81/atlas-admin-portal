@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import dayjs from 'dayjs';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 
 function buildEmptyMonths() {
   const months = {};
@@ -33,32 +33,31 @@ function EarningsReport() {
   useEffect(() => {
     async function fetchMonthlyEarnings() {
       try {
-          const res = await http.get(`/admin/reports/earnings/monthly`);
-          const data = res.data;
-        const normalized = Array.isArray(data)
-          ? data.map((entry) => ({
+          const { data } = await api.get(`/admin/reports/earnings/monthly`);
+        const normalized = asArray(data, 'monthly earnings')
+          .map((entry) => ({
               month: dayjs(entry.month).format('MMM'),
               totalFees: entry.totalFees,
               totalNet: entry.totalNet,
             }))
-          : [];
+        ;
         setMonthlyData(normalized);
       } catch (err) {
         console.warn('Falling back to client aggregation', err);
         try {
-            const res = await http.get(
+            const { data: bookingsData } = await api.get(
               `/admin/reports/bookings`
             );
             const months = buildEmptyMonths();
-            res.data.forEach((b) => {
-            const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
-            if (months[key]) {
-              const net = parseFloat(b.amountReceived) || 0;
-              const fee = parseFloat(b.commissionAmount) || 0;
-              months[key].totalNet += net;
-              months[key].totalFees += fee;
-            }
-          });
+            asArray(bookingsData, 'bookings').forEach((b) => {
+              const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
+              if (months[key]) {
+                const net = parseFloat(b.amountReceived) || 0;
+                const fee = parseFloat(b.commissionAmount) || 0;
+                months[key].totalNet += net;
+                months[key].totalFees += fee;
+              }
+            });
           const aggregated = Object.values(months);
           setMonthlyData(aggregated);
         } catch (err2) {

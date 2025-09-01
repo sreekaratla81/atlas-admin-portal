@@ -1,23 +1,22 @@
 import React from "react";
 import { Auth0Provider, AppState } from "@auth0/auth0-react";
-
-const domain = import.meta.env.VITE_AUTH0_DOMAIN!;
-const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID!;
-const callbackPath = import.meta.env.VITE_AUTH0_CALLBACK_PATH || "/auth/callback";
-const defaultAfterLogin = import.meta.env.VITE_DEFAULT_AFTER_LOGIN || "/bookings";
+import { getAuthConfig } from "@/lib/env";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const redirectUri = `${window.location.origin}${callbackPath}`;
+  const cfg = getAuthConfig();
+  if (cfg.disabled) return <>{children}</>;
+
+  const redirectUri = `${window.location.origin}${cfg.callbackPath}`;
 
   const onRedirectCallback = (appState?: AppState) => {
-    const target = appState?.returnTo || defaultAfterLogin;
+    const target = appState?.returnTo || cfg.afterLogin;
     window.history.replaceState({}, document.title, target);
   };
 
   return (
     <Auth0Provider
-      domain={domain}
-      clientId={clientId}
+      domain={cfg.domain}
+      clientId={cfg.clientId}
       authorizationParams={{ redirect_uri: redirectUri }}
       onRedirectCallback={onRedirectCallback}
       useRefreshTokens

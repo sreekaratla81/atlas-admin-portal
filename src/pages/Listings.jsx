@@ -4,7 +4,7 @@ import {
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
   TableBody, Paper, Grid, Alert
 } from '@mui/material';
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 import { safeFind } from '../utils/array';
 
 const Listings = () => {
@@ -24,11 +24,11 @@ const Listings = () => {
     setErrorMsg('');
     try {
         const [listRes, propRes] = await Promise.all([
-          http.get(`/listings`),
-          http.get(`/properties`)
+          api.get(`/listings`),
+          api.get(`/properties`)
         ]);
-      setListings(listRes.data);
-      setProperties(propRes.data);
+      setListings(asArray(listRes.data, 'listings'));
+      setProperties(asArray(propRes.data, 'properties'));
     } catch (err) {
       setErrorMsg('Failed to fetch data. Please try again.');
     } finally {
@@ -62,9 +62,9 @@ const Listings = () => {
       };
         const url = `/listings`;
         if (editId) {
-          await http.put(`${url}/${editId}`, payload);
+          await api.put(`${url}/${editId}`, payload);
         } else {
-          await http.post(url, payload);
+          await api.post(url, payload);
         }
       resetForm();
       fetchData();
@@ -86,7 +86,7 @@ const Listings = () => {
       setLoading(true);
       setErrorMsg('');
       try {
-          await http.delete(`/listings/${id}`);
+          await api.delete(`/listings/${id}`);
         fetchData();
       } catch (err) {
         setErrorMsg('Failed to delete listing. Please try again.');

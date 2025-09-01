@@ -12,7 +12,7 @@ import {
   Box,
 } from '@mui/material';
 
-import { http } from '../api/http';
+import { api, asArray } from '@/lib/api';
 
 const getStatusChip = (status) => {
   switch (status) {
@@ -31,15 +31,15 @@ function DailyPayoutReport() {
   useEffect(() => {
     async function fetchData() {
         try {
-          const res = await http.get(
+          const res = await api.get(
             `/admin/reports/payouts/daily`
           );
-          setPayoutData(res.data);
+          setPayoutData(asArray(res.data, 'payouts'));
         } catch (err) {
           console.warn('Falling back to /payouts', err);
-          http
+          api
             .get(`/admin/reports/payouts`)
-            .then((res) => setPayoutData(res.data))
+            .then((res) => setPayoutData(asArray(res.data, 'payouts')))
             .catch((err2) => console.error(err2));
         }
     }
