@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useAuthMaybeBypass } from './authBypass';
+import { useEffectiveAuth } from './useEffectiveAuth';
 
 const api = axios.create({
   baseURL: 'https://atlas-homes-api-gxdqfjc2btc0atbv.centralus-01.azurewebsites.net'
@@ -8,11 +8,11 @@ const api = axios.create({
 
 export function useApiClient() {
   const { getAccessTokenSilently } = useAuth0();
-  const { bypassUser } = useAuthMaybeBypass();
+  const { bypassEnabled } = useEffectiveAuth();
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
   api.interceptors.request.use(async (config) => {
-    if (!bypassUser && audience) {
+    if (!bypassEnabled && audience) {
       const token = await getAccessTokenSilently({ authorizationParams: { audience } });
       if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
     }
