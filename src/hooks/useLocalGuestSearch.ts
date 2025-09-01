@@ -32,7 +32,14 @@ export function useLocalGuestSearch(query: string, opts: LoadOptions = {}) {
   }
 
   const [debounced, setDebounced] = useState(query);
-  useEffect(() => { const t = setTimeout(() => setDebounced(query.trim()), 300); return () => clearTimeout(t); }, [query]);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setDebounced(query.trim());
+      return;
+    }
+    const t = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
   const results = useMemo(() => {
     if (!pool || !debounced) return [];
