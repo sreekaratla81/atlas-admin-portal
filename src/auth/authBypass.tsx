@@ -1,36 +1,37 @@
-import React, { createContext, useContext } from "react";
+import React, { useEffect, useState } from 'react';
 
-const BYPASS = import.meta.env.VITE_AUTH_DISABLED === "true";
+interface BypassUser {
+  sub: string;
+  email?: string;
+  name?: string;
+  roles?: string[];
+}
 
-type FakeAuth = {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user?: { email: string };
-  loginWithRedirect: (opts?: { appState?: { returnTo?: string } }) => Promise<void>;
-  logout: (opts?: { logoutParams?: { returnTo?: string } }) => void;
-  getAccessTokenSilently: (...args: any[]) => Promise<string | undefined>;
-};
+export function useAuthMaybeBypass() {
+  const [bypassUser, setBypassUser] = useState<BypassUser | null>(null);
 
-const FakeAuthContext = createContext<FakeAuth | null>(null);
+  useEffect(() => {
+    let cancelled = false;
 
-export const AuthBypassProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  if (!BYPASS) return <>{children}</>;
-  const value: FakeAuth = {
-    isAuthenticated: true,
-    isLoading: false,
-    user: { email: "atlashomeskphb@gmail.com" },
-    loginWithRedirect: async () => {},
-    logout: () => {},
-    getAccessTokenSilently: async () => undefined,
-  };
-  return <FakeAuthContext.Provider value={value}>{children}</FakeAuthContext.Provider>;
-};
+    async function loadBypass() {
+      if (!import.meta.env.DEV) return;
+      if (import.meta.env.VITE_AUTH_BYPASS !== 'true') return;
 
-export const useAuthMaybeBypass = () => {
-  if (BYPASS) {
-    const ctx = useContext(FakeAuthContext);
-    if (!ctx) throw new Error("Auth bypass context missing");
-    return ctx;
-  }
-  return require("@auth0/auth0-react").useAuth0();
-};
+      try {
+        const resp = await fetch('/auth-bypass.json', { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data: BypassUser = await resp.json();
+        if (!cancelled) setBypassUser(data);
+      } catch (err) {
+        console.error('Auth bypass: failed loading /auth-bypass.json', err);
+      }
+    }
+
+    loadBypass();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { bypassUser };
+}

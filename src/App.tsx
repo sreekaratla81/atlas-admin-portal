@@ -1,4 +1,5 @@
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useAuth0 } from "@auth0/auth0-react";
 import BookingsPage from "./pages/Bookings";
 import CallbackPage from "./pages/AuthCallback";
 import Listings from "./pages/Listings";
@@ -8,14 +9,15 @@ import Guests from "./pages/Guests";
 import BankAccountsPage from "./pages/BankAccountsPage";
 import { useAuthMaybeBypass } from "./auth/authBypass";
 
-const BYPASS = import.meta.env.VITE_AUTH_DISABLED === "true";
-
 function Protected({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuthMaybeBypass();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { bypassUser } = useAuthMaybeBypass();
   const location = useLocation();
 
+  const effectiveIsAuthenticated = !!bypassUser || isAuthenticated;
+
   if (isLoading) return <div>Loading…</div>;
-  if (!isAuthenticated) {
+  if (!effectiveIsAuthenticated) {
     void loginWithRedirect({ appState: { returnTo: location.pathname + location.search } });
     return <div>Loading…</div>;
   }
@@ -23,7 +25,11 @@ function Protected({ children }: { children: JSX.Element }) {
 }
 
 export default function AppRoutes() {
-  const { isAuthenticated, user, logout } = useAuthMaybeBypass();
+  const { isAuthenticated, user, logout } = useAuth0();
+  const { bypassUser } = useAuthMaybeBypass();
+
+  const effectiveUser = bypassUser ?? (isAuthenticated ? user : null);
+  const effectiveIsAuthenticated = !!effectiveUser;
 
   return (
     <>
@@ -34,14 +40,14 @@ export default function AppRoutes() {
         <Link to="/guests">Guests</Link>{" "}
         <Link to="/bookings">Bookings</Link>{" "}
         <Link to="/reports">Reports</Link>{" "}
-        {BYPASS && (
+        {bypassUser && (
           <span style={{ marginLeft: 10, fontSize: "0.75rem", padding: "2px 4px", borderRadius: 4, backgroundColor: "#FEF08A" }}>
             AUTH BYPASS (LOCAL)
           </span>
         )}
-        {isAuthenticated && (
+        {effectiveIsAuthenticated && (
           <span style={{ marginLeft: 10 }}>
-            {user?.email}{" "}
+            {effectiveUser?.email}{" "}
             <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
               Logout
             </button>

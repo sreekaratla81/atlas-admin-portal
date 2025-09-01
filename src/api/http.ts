@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useEffect } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useAuthMaybeBypass } from '../auth/authBypass';
 
 const http = axios.create({
@@ -7,10 +8,13 @@ const http = axios.create({
 });
 
 export function useHttp() {
-  const { getAccessTokenSilently, loginWithRedirect } = useAuthMaybeBypass();
+  const { getAccessTokenSilently, loginWithRedirect } = useAuth0();
+  const { bypassUser } = useAuthMaybeBypass();
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
   useEffect(() => {
+    if (bypassUser) return;
+
     const reqInterceptor = http.interceptors.request.use(async (config) => {
       if (audience) {
         const token = await getAccessTokenSilently({
@@ -39,7 +43,7 @@ export function useHttp() {
       http.interceptors.request.eject(reqInterceptor);
       http.interceptors.response.eject(resInterceptor);
     };
-  }, [getAccessTokenSilently, loginWithRedirect, audience]);
+  }, [getAccessTokenSilently, loginWithRedirect, audience, bypassUser]);
 
   return http;
 }
