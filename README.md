@@ -3,8 +3,7 @@ Admin dashboard for managers and staff to manage listings, bookings, guests, and
 
 ## API configuration
 
-Set `VITE_API_BASE` in your `.env` file to the base URL of the Atlas API. The
-reports page fetches data from REST endpoints such as:
+Create a `.env.local` file and set `VITE_API_BASE_URL` to the base URL of the Atlas API. If this variable is omitted the app will default to `http://localhost:7071/api` for local development. The reports page fetches data from REST endpoints such as:
 
 ```
 GET /admin/reports/earnings/monthly
