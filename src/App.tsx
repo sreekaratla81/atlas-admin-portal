@@ -1,5 +1,4 @@
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { useAuth0 } from "@auth0/auth0-react";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 import BookingsPage from "./pages/Bookings";
 import CallbackPage from "./pages/AuthCallback";
 import Listings from "./pages/Listings";
@@ -7,29 +6,11 @@ import Properties from "./pages/Properties";
 import Reports from "./pages/Reports";
 import Guests from "./pages/Guests";
 import BankAccountsPage from "./pages/BankAccountsPage";
-import { useAuthMaybeBypass } from "./auth/authBypass";
-
-function Protected({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
-  const { bypassUser } = useAuthMaybeBypass();
-  const location = useLocation();
-
-  const effectiveIsAuthenticated = !!bypassUser || isAuthenticated;
-
-  if (isLoading) return <div>Loading…</div>;
-  if (!effectiveIsAuthenticated) {
-    void loginWithRedirect({ appState: { returnTo: location.pathname + location.search } });
-    return <div>Loading…</div>;
-  }
-  return children;
-}
+import ProtectedRoute from "./auth/ProtectedRoute";
+import { useEffectiveAuth } from "./auth/useEffectiveAuth";
 
 export default function AppRoutes() {
-  const { isAuthenticated, user, logout } = useAuth0();
-  const { bypassUser } = useAuthMaybeBypass();
-
-  const effectiveUser = bypassUser ?? (isAuthenticated ? user : null);
-  const effectiveIsAuthenticated = !!effectiveUser;
+  const { effectiveIsAuthenticated, effectiveUser, logout, bypassEnabled } = useEffectiveAuth();
 
   return (
     <>
@@ -40,7 +21,7 @@ export default function AppRoutes() {
         <Link to="/guests">Guests</Link>{" "}
         <Link to="/bookings">Bookings</Link>{" "}
         <Link to="/reports">Reports</Link>{" "}
-        {bypassUser && (
+        {bypassEnabled && (
           <span style={{ marginLeft: 10, fontSize: "0.75rem", padding: "2px 4px", borderRadius: 4, backgroundColor: "#FEF08A" }}>
             AUTH BYPASS (LOCAL)
           </span>
@@ -58,54 +39,12 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<Navigate to="/bookings" replace />} />
         <Route path="/auth/callback" element={<CallbackPage />} />
-        <Route
-          path="/bookings"
-          element={
-            <Protected>
-              <BookingsPage />
-            </Protected>
-          }
-        />
-        <Route
-          path="/listings"
-          element={
-            <Protected>
-              <Listings />
-            </Protected>
-          }
-        />
-        <Route
-          path="/guests"
-          element={
-            <Protected>
-              <Guests />
-            </Protected>
-          }
-        />
-        <Route
-          path="/properties"
-          element={
-            <Protected>
-              <Properties />
-            </Protected>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <Protected>
-              <Reports />
-            </Protected>
-          }
-        />
-        <Route
-          path="/bank-accounts"
-          element={
-            <Protected>
-              <BankAccountsPage />
-            </Protected>
-          }
-        />
+        <Route path="/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
+        <Route path="/listings" element={<ProtectedRoute><Listings /></ProtectedRoute>} />
+        <Route path="/guests" element={<ProtectedRoute><Guests /></ProtectedRoute>} />
+        <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+        <Route path="/bank-accounts" element={<ProtectedRoute><BankAccountsPage /></ProtectedRoute>} />
         {/* other protected routes here */}
         <Route path="*" element={<Navigate to="/bookings" replace />} />
       </Routes>
