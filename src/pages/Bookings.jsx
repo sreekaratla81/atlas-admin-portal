@@ -12,7 +12,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 import { buildBookingPayload } from '../utils/buildBookingPayload';
-import GuestAutocomplete from '../components/GuestAutocomplete';
+import GuestTypeahead from '../components/GuestTypeahead';
 import { safeFind } from '../utils/array';
 
 const Bookings = () => {
@@ -359,7 +359,7 @@ const Bookings = () => {
             }}>
 
               {/* Guest */}
-              <GuestAutocomplete
+              <GuestTypeahead
                 onSelect={(g) => {
                   setSelectedGuestId(g.id.toString());
                   setSelectedGuest(g);
@@ -368,9 +368,9 @@ const Bookings = () => {
                 onAddNew={handleAddNewGuest}
               />
 
-              <TextField label="Phone" value={guest.phone} InputProps={{ readOnly: true }} />
+              <TextField label="Phone" value={guest.phone} onChange={e=>setGuest({ ...guest, phone: e.target.value })} helperText="Autofilled from guest" />
 
-              <TextField label="Email" type="email" value={guest.email} InputProps={{ readOnly: true }} />
+              <TextField label="Email" type="email" value={guest.email} onChange={e=>setGuest({ ...guest, email: e.target.value })} helperText="Autofilled from guest" />
 
               <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
                 Booking Details
@@ -673,24 +673,26 @@ const Bookings = () => {
           </TableHead>
           <TableBody>
             {paginatedBookings.map(row => {
-              const guestObj = row.guest || {};
               const listingObj = safeFind(listings, (l) => l.id === row.listingId) || {};
               const bankAccountObj =
                 row.bankAccount ||
                 safeFind(bankAccounts, (b) => b.id === row.bankAccountId) ||
                 {};
-              const bankName = bankAccountObj?.bankName || '';
-              const accountNumber = bankAccountObj?.accountNumber || '';
-              const prefix = bankName.slice(0, 4).toUpperCase();
-              const suffix = accountNumber.slice(-4);
-              const formattedBank = `${prefix}-${suffix}`;
+              const bankName = (bankAccountObj?.bankName ?? '').toString();
+              const accountNumber = (bankAccountObj?.accountNumber ?? '').toString();
+              const prefix = bankName ? bankName.slice(0, 4).toUpperCase() : '';
+              const suffix = accountNumber ? accountNumber.slice(-4) : '';
+              const formattedBank = prefix && suffix ? `${prefix}-${suffix}` : '';
+              const guestName  = (row.guest?.name ?? row.guestName ?? '').trim();
+              const guestPhone = (row.guest?.phone ?? row.guestPhone ?? '').trim();
+              const guestEmail = (row.guest?.email ?? row.guestEmail ?? '').trim();
               return (
                 <TableRow key={row.id}>
                   <TableCell>{listingObj.name || row.listingId}</TableCell>
                   <TableCell>
-                    {guestObj.name || ''}<br />
-                    {guestObj.phone || ''}<br />
-                    {guestObj.email || ''}
+                    {guestName || '—'}<br />
+                    {guestPhone || ''}<br />
+                    {guestEmail || ''}
                   </TableCell>
                   <TableCell>{displayDate(row.checkinDate || row.checkInDate)}</TableCell>
                   <TableCell>{displayDate(row.checkoutDate || row.checkOutDate)}</TableCell>
