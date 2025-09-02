@@ -7,7 +7,7 @@ if (import.meta.env.PROD && !ENV.VITE_API_BASE) {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.DEV ? "" : ENV.VITE_API_BASE,
+  baseURL: ENV.VITE_API_BASE,
   headers: { Accept: "application/json" },
 });
 
