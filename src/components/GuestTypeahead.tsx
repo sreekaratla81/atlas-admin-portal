@@ -1,107 +1,70 @@
-import { useEffect, useRef, useState } from 'react';
-import { TextField, Autocomplete, CircularProgress, Box, Typography, Alert } from '@mui/material';
-import { getAllGuests, type GuestSummary } from '@/db/idb';
-import { useGuestSearch } from '@/hooks/useGuestSearch';
+import React from 'react';
+import { Autocomplete, TextField } from '@mui/material';
+import { useGuestSearch, type Guest } from '@/hooks/useGuestSearch';
 
-type Props = { onSelect(g: GuestSummary): void; onAddNew?: () => void; };
+type Props = {
+  allGuests?: Guest[];
+  onSelect: (g: Guest | null) => void;
+};
 
-export default function GuestTypeahead({ onSelect, onAddNew }: Props) {
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState<GuestSummary[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [allGuests, setAllGuests] = useState<GuestSummary[] | null>(null);
-  const search = useGuestSearch(allGuests as any);
-  const debounceRef = useRef<number>();
-  const abortRef = useRef<AbortController | null>(null);
+export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
+  const search = useGuestSearch(allGuests);
+  const [value, setValue] = React.useState<Guest | null>(null);
+  const [inputValue, setInputValue] = React.useState('');
+  const [options, setOptions] = React.useState<Guest[]>([]);
+  const [loading, setLoading] = React.useState(false);
 
-  useEffect(() => {
-    getAllGuests().then(setAllGuests);
-  }, []);
+  const debouncedText = useDebouncedValue(inputValue, 300);
 
-  useEffect(() => {
-    window.clearTimeout(debounceRef.current);
-    if (!input.trim()) {
-      setOptions([]);
-      return;
-    }
-    debounceRef.current = window.setTimeout(async () => {
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await search(input, ctrl.signal);
-        setOptions(res as GuestSummary[]);
-      } catch {
-        setOptions([]);
-        setError('Failed to load guests');
-      } finally {
-        setLoading(false);
+  React.useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      const q = debouncedText.trim();
+      if (!q) {
+        if (alive) setOptions([]);
+        return;
       }
-    }, 300);
-    return () => {
-      window.clearTimeout(debounceRef.current);
-      abortRef.current?.abort();
+      setLoading(true);
+      try {
+        const res = await search(q);
+        if (alive) setOptions(res);
+      } finally {
+        if (alive) setLoading(false);
+      }
     };
-  }, [input, search]);
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [debouncedText, search]);
 
   return (
-    <>
-      <Autocomplete
-        freeSolo
-        options={options}
-        getOptionLabel={(o) => (typeof o === 'string' ? o : o.name || '')}
-        onInputChange={(_, v) => setInput(v)}
-        onChange={(_, v) => {
-          if (v && typeof v !== 'string') onSelect(v as any);
-        }}
-        loading={loading}
-        filterOptions={(x) => x}
-        loadingText="Loading..."
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Search guest by name or phone"
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {loading ? <CircularProgress size={18} /> : null}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-        renderOption={(props, g) => (
-          <Box component="li" {...props}>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Typography fontWeight={600}>{g.name}</Typography>
-              <Typography variant="caption">
-                {[g.phone, g.email].filter(Boolean).join(' • ')}
-              </Typography>
-            </Box>
-          </Box>
-        )}
-        ListboxProps={{ style: { maxHeight: 320 } }}
-        noOptionsText={
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography>No guest found.</Typography>
-            {onAddNew && (
-              <Typography sx={{ color: 'primary.main', cursor: 'pointer' }} onClick={onAddNew}>
-                + Add new guest
-              </Typography>
-            )}
-          </Box>
-        }
-      />
-      {error && !allGuests?.length && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {error}
-        </Alert>
+    <Autocomplete
+      options={options}
+      loading={loading}
+      value={value}
+      onChange={(_, newVal) => {
+        setValue(newVal);
+        onSelect(newVal ?? null);
+      }}
+      inputValue={inputValue}
+      onInputChange={(_, newInput) => {
+        setInputValue(prev => (prev === newInput ? prev : newInput));
+      }}
+      getOptionLabel={o => o?.name ?? ''}
+      filterOptions={x => x}
+      renderInput={params => (
+        <TextField {...params} label="Guest" placeholder="Type name/phone/email" />
       )}
-    </>
+    />
   );
+}
+
+function useDebouncedValue<T>(value: T, delay: number) {
+  const [v, setV] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
 }
