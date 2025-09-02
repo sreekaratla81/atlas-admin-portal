@@ -1,13 +1,14 @@
 import axios from "axios";
-import { ENV } from "@/config/env";
+import { getApiBase } from "@/utils/env";
 
-if (import.meta.env.PROD && !ENV.VITE_API_BASE) {
+const apiBase = getApiBase();
+if (import.meta.env.PROD && !apiBase) {
   // eslint-disable-next-line no-console
   console.error("CONFIG: Missing VITE_API_BASE in production build.");
 }
 
 export const api = axios.create({
-  baseURL: ENV.VITE_API_BASE,
+  baseURL: apiBase,
   headers: { Accept: "application/json" },
 });
 

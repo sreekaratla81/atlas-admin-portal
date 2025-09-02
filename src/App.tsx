@@ -1,10 +1,10 @@
 import React from "react";
 import AppRouter from "@/router/AppRouter";
 import NavBar from "@/components/NavBar";
-import { ENV } from "@/lib/env";
+import { getApiBase } from "@/utils/env";
 
 function ConfigGuard({ children }: React.PropsWithChildren) {
-  if (import.meta.env.PROD && !ENV.VITE_API_BASE) {
+  if (import.meta.env.PROD && !getApiBase()) {
     return (
       <div style={{ padding: 16, color: "#b00020" }}>
         <h2>Configuration error</h2>

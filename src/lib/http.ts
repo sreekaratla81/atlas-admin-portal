@@ -1,10 +1,13 @@
-import { ENV, IS_LOCALHOST } from '@/config/env';
+import { IS_LOCALHOST } from '@/config/env';
+import { getApiBase } from '@/utils/env';
+
+const API_BASE = getApiBase();
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const hasProtocol = /^https?:\/\//i.test(path);
   let url = path;
   if (!hasProtocol) {
-    url = IS_LOCALHOST ? path : `${ENV.VITE_API_BASE}${path}`;
+    url = IS_LOCALHOST ? path : `${API_BASE}${path}`;
   }
   if (!IS_LOCALHOST && url.includes('localhost')) {
     throw new Error('Refusing localhost request from non-localhost host');
