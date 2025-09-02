@@ -8,6 +8,7 @@ import Reports from "@/pages/Reports";
 import Guests from "@/pages/Guests";
 import BankAccountsPage from "@/pages/BankAccountsPage";
 import ProtectedRoute from "@/auth/ProtectedRoute";
+import DevConfig from "@/pages/DevConfig";
 
 export type AppRoute = {
   path: string;
@@ -17,7 +18,7 @@ export type AppRoute = {
   children?: AppRoute[];
 };
 
-export const routes: AppRoute[] = [
+const baseRoutes: AppRoute[] = [
   { path: "/", element: <Navigate to="/bookings" replace /> },
   { path: "/auth/callback", element: <CallbackPage /> },
   { path: "/bookings", element: <ProtectedRoute><BookingsPage /></ProtectedRoute>, label: "Bookings" },
@@ -28,5 +29,11 @@ export const routes: AppRoute[] = [
   { path: "/bank-accounts", element: <ProtectedRoute><BankAccountsPage /></ProtectedRoute>, label: "Bank Accounts" },
   { path: "*", element: <Navigate to="/bookings" replace /> }
 ];
+
+if (import.meta.env.DEV) {
+  baseRoutes.push({ path: "/dev-config", element: <DevConfig /> });
+}
+
+export const routes = baseRoutes;
 
 export default routes;

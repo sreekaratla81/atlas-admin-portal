@@ -1,16 +1,13 @@
 import axios from "axios";
-import { getApiBaseUrl } from "./env";
+import { ENV } from "@/config/env";
 
-const base = getApiBaseUrl();
-
-if (import.meta.env.PROD && !base) {
-  // make it very obvious in prod if not configured
+if (import.meta.env.PROD && !ENV.VITE_API_BASE) {
   // eslint-disable-next-line no-console
-  console.error("CONFIG: Missing VITE_API_BASE_URL (or VITE_API_BASE) in production build.");
+  console.error("CONFIG: Missing VITE_API_BASE in production build.");
 }
 
 export const api = axios.create({
-  baseURL: base || "", // dev may use Vite proxy; prod MUST be non-empty
+  baseURL: import.meta.env.DEV ? "" : ENV.VITE_API_BASE,
   headers: { Accept: "application/json" },
 });
 

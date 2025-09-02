@@ -12,7 +12,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 import { buildBookingPayload } from '../utils/buildBookingPayload';
-import GuestAutocomplete from '../components/GuestAutocomplete';
+import GuestTypeahead from '../components/GuestTypeahead';
 import { safeFind } from '../utils/array';
 
 const Bookings = () => {
@@ -359,7 +359,7 @@ const Bookings = () => {
             }}>
 
               {/* Guest */}
-              <GuestAutocomplete
+              <GuestTypeahead
                 onSelect={(g) => {
                   setSelectedGuestId(g.id.toString());
                   setSelectedGuest(g);
@@ -368,9 +368,9 @@ const Bookings = () => {
                 onAddNew={handleAddNewGuest}
               />
 
-              <TextField label="Phone" value={guest.phone} InputProps={{ readOnly: true }} />
+              <TextField label="Phone" value={guest.phone} onChange={e=>setGuest({ ...guest, phone: e.target.value })} helperText="Autofilled from guest" />
 
-              <TextField label="Email" type="email" value={guest.email} InputProps={{ readOnly: true }} />
+              <TextField label="Email" type="email" value={guest.email} onChange={e=>setGuest({ ...guest, email: e.target.value })} helperText="Autofilled from guest" />
 
               <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
                 Booking Details
