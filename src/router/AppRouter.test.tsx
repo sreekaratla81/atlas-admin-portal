@@ -18,6 +18,9 @@ vi.mock("@/lib/api", () => ({
   },
   asArray: (v: unknown) => (Array.isArray(v) ? v : []),
 }));
+vi.mock("@/services/guests.local", () => ({ hydrateGuests: vi.fn().mockResolvedValue(0) }));
+vi.mock("@/db/idb", () => ({ getAllGuests: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/workers/guestSearch.worker?worker", () => ({ default: class { onmessage: any; postMessage(){} terminate(){} } }));
 
 test("renders BookingsPage for /bookings", () => {
   render(

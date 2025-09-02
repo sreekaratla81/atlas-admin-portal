@@ -1,10 +1,19 @@
 import React from "react";
-import { Auth0Provider, AppState } from "@auth0/auth0-react";
+import { Auth0Provider, AppState, Auth0Context } from "@auth0/auth0-react";
 import { getAuthConfig } from "@/lib/env";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const cfg = getAuthConfig();
-  if (cfg.disabled) return <>{children}</>;
+  if (cfg.disabled || cfg.bypass) {
+    const fake: any = {
+      isAuthenticated: true,
+      user: { email: 'local@dev' },
+      isLoading: false,
+      loginWithRedirect: async () => {},
+      logout: () => {},
+    };
+    return <Auth0Context.Provider value={fake}>{children}</Auth0Context.Provider>;
+  }
 
   const redirectUri = `${window.location.origin}${cfg.callbackPath}`;
 
