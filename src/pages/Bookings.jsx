@@ -65,8 +65,8 @@ const Bookings = () => {
   const nights = booking.checkinDate && booking.checkoutDate
     ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
     : 0;
-  const displayDate = (dateStr) =>
-    dateStr ? dayjs(dateStr).format('YYYY-MM-DD') : '';
+  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString();
+  const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -280,11 +280,9 @@ const Bookings = () => {
 
   // Filtering logic
   const filteredBookings = bookings.filter(b => {
-    const guestObj = b.guest || {};
-    const listingObj = safeFind(listings, (l) => l.id === b.listingId) || {};
     return (
-      (!filters.listing || listingObj.name?.toLowerCase().includes(filters.listing.toLowerCase())) &&
-      (!filters.guest || guestObj.name?.toLowerCase().includes(filters.guest.toLowerCase()))
+      (!filters.listing || b.listing?.toLowerCase().includes(filters.listing.toLowerCase())) &&
+      (!filters.guest || b.guest?.toLowerCase().includes(filters.guest.toLowerCase()))
     );
   });
 
@@ -661,48 +659,34 @@ const Bookings = () => {
               <TableCell>Guest</TableCell>
               <TableCell>Check-in</TableCell>
               <TableCell>Check-out</TableCell>
-              <TableCell>Payment</TableCell>
+              <TableCell>Payment (₹)</TableCell>
               <TableCell>Guests</TableCell>
               <TableCell>Extra Charge (₹)</TableCell>
               <TableCell>Commission (₹)</TableCell>
               <TableCell>Net (₹)</TableCell>
               <TableCell>Bank Account</TableCell>
               <TableCell>Source</TableCell>
+              <TableCell>Status</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedBookings.map(row => {
-              const listingObj = safeFind(listings, (l) => l.id === row.listingId) || {};
-              const bankAccountObj =
-                row.bankAccount ||
-                safeFind(bankAccounts, (b) => b.id === row.bankAccountId) ||
-                {};
-              const bankName = (bankAccountObj?.bankName ?? '').toString();
-              const accountNumber = (bankAccountObj?.accountNumber ?? '').toString();
-              const prefix = bankName ? bankName.slice(0, 4).toUpperCase() : '';
-              const suffix = accountNumber ? accountNumber.slice(-4) : '';
-              const formattedBank = prefix && suffix ? `${prefix}-${suffix}` : '';
-              const guestName  = (row.guest?.name ?? row.guestName ?? '').trim();
-              const guestPhone = (row.guest?.phone ?? row.guestPhone ?? '').trim();
-              const guestEmail = (row.guest?.email ?? row.guestEmail ?? '').trim();
+              const net = (row.amountReceived ?? 0) - (row.commissionAmount ?? 0);
               return (
                 <TableRow key={row.id}>
-                  <TableCell>{listingObj.name || row.listingId}</TableCell>
-                  <TableCell>
-                    {guestName || '—'}<br />
-                    {guestPhone || ''}<br />
-                    {guestEmail || ''}
-                  </TableCell>
-                  <TableCell>{displayDate(row.checkinDate || row.checkInDate)}</TableCell>
-                  <TableCell>{displayDate(row.checkoutDate || row.checkOutDate)}</TableCell>
-                  <TableCell>{row.paymentStatus}</TableCell>
-                  <TableCell>{row.guestsPlanned} → {row.guestsActual}</TableCell>
-                  <TableCell>₹{row.extraGuestCharge?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>₹{row.commissionAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
-                  <TableCell>₹{row.amountReceived?.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>{formattedBank}</TableCell>
+                  <TableCell>{row.listing}</TableCell>
+                  <TableCell>{row.guest}</TableCell>
+                  <TableCell>{formatDate(row.checkinDate)}</TableCell>
+                  <TableCell>{formatDate(row.checkoutDate)}</TableCell>
+                  <TableCell>{formatCurrency(row.amountReceived)}</TableCell>
+                  <TableCell>{row.guestsActual}</TableCell>
+                  <TableCell>{formatCurrency(row.extraGuestCharge)}</TableCell>
+                  <TableCell>{formatCurrency(row.commissionAmount)}</TableCell>
+                  <TableCell>{formatCurrency(net)}</TableCell>
+                  <TableCell>{row.bankAccount}</TableCell>
                   <TableCell>{row.bookingSource}</TableCell>
+                  <TableCell>{row.paymentStatus}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Button
