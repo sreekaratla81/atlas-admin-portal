@@ -1,16 +1,10 @@
+import { getApiBase, getGuestSearchMode } from '@/utils/env';
+
 export const IS_LOCALHOST = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 
-const apiBase = (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$|\s+$/g, '');
-if (!apiBase) {
-  throw new Error('VITE_API_BASE is required');
-}
-if (/localhost/.test(apiBase) && !IS_LOCALHOST) {
-  throw new Error('localhost API base not allowed on non-localhost host');
-}
-
 export const ENV = {
-  VITE_API_BASE: apiBase.replace(/\/+$/, ''),
-  VITE_GUEST_SEARCH_MODE: String(import.meta.env.VITE_GUEST_SEARCH_MODE || 'api'),
+  VITE_API_BASE: getApiBase(),
+  VITE_GUEST_SEARCH_MODE: getGuestSearchMode(),
   VITE_AUTH_DISABLED: String(import.meta.env.VITE_AUTH_DISABLED || '').toLowerCase() === 'true',
   VITE_AUTH_BYPASS: String(import.meta.env.VITE_AUTH_BYPASS || '').toLowerCase() === 'true',
   VITE_AUTH0_DOMAIN: import.meta.env.VITE_AUTH0_DOMAIN || '',
@@ -29,10 +23,6 @@ export function getAuthConfig() {
     callbackPath: ENV.VITE_AUTH0_CALLBACK_PATH,
     afterLogin: ENV.VITE_DEFAULT_AFTER_LOGIN,
   } as const;
-}
-
-export function getGuestSearchMode(): 'local' | 'api' {
-  return ENV.VITE_GUEST_SEARCH_MODE.toLowerCase() === 'local' ? 'local' : 'api';
 }
 
 export function getAllowedEmails(): string[] {
