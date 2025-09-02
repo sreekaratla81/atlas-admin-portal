@@ -1,44 +1,51 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import axios from 'axios';
 import { getApiBase, getGuestSearchMode } from '@/utils/env';
 
 export interface Guest { id: string; name: string; email?: string; phone?: string; }
-type SearchFn = (q: string, signal?: AbortSignal) => Promise<Guest[]>;
 
-const normalize = (s: string) => s.toLowerCase().trim();
+const norm = (s: string) => s?.toLowerCase().trim() ?? '';
 
-export const useGuestSearch = (allGuests: Guest[] | null): SearchFn => {
+export const useGuestSearch = (allGuests?: Guest[]) => {
   const mode = getGuestSearchMode();
-  const [apiBase] = useState(() => getApiBase());
+  const apiBase = getApiBase();
+
+  const localIdx = useMemo(() => allGuests ?? [], [allGuests]);
 
   const localSearch = useMemo(() => {
-    const idx = allGuests ?? [];
     return async (q: string) => {
-      const n = normalize(q);
+      const n = norm(q);
       if (!n) return [];
-      return idx.filter(g =>
-        (g.name && normalize(g.name).includes(n)) ||
-        (g.email && normalize(g.email).includes(n)) ||
-        (g.phone && normalize(g.phone).includes(n))
-      ).slice(0, 50);
+      return localIdx
+        .filter(g =>
+          norm(g.name).includes(n) ||
+          norm(g.email).includes(n) ||
+          norm(g.phone).includes(n)
+        )
+        .slice(0, 50);
     };
-  }, [allGuests]);
+  }, [localIdx]);
 
-  const remoteSearch = async (q: string, signal?: AbortSignal) => {
-    if (!q?.trim()) return [];
-    const url = `${apiBase}/api/guests/search?q=${encodeURIComponent(q)}`;
-    const { data } = await axios.get<Guest[]>(url, { timeout: 8000, signal });
-    return Array.isArray(data) ? data : [];
-  };
+  const remoteSearch = useMemo(() => {
+    return async (q: string) => {
+      const n = q?.trim();
+      if (!n) return [];
+      const url = `${apiBase}/api/guests/search?q=${encodeURIComponent(n)}`;
+      const { data } = await axios.get<Guest[]>(url, { timeout: 8000 });
+      return Array.isArray(data) ? data : [];
+    };
+  }, [apiBase]);
 
-  // Fallback: if remote fails, try local if available
-  return async (q: string, signal?: AbortSignal) => {
-    if (mode === 'local') return localSearch(q);
-    try {
-      return await remoteSearch(q, signal);
-    } catch (err) {
-      if (allGuests?.length) return localSearch(q);
-      throw err;
-    }
-  };
+  return useMemo(() => {
+    if (mode === 'local') return localSearch;
+    return async (q: string) => {
+      try {
+        return await remoteSearch(q);
+      } catch (err) {
+        if (localIdx.length) return localSearch(q);
+        throw err;
+      }
+    };
+  }, [mode, localSearch, remoteSearch, localIdx.length]);
 };
+
