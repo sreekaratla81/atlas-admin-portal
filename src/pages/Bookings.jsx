@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, asArray } from '@/lib/api';
+import { hydrateGuests } from '@/services/guests.local';
+import { getAllGuests } from '@/db/idb';
 import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
@@ -18,6 +20,7 @@ const Bookings = () => {
   const [listings, setListings] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
+  const [guests, setGuests] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [selectedListing, setSelectedListing] = useState(null);
@@ -96,6 +99,19 @@ const Bookings = () => {
       }
     };
     fetchLookups();
+  }, []);
+
+  useEffect(() => {
+    const loadGuests = async () => {
+      try {
+        await hydrateGuests();
+        const all = await getAllGuests();
+        setGuests(all);
+      } catch (err) {
+        console.error('Failed to load guests', err);
+      }
+    };
+    loadGuests();
   }, []);
 
   const handleAddNewGuest = () => {
@@ -357,6 +373,7 @@ const Bookings = () => {
 
               {/* Guest */}
               <GuestTypeahead
+                allGuests={guests}
                 onSelect={(g) => {
                   setSelectedGuestId(g.id.toString());
                   setSelectedGuest(g);
