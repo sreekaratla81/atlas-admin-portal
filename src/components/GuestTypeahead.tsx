@@ -13,6 +13,7 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
   const [inputValue, setInputValue] = React.useState('');
   const [options, setOptions] = React.useState<Guest[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const debouncedText = useDebouncedValue(inputValue, 300);
 
@@ -21,13 +22,25 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
     const run = async () => {
       const q = debouncedText.trim();
       if (!q) {
-        if (alive) setOptions([]);
+        if (alive) {
+          setOptions([]);
+          setError(null);
+        }
         return;
       }
       setLoading(true);
       try {
         const res = await search(q);
-        if (alive) setOptions(res);
+        if (alive) {
+          setOptions(res);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Guest search failed', err);
+        if (alive) {
+          setError('Failed to load guest results');
+          setOptions([]);
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -54,7 +67,13 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
       getOptionLabel={o => o?.name ?? ''}
       filterOptions={x => x}
       renderInput={params => (
-        <TextField {...params} label="Guest" placeholder="Type name/phone/email" />
+        <TextField
+          {...params}
+          label="Guest"
+          placeholder="Type name/phone/email"
+          error={!!error}
+          helperText={error}
+        />
       )}
     />
   );
