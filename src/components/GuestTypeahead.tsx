@@ -6,15 +6,18 @@ type Props = {
   allGuests?: Guest[];
   onSelect: (g: Guest | null) => void;
   /**
-   * Optional handler that will be called when the user wants to add a new
-   * guest from the typeahead.  It is not used directly inside this component
-   * yet but accepting the prop avoids React warnings when it is provided by
-   * parent components.
+   * Called when the user wants to create a guest that doesn't exist yet.
    */
   onAddNew?: () => void;
 };
 
-export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
+type GuestOption = Guest | { id: string; name: string; isAddNew: true };
+
+export default function GuestTypeahead({
+  allGuests = [],
+  onSelect,
+  onAddNew,
+}: Props) {
   const search = useGuestSearch(allGuests);
   const [value, setValue] = React.useState<Guest | null>(null);
   const [inputValue, setInputValue] = React.useState('');
@@ -61,15 +64,25 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
     };
   }, [debouncedText, search, value]);
 
+  const showAddNew =
+    !!onAddNew && !loading && debouncedText.trim() !== '' && options.length === 0;
+  const displayOptions: GuestOption[] = showAddNew
+    ? [{ id: 'add-new', name: 'Add new guest', isAddNew: true }]
+    : options;
+
   return (
     <Autocomplete
-      options={options}
+      options={displayOptions}
       loading={loading}
       value={value}
       isOptionEqualToValue={(option, val) => option.id === val?.id}
       onChange={(_, newVal) => {
-        setValue(newVal);
-        onSelect(newVal ?? null);
+        if (newVal && (newVal as any).isAddNew) {
+          onAddNew?.();
+          return;
+        }
+        setValue(newVal as Guest | null);
+        onSelect((newVal as Guest) ?? null);
       }}
       inputValue={inputValue}
       onInputChange={(_, newInput, reason) => {
