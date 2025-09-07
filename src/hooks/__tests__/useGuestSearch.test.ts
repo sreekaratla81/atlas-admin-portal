@@ -26,7 +26,6 @@ describe('useGuestSearch', () => {
     const res = await result.current('gam');
     expect(res).toEqual([guests[2]]);
   });
-
   it('ignores null or undefined guest entries', async () => {
     const guests: any[] = [undefined, { id: '1', name: 'Alpha' }, null];
     const { result } = renderHook(() => useGuestSearch(guests as Guest[]));
