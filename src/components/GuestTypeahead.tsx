@@ -5,6 +5,13 @@ import { useGuestSearch, type Guest } from '@/hooks/useGuestSearch';
 type Props = {
   allGuests?: Guest[];
   onSelect: (g: Guest | null) => void;
+  /**
+   * Optional handler that will be called when the user wants to add a new
+   * guest from the typeahead.  It is not used directly inside this component
+   * yet but accepting the prop avoids React warnings when it is provided by
+   * parent components.
+   */
+  onAddNew?: () => void;
 };
 
 export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
@@ -23,7 +30,10 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
       const q = debouncedText.trim();
       if (!q) {
         if (alive) {
-          setOptions([]);
+          // When the query is cleared keep the selected value in the options
+          // list so that MUI's Autocomplete doesn't complain about the value
+          // not matching any option.
+          setOptions(value ? [value] : []);
           setError(null);
         }
         return;
@@ -49,7 +59,7 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
     return () => {
       alive = false;
     };
-  }, [debouncedText, search]);
+  }, [debouncedText, search, value]);
 
   return (
     <Autocomplete
@@ -61,8 +71,19 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
         onSelect(newVal ?? null);
       }}
       inputValue={inputValue}
-      onInputChange={(_, newInput) => {
+      onInputChange={(_, newInput, reason) => {
         setInputValue(prev => (prev === newInput ? prev : newInput));
+        // If the user types a new value, clear the current selection so we
+        // don't end up with a value that doesn't exist in the options array
+        // which triggers console warnings from MUI's Autocomplete.
+        if (reason === 'input') {
+          setValue(null);
+          onSelect(null);
+        }
+        if (newInput === '') {
+          setValue(null);
+          onSelect(null);
+        }
       }}
       getOptionLabel={o => o?.name ?? ''}
       filterOptions={x => x}
