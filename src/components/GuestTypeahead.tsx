@@ -1,84 +1,129 @@
-import { useEffect, useRef, useState } from 'react';
-import { TextField, Autocomplete, CircularProgress, Box, Typography } from '@mui/material';
-import { getAllGuests, type GuestSummary } from '@/db/idb';
-import { hydrateGuests } from '@/services/guests.local';
-import SearchWorker from '@/workers/guestSearch.worker?worker';
+import React from 'react';
+import { Autocomplete, TextField } from '@mui/material';
+import { useGuestSearch, type Guest } from '@/hooks/useGuestSearch';
 
-type Props = { onSelect(g: GuestSummary): void; onAddNew?: ()=>void; };
-export default function GuestTypeahead({ onSelect, onAddNew }: Props){
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState<GuestSummary[]>([]);
-  const [ready, setReady] = useState(false);
-  const workerRef = useRef<Worker>();
-  const debounceRef = useRef<number>();
+type Props = {
+  allGuests?: Guest[];
+  onSelect: (g: Guest | null) => void;
+  /**
+   * Called when the user wants to create a guest that doesn't exist yet.
+   */
+  onAddNew?: () => void;
+};
 
-  useEffect(()=>{ // hydrate once
-    (async()=>{
-      setLoading(true);
-      try { await hydrateGuests(false); } finally { setLoading(false); setReady(true); }
-    })();
-    if (typeof Worker !== 'undefined') {
-      workerRef.current = new SearchWorker();
-      return ()=>workerRef.current?.terminate();
-    }
-    return;
-  },[]);
+type GuestOption = Guest | { id: string; name: string; isAddNew: true };
 
-  useEffect(()=>{
-    if (!ready) return;
-    window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(async ()=>{
-      setLoading(true);
-      const all = await getAllGuests();
-      const start = performance.now();
-      workerRef.current!.onmessage = (e:any)=>{
-        setOptions(e.data.results);
-        setLoading(false);
-        if (import.meta.env.DEV) {
-          console.log('search latency', Math.round(performance.now()-start),'ms', 'results', e.data.results.length);
+export default function GuestTypeahead({
+  allGuests = [],
+  onSelect,
+  onAddNew,
+}: Props) {
+  const search = useGuestSearch(allGuests);
+  const [value, setValue] = React.useState<Guest | null>(null);
+  const [inputValue, setInputValue] = React.useState('');
+  const [options, setOptions] = React.useState<Guest[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const debouncedText = useDebouncedValue(inputValue, 300);
+
+  React.useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      const q = debouncedText.trim();
+      if (!q) {
+        if (alive) {
+          // When the query is cleared keep the selected value in the options
+          // list so that MUI's Autocomplete doesn't complain about the value
+          // not matching any option.
+          setOptions(value ? [value] : []);
+          setError(null);
         }
-      };
-      workerRef.current!.postMessage({ q: input, data: all });
-    }, 280);
-  }, [input, ready]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await search(q);
+        if (alive) {
+          setOptions(res);
+          setError(null);
+        }
+      } catch (err) {
+        console.error('Guest search failed', err);
+        if (alive) {
+          setError('Failed to load guest results');
+          setOptions([]);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [debouncedText, search, value]);
+
+  const showAddNew =
+    !!onAddNew && !loading && debouncedText.trim() !== '' && options.length === 0;
+  const displayOptions: GuestOption[] = showAddNew
+    ? [{ id: 'add-new', name: 'Add new guest', isAddNew: true }]
+    : options;
 
   return (
     <Autocomplete
-      freeSolo
-      options={options}
-      getOptionLabel={(o)=> (typeof o==='string' ? o : (o.name || ''))}
-      onInputChange={(_,v)=>setInput(v)}
-      onChange={(_,v)=>{ if (v && typeof v !== 'string') onSelect(v as any); }}
+      options={displayOptions}
       loading={loading}
-      filterOptions={(x)=>x}
-      renderInput={(params)=>(
-        <TextField {...params} label="Search guest by name or phone" InputProps={{
-          ...params.InputProps, endAdornment:(<>
-            {loading ? <CircularProgress size={18}/> : null}
-            {params.InputProps.endAdornment}
-          </>)
-        }}/>
+      value={value}
+      isOptionEqualToValue={(option, val) => option.id === val?.id}
+      onChange={(_, newVal) => {
+        if (newVal && (newVal as any).isAddNew) {
+          onAddNew?.();
+          return;
+        }
+        setValue(newVal as Guest | null);
+        onSelect((newVal as Guest) ?? null);
+      }}
+      inputValue={inputValue}
+      onInputChange={(_, newInput, reason) => {
+        setInputValue(prev => (prev === newInput ? prev : newInput));
+        // If the user types a new value, clear the current selection so we
+        // don't end up with a value that doesn't exist in the options array
+        // which triggers console warnings from MUI's Autocomplete.
+        if (reason === 'input') {
+          setValue(null);
+          onSelect(null);
+        }
+        if (newInput === '') {
+          setValue(null);
+          onSelect(null);
+        }
+      }}
+      getOptionLabel={o => o?.name ?? ''}
+      filterOptions={x => x}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          {option.name}
+        </li>
       )}
-      renderOption={(props, g)=>(
-        <Box component="li" {...props}>
-          <Box sx={{display:'flex',flexDirection:'column'}}>
-            <Typography fontWeight={600}>{g.name}</Typography>
-            <Typography variant="caption">{[g.phone, g.email].filter(Boolean).join(' • ')}</Typography>
-          </Box>
-        </Box>
+      renderInput={params => (
+        <TextField
+          {...params}
+          label="Guest"
+          placeholder="Type name/phone/email"
+          error={!!error}
+          helperText={error}
+        />
       )}
-      ListboxProps={{ style: { maxHeight: 320 } }}
-      noOptionsText={
-        <Box sx={{px:2, py:1}}>
-          <Typography>No guest found.</Typography>
-          {onAddNew && (
-            <Typography sx={{color:'primary.main', cursor:'pointer'}} onClick={onAddNew}>
-              + Add new guest
-            </Typography>
-          )}
-        </Box>
-      }
     />
   );
+}
+
+function useDebouncedValue<T>(value: T, delay: number) {
+  const [v, setV] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
 }

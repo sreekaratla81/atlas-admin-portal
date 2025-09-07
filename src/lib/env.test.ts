@@ -20,11 +20,12 @@ describe("getAllowedEmails", () => {
   });
 });
 
-describe('ENV', () => {
-  it('throws when VITE_API_BASE missing', async () => {
-    vi.stubEnv('VITE_API_BASE', '');
-    vi.stubEnv('VITE_API_BASE_URL', '');
+describe('getApiBase', () => {
+  it('blocks localhost in prod', async () => {
+    vi.stubEnv('PROD', 'true');
+    vi.stubEnv('VITE_API_BASE', 'http://localhost:3000');
     vi.resetModules();
-    await expect(import('../config/env')).rejects.toThrow();
+    const { getApiBase } = await import('../utils/env');
+    expect(() => getApiBase()).toThrow();
   });
 });

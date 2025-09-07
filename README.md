@@ -15,7 +15,7 @@ If these endpoints are unavailable the application will automatically fall back
 to the standard `/admin/reports/bookings`, `/admin/reports/listings` and
 `/admin/reports/payouts` endpoints.
 
-Set `VITE_GUEST_SEARCH_MODE=local` to enable client-side guest search.
+Guest search is performed client-side using the hydrated guest list.
 
 # Go to the directory where you want to store all repos
 cd ~/Projects/AtlasHomestays  # or any preferred location
