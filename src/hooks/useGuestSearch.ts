@@ -5,7 +5,10 @@ export interface Guest { id: string; name: string; email?: string; phone?: strin
 const norm = (s?: string) => (s ?? '').toLowerCase().trim();
 
 export const useGuestSearch = (allGuests?: Guest[]) => {
-  const localIdx = useMemo(() => allGuests ?? [], [allGuests]);
+  const localIdx = useMemo(
+    () => (allGuests ?? []).filter((g): g is Guest => Boolean(g)),
+    [allGuests]
+  );
 
   return useMemo(() => {
     return async (q: string) => {
