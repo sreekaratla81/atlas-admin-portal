@@ -1,9 +1,8 @@
 import { putGuests, getAllGuests, type GuestSummary, clearGuests } from '@/db/idb';
-import { apiFetch } from '@/lib/http';
+import { api, asArray } from '@/lib/api';
 import { normalize } from '@/utils/normalize';
 
-const PAGE_SIZE = 2000;
-const CACHE_TTL_MS = 24*60*60*1000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const TS_KEY = 'guest_cache_ts_v1';
 
 function mapGuest(x:any): GuestSummary {
@@ -17,21 +16,13 @@ export async function hydrateGuests(force=false): Promise<number> {
   const freshEnough = Date.now() - last < CACHE_TTL_MS;
   if (!force && freshEnough && (await getAllGuests()).length > 0) return 0;
   const t0 = performance.now();
-  const all: GuestSummary[] = [];
-  let page = 1;
-  for (;;) {
-    const res = await apiFetch(`/api/guests?page=${page}&pageSize=${PAGE_SIZE}`);
-    const data = await res.json();
-    const items = data.items ?? data ?? [];
-    if (!items.length) break;
-    all.push(...items.map(mapGuest));
-    if (items.length < PAGE_SIZE) break;
-    page++;
-  }
+  const { data } = await api.get('/guests');
+  const items = asArray<any>(data, 'guests');
+  const all = items.map(mapGuest);
   await clearStaleThenPut(all);
   localStorage.setItem(TS_KEY, String(Date.now()));
   if (import.meta.env.DEV) {
-    console.log('hydrated guests', all.length, 'in', Math.round(performance.now()-t0), 'ms');
+    console.log('hydrated guests', all.length, 'in', Math.round(performance.now() - t0), 'ms');
   }
   return all.length;
 }
