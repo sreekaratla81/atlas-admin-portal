@@ -3,7 +3,11 @@ Admin dashboard for managers and staff to manage listings, bookings, guests, and
 
 ## API configuration
 
-Create a `.env.local` file to configure the API base URL. `VITE_API_BASE_URL` is optional in development where requests are proxied to `/api`. For production, set `VITE_API_BASE_URL` or provide `VITE_DEFAULT_API_BASE_URL` as a fallback. The reports page fetches data from REST endpoints such as:
+This project uses Vite environment variables for configuration. Copy `.env.example` to `.env.local` and update the values for local development. The `.env.local` file is ignored by git.
+
+Set `VITE_API_BASE` to your API's base URL. In development, requests are proxied to `/api` if this variable is not provided. For production deployments (e.g., Cloudflare Pages), define `VITE_API_BASE` and any other required `VITE_*` variables as build-time environment variables in Cloudflare.
+
+The reports page fetches data from REST endpoints such as:
 
 ```
 GET /admin/reports/earnings/monthly
@@ -30,7 +34,7 @@ git clone https://github.com/sreekaratla81/atlas-shared-utils.git
 
 ## Auth0 configuration
 
-The application uses Auth0 for authentication. Configure the following variables in your `.env` file:
+The application uses Auth0 for authentication. Configure the following variables via environment variables (e.g., in `.env.local` or in Cloudflare Pages build settings):
 
 ```
 VITE_AUTH_BYPASS=false
