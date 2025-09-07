@@ -66,7 +66,7 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
       options={options}
       loading={loading}
       value={value}
-      isOptionEqualToValue={(option, val) => option.id === val.id}
+      isOptionEqualToValue={(option, val) => option.id === val?.id}
       onChange={(_, newVal) => {
         setValue(newVal);
         onSelect(newVal ?? null);
