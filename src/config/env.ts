@@ -1,10 +1,9 @@
-import { getApiBase, getGuestSearchMode } from '@/utils/env';
+import { getApiBase } from '@/utils/env';
 
 export const IS_LOCALHOST = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 
 export const ENV = {
   VITE_API_BASE: getApiBase(),
-  VITE_GUEST_SEARCH_MODE: getGuestSearchMode(),
   VITE_AUTH_DISABLED: String(import.meta.env.VITE_AUTH_DISABLED || '').toLowerCase() === 'true',
   VITE_AUTH_BYPASS: String(import.meta.env.VITE_AUTH_BYPASS || '').toLowerCase() === 'true',
   VITE_AUTH0_DOMAIN: import.meta.env.VITE_AUTH0_DOMAIN || '',
