@@ -88,6 +88,11 @@ export default function GuestTypeahead({ allGuests = [], onSelect }: Props) {
       }}
       getOptionLabel={o => o?.name ?? ''}
       filterOptions={x => x}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          {option.name}
+        </li>
+      )}
       renderInput={params => (
         <TextField
           {...params}
