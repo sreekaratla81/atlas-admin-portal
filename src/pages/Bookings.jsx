@@ -375,9 +375,23 @@ const Bookings = () => {
               <GuestTypeahead
                 allGuests={guests}
                 onSelect={(g) => {
-                  setSelectedGuestId(g.id.toString());
-                  setSelectedGuest(g);
-                  setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
+                  if (g) {
+                    setSelectedGuestId(g.id.toString());
+                    setSelectedGuest(g);
+                    setGuest({
+                      name: g.name,
+                      phone: g.phone || '',
+                      email: g.email || '',
+                    });
+                  } else {
+                    // Clear any previously selected guest details when the
+                    // user clears the typeahead input.  Without this check the
+                    // parent component would attempt to access properties of
+                    // `null` which results in runtime errors during typing.
+                    setSelectedGuestId('');
+                    setSelectedGuest(null);
+                    setGuest({ name: '', phone: '', email: '' });
+                  }
                 }}
                 onAddNew={handleAddNewGuest}
               />
