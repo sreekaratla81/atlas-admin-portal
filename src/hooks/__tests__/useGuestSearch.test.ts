@@ -15,5 +15,16 @@ describe('useGuestSearch', () => {
     const res = await result.current('lek');
     expect(res).toEqual([guests[0]]);
   });
+
+  it('handles guests missing email or phone', async () => {
+    const guests: Guest[] = [
+      { id: '1', name: 'Alpha' },
+      { id: '2', name: 'Beta', email: 'b@example.com' },
+      { id: '3', name: 'Gamma', phone: '789' },
+    ];
+    const { result } = renderHook(() => useGuestSearch(guests));
+    const res = await result.current('gam');
+    expect(res).toEqual([guests[2]]);
+  });
 });
 
