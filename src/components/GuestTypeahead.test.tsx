@@ -2,12 +2,13 @@
  * @vitest-environment jsdom
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import GuestTypeahead from './GuestTypeahead';
 
 describe('GuestTypeahead', () => {
+  afterEach(() => cleanup());
   it('shows "Add new guest" when no matches and triggers onAddNew', async () => {
     const user = userEvent.setup();
     const onAddNew = vi.fn();
@@ -18,5 +19,12 @@ describe('GuestTypeahead', () => {
     const addNew = await screen.findByText(/Add new guest/i);
     await user.click(addNew);
     expect(onAddNew).toHaveBeenCalled();
+  });
+
+  it('displays the provided value', () => {
+    const guest = { id: '1', name: 'Alice' } as any;
+    render(<GuestTypeahead allGuests={[guest]} value={guest} onSelect={() => {}} />);
+    const input = screen.getByRole('combobox') as HTMLInputElement;
+    expect(input.value).toBe('Alice');
   });
 });
