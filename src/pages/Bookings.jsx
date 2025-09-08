@@ -123,11 +123,18 @@ const Bookings = () => {
       try {
         const res = await api.post(`/guests`, newGuest);
         const g = res.data;
-      setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
-      setSelectedGuestId(g.id.toString());
-      setSelectedGuest(g);
-      setAddGuestOpen(false);
-    } catch (err) {
+
+        // Refresh the local guest cache so that future searches include the
+        // newly added guest and so other pages see the update.
+        await hydrateGuests(true);
+        const all = await getAllGuests();
+        setGuests(all);
+
+        setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
+        setSelectedGuestId(g.id.toString());
+        setSelectedGuest(g);
+        setAddGuestOpen(false);
+      } catch (err) {
       console.error(err);
     }
   };
@@ -374,6 +381,7 @@ const Bookings = () => {
               {/* Guest */}
               <GuestTypeahead
                 allGuests={guests}
+                value={selectedGuest}
                 onSelect={(g) => {
                   if (g) {
                     setSelectedGuestId(g.id.toString());

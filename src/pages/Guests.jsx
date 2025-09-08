@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api, asArray } from '@/lib/api';
+import { hydrateGuests } from '@/services/guests.local';
 import {
   Box,
   Button,
@@ -85,6 +86,9 @@ const Guests = () => {
         } else {
           await api.post(`/guests`, form);
         }
+      // Ensure the bookings page sees the latest guests by refreshing the
+      // cached list used for typeahead search.
+      await hydrateGuests(true);
       handleClose();
       fetchGuests();
     } catch (err) {
@@ -99,6 +103,7 @@ const Guests = () => {
     setError('');
     try {
         await api.delete(`/guests/${id}`);
+      await hydrateGuests(true);
       fetchGuests();
     } catch (err) {
       setError('Failed to delete guest.');
