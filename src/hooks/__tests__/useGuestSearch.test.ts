@@ -32,5 +32,15 @@ describe('useGuestSearch', () => {
     const res = await result.current('alpha');
     expect(res).toEqual([{ id: '1', name: 'Alpha' }]);
   });
+
+  it('matches regardless of letter case', async () => {
+    const guests: Guest[] = [
+      { id: '1', name: 'Charlie' },
+      { id: '2', name: 'Delta' },
+    ];
+    const { result } = renderHook(() => useGuestSearch(guests));
+    const res = await result.current('cHa');
+    expect(res).toEqual([guests[0]]);
+  });
 });
 

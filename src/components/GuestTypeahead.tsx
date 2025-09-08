@@ -4,6 +4,12 @@ import { useGuestSearch, type Guest } from '@/hooks/useGuestSearch';
 
 type Props = {
   allGuests?: Guest[];
+  /**
+   * Currently selected guest.  When provided the component becomes
+   * controlled by the parent so it can update the displayed value when a new
+   * guest is created outside of the Autocomplete.
+   */
+  value?: Guest | null;
   onSelect: (g: Guest | null) => void;
   /**
    * Called when the user wants to create a guest that doesn't exist yet.
@@ -15,15 +21,23 @@ type GuestOption = Guest | { id: string; name: string; isAddNew: true };
 
 export default function GuestTypeahead({
   allGuests = [],
+  value: selectedGuest = null,
   onSelect,
   onAddNew,
 }: Props) {
   const search = useGuestSearch(allGuests);
-  const [value, setValue] = React.useState<Guest | null>(null);
+  const [value, setValue] = React.useState<Guest | null>(selectedGuest);
   const [inputValue, setInputValue] = React.useState('');
   const [options, setOptions] = React.useState<Guest[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Keep internal state in sync with the value passed in by the parent.  This
+  // allows consumers to programmatically set the selected guest (e.g. after
+  // creating a new guest via a modal).
+  React.useEffect(() => {
+    setValue(selectedGuest);
+  }, [selectedGuest]);
 
   const debouncedText = useDebouncedValue(inputValue, 300);
 
