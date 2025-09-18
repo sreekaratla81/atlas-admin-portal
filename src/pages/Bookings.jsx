@@ -114,6 +114,33 @@ const Bookings = () => {
     loadGuests();
   }, []);
 
+  useEffect(() => {
+    if (formMode !== 'edit') return;
+    if (!booking.listingId || !listings.length) return;
+    const match = listings.find(
+      l => String(l.id) === String(booking.listingId)
+    );
+    if (match && String(selectedListing?.id) !== String(match.id)) {
+      setSelectedListing(match);
+    }
+  }, [formMode, booking.listingId, listings, selectedListing]);
+
+  useEffect(() => {
+    if (formMode !== 'edit') return;
+    if (!selectedGuestId || !guests.length) return;
+    const match = guests.find(
+      g => String(g.id) === String(selectedGuestId)
+    );
+    if (match && String(selectedGuest?.id) !== String(match.id)) {
+      setSelectedGuest(match);
+      setGuest({
+        name: match.name || '',
+        phone: match.phone || '',
+        email: match.email || ''
+      });
+    }
+  }, [formMode, guests, selectedGuestId, selectedGuest]);
+
   const handleAddNewGuest = () => {
     setNewGuest({ name: '', phone: '', email: '' });
     setAddGuestOpen(true);
@@ -257,7 +284,9 @@ const Bookings = () => {
     console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
-    const listingObj = listings.find(l => l.id === bookingToEdit.listingId) || null;
+    const listingObj = listings.find(
+      l => String(l.id) === String(bookingToEdit.listingId)
+    ) || null;
     setBooking({
       id: bookingToEdit.id,
       listingId: bookingToEdit.listingId || '',
@@ -278,13 +307,21 @@ const Bookings = () => {
     setGuestsActual(bookingToEdit.guestsActual ?? 2);
     setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
     setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
-    setSelectedGuestId(bookingToEdit.guestId.toString());
-    const guestObj = {
+    const guestFromList = guests.find(
+      g => String(g.id) === String(bookingToEdit.guestId)
+    ) || null;
+    const guestObj = guestFromList || {
+      id: bookingToEdit.guestId?.toString() || '',
       name: bookingToEdit.guest || '',
       phone: bookingToEdit.guestPhone || '',
       email: bookingToEdit.guestEmail || ''
     };
-    setGuest(guestObj);
+    setSelectedGuestId(guestObj.id?.toString() || '');
+    setGuest({
+      name: guestObj.name || '',
+      phone: guestObj.phone || '',
+      email: guestObj.email || ''
+    });
     setSelectedGuest(guestObj);
     setSelectedListing(listingObj);
     setSuccessMsg('');
