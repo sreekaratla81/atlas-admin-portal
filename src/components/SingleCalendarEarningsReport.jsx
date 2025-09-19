@@ -21,6 +21,9 @@ const SOURCE_COLORS = {
   'walk-in': '#dc3545',
   'booking.com': '#6f42c1',
   booking: '#6f42c1',
+  makemytrip: '#ff5722',
+  'make my trip': '#ff5722',
+  mmt: '#ff5722',
 };
 
 function SingleCalendarEarningsReport() {
@@ -158,6 +161,7 @@ function SingleCalendarEarningsReport() {
               airbnb: 0,
               bookingcom: 0,
               agoda: 0,
+              makemytrip: 0,
               other: 0,
             };
           }
@@ -167,6 +171,12 @@ function SingleCalendarEarningsReport() {
           else if (source === 'booking.com' || source === 'booking')
             totals[listingId].bookingcom += amount;
           else if (source === 'agoda') totals[listingId].agoda += amount;
+          else if (
+            source === 'makemytrip' ||
+            source === 'make my trip' ||
+            source === 'mmt'
+          )
+            totals[listingId].makemytrip += amount;
           else totals[listingId].other += amount;
         });
 
@@ -392,6 +402,7 @@ function SingleCalendarEarningsReport() {
                 <th style={{ padding: '8px', textAlign: 'right' }}>Airbnb</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Booking.com</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Agoda</th>
+                <th style={{ padding: '8px', textAlign: 'right' }}>MakeMyTrip</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Other</th>
               </tr>
             </thead>
@@ -413,6 +424,9 @@ function SingleCalendarEarningsReport() {
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹{row.agoda.toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹{row.makemytrip.toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹{row.other.toLocaleString('en-IN')}
@@ -445,6 +459,12 @@ function SingleCalendarEarningsReport() {
                     ₹
                     {monthlyTotals
                       .reduce((sum, r) => sum + r.agoda, 0)
+                      .toLocaleString('en-IN')}
+                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right' }}>
+                    ₹
+                    {monthlyTotals
+                      .reduce((sum, r) => sum + r.makemytrip, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
