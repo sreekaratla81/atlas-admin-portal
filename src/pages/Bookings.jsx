@@ -582,6 +582,7 @@ const Bookings = () => {
                   <MenuItem value="airbnb">Airbnb</MenuItem>
                   <MenuItem value="agoda">Agoda</MenuItem>
                   <MenuItem value="booking.com">Booking.com</MenuItem>
+                  <MenuItem value="MakeMyTrip">MakeMyTrip</MenuItem>
                   <MenuItem value="Atlas Website">Atlas Website</MenuItem>
                   <MenuItem value="Agent">Agent</MenuItem>
                   <MenuItem value="Others">Others</MenuItem>
