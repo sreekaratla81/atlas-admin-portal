@@ -5,7 +5,7 @@ describe('buildBookingPayload', () => {
   it('constructs payload with guest and listing ids and defaults notes', () => {
     const booking = {
       id: 1,
-      listingId: '',
+      listingId: '3',
       checkinDate: '2024-01-01',
       checkoutDate: '2024-01-02',
       bookingSource: 'Walk-in',
@@ -19,7 +19,6 @@ describe('buildBookingPayload', () => {
       booking,
       selectedGuest: { id: 5, name: 'John' },
       selectedGuestId: '',
-      selectedListing: { id: 3, name: 'Villa' },
       guestsPlanned: 2,
       guestsActual: 2,
       extraGuestCharge: 0

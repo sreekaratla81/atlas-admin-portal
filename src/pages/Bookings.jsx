@@ -23,7 +23,6 @@ const Bookings = () => {
   const [guests, setGuests] = useState([]);
   const [selectedGuestId, setSelectedGuestId] = useState('');
   const [selectedGuest, setSelectedGuest] = useState(null);
-  const [selectedListing, setSelectedListing] = useState(null);
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
   const [addGuestOpen, setAddGuestOpen] = useState(false);
   const [newGuest, setNewGuest] = useState({ name: '', phone: '', email: '' });
@@ -64,6 +63,7 @@ const Bookings = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const messageRef = useRef(null);
+  const lastFetchedGuestIdRef = useRef(null);
   const nights = booking.checkinDate && booking.checkoutDate
     ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
     : 0;
@@ -113,6 +113,81 @@ const Bookings = () => {
     };
     loadGuests();
   }, []);
+
+  useEffect(() => {
+    if (!selectedGuestId) {
+      lastFetchedGuestIdRef.current = null;
+      return;
+    }
+
+    const match = guests.find(
+      g => String(g.id) === String(selectedGuestId)
+    );
+
+    if (match) {
+      lastFetchedGuestIdRef.current = null;
+      if (!selectedGuest || String(selectedGuest.id) !== String(match.id)) {
+        setSelectedGuest(match);
+      }
+      setGuest({
+        name: match.name || '',
+        phone: match.phone || '',
+        email: match.email || ''
+      });
+      return;
+    }
+
+    if (formMode !== 'edit') return;
+
+    if (lastFetchedGuestIdRef.current === selectedGuestId) {
+      if (selectedGuest && String(selectedGuest.id) === String(selectedGuestId)) {
+        setGuest({
+          name: selectedGuest.name || '',
+          phone: selectedGuest.phone || '',
+          email: selectedGuest.email || ''
+        });
+      }
+      return;
+    }
+
+    lastFetchedGuestIdRef.current = selectedGuestId;
+    let active = true;
+    const fetchGuest = async () => {
+      try {
+        const { data } = await api.get(`/guests/${selectedGuestId}`);
+        if (!active) return;
+        const raw = data?.guest ?? data;
+        if (!raw) return;
+        const normalized = {
+          id: raw.id != null ? raw.id.toString() : selectedGuestId,
+          name: raw.name ?? raw.fullName ?? '',
+          phone: raw.phone ?? '',
+          email: raw.email ?? ''
+        };
+        setSelectedGuest(normalized);
+        setGuest({
+          name: normalized.name || '',
+          phone: normalized.phone || '',
+          email: normalized.email || ''
+        });
+        setGuests(prev => {
+          const idx = prev.findIndex(g => String(g.id) === String(normalized.id));
+          if (idx === -1) {
+            return [...prev, normalized];
+          }
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...normalized };
+          return next;
+        });
+      } catch (err) {
+        console.error('Failed to fetch guest details', err);
+      }
+    };
+    fetchGuest();
+    return () => {
+      active = false;
+    };
+  }, [formMode, guests, selectedGuestId, selectedGuest]);
 
   const handleAddNewGuest = () => {
     setNewGuest({ name: '', phone: '', email: '' });
@@ -182,7 +257,7 @@ const Bookings = () => {
     setGuest({ name: '', phone: '', email: '' });
     setSelectedGuestId('');
     setSelectedGuest(null);
-    setSelectedListing(null);
+    lastFetchedGuestIdRef.current = null;
     setFormMode('create');
     setSelectedBookingId(null);
     setBooking({
@@ -210,8 +285,9 @@ const Bookings = () => {
     setSuccessMsg('');
     setErrorMsg('');
     try {
-      const guestId = Number(selectedGuestId);
-      const listingId = selectedListing ? selectedListing.id : parseInt(booking.listingId);
+      const guestIdRaw = selectedGuest?.id ?? selectedGuestId;
+      const guestId = guestIdRaw ? Number(guestIdRaw) : NaN;
+      const listingId = booking.listingId ? Number(booking.listingId) : NaN;
 
       if (!guestId || !listingId || !booking.checkinDate || !booking.checkoutDate) {
         setErrorMsg('Please fill in all required fields.');
@@ -223,7 +299,6 @@ const Bookings = () => {
         booking,
         selectedGuest,
         selectedGuestId,
-        selectedListing,
         guestsPlanned,
         guestsActual,
         extraGuestCharge
@@ -257,10 +332,10 @@ const Bookings = () => {
     console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
-    const listingObj = listings.find(l => l.id === bookingToEdit.listingId) || null;
+    lastFetchedGuestIdRef.current = null;
     setBooking({
       id: bookingToEdit.id,
-      listingId: bookingToEdit.listingId || '',
+      listingId: bookingToEdit.listingId ? String(bookingToEdit.listingId) : '',
       // Support both camelCase variations returned from the API
       checkinDate: (bookingToEdit.checkinDate || bookingToEdit.checkInDate)
         ? dayjs(bookingToEdit.checkinDate || bookingToEdit.checkInDate).format('YYYY-MM-DD')
@@ -278,15 +353,23 @@ const Bookings = () => {
     setGuestsActual(bookingToEdit.guestsActual ?? 2);
     setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
     setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
-    setSelectedGuestId(bookingToEdit.guestId.toString());
-    const guestObj = {
+    const guestFromList = guests.find(
+      g => String(g.id) === String(bookingToEdit.guestId)
+    ) || null;
+    const fallbackGuest = {
+      id: bookingToEdit.guestId != null ? bookingToEdit.guestId.toString() : '',
       name: bookingToEdit.guest || '',
       phone: bookingToEdit.guestPhone || '',
       email: bookingToEdit.guestEmail || ''
     };
-    setGuest(guestObj);
+    const guestObj = guestFromList || (fallbackGuest.id ? fallbackGuest : null);
+    setSelectedGuestId(guestObj?.id?.toString() || '');
+    setGuest({
+      name: guestObj?.name || '',
+      phone: guestObj?.phone || '',
+      email: guestObj?.email || ''
+    });
     setSelectedGuest(guestObj);
-    setSelectedListing(listingObj);
     setSuccessMsg('');
   };
 
@@ -416,18 +499,21 @@ const Bookings = () => {
               <FormControl required>
                 <InputLabel>Listing</InputLabel>
                 <Select
-                  value={selectedListing || ''}
+                  value={booking.listingId || ''}
                   onChange={e => {
-                    const val = e.target.value;
-                    setSelectedListing(val || null);
-                    setBooking({ ...booking, listingId: val ? val.id : '' });
+                    const val = e.target.value === '' ? '' : e.target.value.toString();
+                    setBooking({ ...booking, listingId: val });
                   }}
                   label="Listing"
-                  renderValue={(selected) => selected?.name || ''}
+                  renderValue={(selectedId) => {
+                    if (!selectedId) return '';
+                    const match = listings.find(l => String(l.id) === String(selectedId));
+                    return match?.name || '';
+                  }}
                 >
                   <MenuItem value="">Select Listing</MenuItem>
                   {listings.map(l => (
-                    <MenuItem key={l.id} value={l}>{l.name}</MenuItem>
+                    <MenuItem key={l.id} value={l.id != null ? l.id.toString() : ''}>{l.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
