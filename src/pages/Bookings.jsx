@@ -328,14 +328,40 @@ const Bookings = () => {
     }
   };
 
+  const resolveListingId = (bookingToEdit) => {
+    const directId = [
+      bookingToEdit.listingId,
+      bookingToEdit.listing_id,
+      bookingToEdit.listingID,
+      bookingToEdit?.listing?.id
+    ].find(id => id !== undefined && id !== null && id !== '');
+
+    if (directId !== undefined && directId !== null && directId !== '') {
+      return directId.toString();
+    }
+
+    const normalizedListingName = (bookingToEdit.listing ?? '').toString().toLowerCase().trim();
+    if (normalizedListingName && listings.length) {
+      const match = listings.find(
+        l => (l.name || '').toLowerCase().trim() === normalizedListingName
+      );
+      if (match?.id !== undefined && match?.id !== null) {
+        return match.id.toString();
+      }
+    }
+
+    return '';
+  };
+
   const handleEdit = (bookingToEdit) => {
     console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
     lastFetchedGuestIdRef.current = null;
+    const listingId = resolveListingId(bookingToEdit);
     setBooking({
       id: bookingToEdit.id,
-      listingId: bookingToEdit.listingId ? String(bookingToEdit.listingId) : '',
+      listingId,
       // Support both camelCase variations returned from the API
       checkinDate: (bookingToEdit.checkinDate || bookingToEdit.checkInDate)
         ? dayjs(bookingToEdit.checkinDate || bookingToEdit.checkInDate).format('YYYY-MM-DD')
