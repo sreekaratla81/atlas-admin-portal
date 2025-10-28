@@ -1,13 +1,5 @@
 import { NavLink } from "react-router-dom";
-
-const navItems = [
-  { path: "/bookings", label: "Bookings" },
-  { path: "/listings", label: "Listings" },
-  { path: "/guests", label: "Guests" },
-  { path: "/properties", label: "Properties" },
-  { path: "/reports", label: "Reports" },
-  { path: "/bank-accounts", label: "Bank Accounts" },
-];
+import { navigationRoutes } from "@/app/routes";
 
 export default function NavBar() {
   return (
@@ -22,7 +14,7 @@ export default function NavBar() {
         padding: "0.75rem 1.5rem",
       }}
     >
-      {navItems.map((item) => (
+      {navigationRoutes.map((item) => (
         <NavLink
           key={item.path}
           to={item.path}
