@@ -1,14 +1,22 @@
-import React from "react";
+import { Component, type ErrorInfo, type PropsWithChildren } from 'react';
 
-export class ErrorBoundary extends React.Component<React.PropsWithChildren, { error?: Error }> {
-  state = { error: undefined as Error | undefined };
-  static getDerivedStateFromError(error: Error) {
+type ErrorBoundaryState = { error?: Error };
+
+export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundaryState> {
+  override state: ErrorBoundaryState = { error: undefined };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
-  componentDidCatch(error: Error, info: any) {
-    /* log to Sentry or console */
+
+  override componentDidCatch(error: Error, info: ErrorInfo) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('Unhandled error boundary exception', error, info);
+    }
   }
-  render() {
+
+  override render() {
     if (this.state.error) {
       return (
         <div style={{ padding: 24 }}>
@@ -17,6 +25,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, { er
         </div>
       );
     }
+
     return this.props.children;
   }
 }

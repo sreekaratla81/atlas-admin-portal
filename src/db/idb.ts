@@ -21,7 +21,24 @@ export async function putGuests(guests: GuestSummary[]) {
   for (const g of guests) await tx.store.put(g);
   await tx.done;
 }
+
+export async function saveGuest(guest: Partial<GuestSummary>) {
+  const db = await getDb();
+  const tx = db.transaction(STORE, 'readwrite');
+  const payload: GuestSummary = {
+    id: guest.id ?? String(Date.now()),
+    name: guest.name ?? "",
+    phone: guest.phone,
+    email: guest.email,
+    _n: guest._n ?? guest.name?.toLowerCase() ?? "",
+  };
+  await tx.store.put(payload);
+  await tx.done;
+  return payload;
+}
+
 export async function getAllGuests(): Promise<GuestSummary[]> {
   const db = await getDb(); return (await db.getAll(STORE)) as GuestSummary[];
 }
+
 export async function clearGuests(){ const db=await getDb(); await db.clear(STORE); }
