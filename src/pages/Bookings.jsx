@@ -1,928 +1,303 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { api, asArray } from '@/lib/api';
-import { hydrateGuests } from '@/services/guests.local';
-import { getAllGuests } from '@/db/idb';
-import dayjs from 'dayjs';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
-  Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
-  Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
-  TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
-  Dialog, DialogTitle, DialogContent, DialogActions
-} from '@mui/material';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import DeleteIcon from '@mui/icons-material/Delete';
-import '../style.css';
-import { buildBookingPayload } from '../utils/buildBookingPayload';
-import GuestTypeahead from '../components/GuestTypeahead';
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Typography,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
+  IconButton,
+  Divider,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
+import ManualBookingPopup from "./ManualBookingPopup"; // import your drawer popup
 
-const Bookings = () => {
-  const [listings, setListings] = useState([]);
+function Booking() {
+  const API_URL = import.meta.env.VITE_API_BASE;
+
   const [bookings, setBookings] = useState([]);
-  const [bankAccounts, setBankAccounts] = useState([]);
-  const [guests, setGuests] = useState([]);
-  const [selectedGuestId, setSelectedGuestId] = useState('');
-  const [selectedGuest, setSelectedGuest] = useState(null);
-  const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
-  const [addGuestOpen, setAddGuestOpen] = useState(false);
-  const [newGuest, setNewGuest] = useState({ name: '', phone: '', email: '' });
-  const [booking, setBooking] = useState({
-    id: null,
-    listingId: '',
-    checkinDate: '',
-    checkoutDate: '',
-    bookingSource: 'Walk-in',
-    commissionAmount: 0,
-    amountReceived: 0,
-    notes: '',
-    bankAccountId: ''
-  });
-  const [guestsPlanned, setGuestsPlanned] = useState(2);
-  const [guestsActual, setGuestsActual] = useState(2);
-  const [extraGuestCharge, setExtraGuestCharge] = useState(0);
-  const EXTRA_GUEST_RATE = 750;
-  const [showExtras, setShowExtras] = useState(false);
-  const [formMode, setFormMode] = useState('create');
-  const [selectedBookingId, setSelectedBookingId] = useState(null);
-  const [filters, setFilters] = useState({
-    listing: '',
-    guest: '',
-  });
-  // Default sorting should be by check-in date so upcoming bookings appear first
-  const [sortField, setSortField] = useState('checkinDate');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [search, setSearch] = useState("");
+  const [checkinFrom, setCheckinFrom] = useState(null);
+  const [checkinTo, setCheckinTo] = useState(null);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  const [selectedSource, setSelectedSource] = useState("");
+  const [extraInput, setExtraInput] = useState("");
+  const [openManualBookingList, setOpenManualBookingList] = useState(false);
+  const [propertySearch, setPropertySearch] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [deleteError, setDeleteError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState('');
-  const [checkinStart, setCheckinStart] = useState(null);
-  const [checkinEnd, setCheckinEnd] = useState(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const messageRef = useRef(null);
-  const lastFetchedGuestIdRef = useRef(null);
-  const nights = booking.checkinDate && booking.checkoutDate
-    ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
-    : 0;
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  // For full manual booking popup
+  const [selectedManualProperty, setSelectedManualProperty] = useState(null);
+  const [openFullManualBooking, setOpenFullManualBooking] = useState(false);
 
-  // Handle rows per page change
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Calculate paginated data
-
-  const timeOptions = [
-    "08:00", "09:00", "10:00", "11:00", "12:00",
-    "13:00", "14:00", "15:00", "16:00", "17:00",
-    "18:00", "19:00", "20:00", "21:00", "22:00"
+  // Sample property list
+  const propertiesList = [
+    { id: 501, name: "Atlas Homes – 1BHK 5th Floor Penthouse near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 302, name: "Atlas Homes – 1BHK 3F 302 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 301, name: "Atlas Homes – 1BHK 3F 301 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 202, name: "Atlas Homes – 1BHK 2F 202 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 201, name: "Atlas Homes – 1BHK 2F 201 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 102, name: "Atlas Homes – 1BHK 1F 102 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
+    { id: 101, name: "Atlas Homes – 1BHK 1F 101 near Hitech City, Hyderabad", city: "Hyderabad", image: "https://via.placeholder.com/50" },
   ];
 
-  useEffect(() => {
-    const fetchLookups = async () => {
-      try {
-          const [listRes, bankRes] = await Promise.all([
-            api.get(`/listings`),
-            api.get(`/bankaccounts`)
-          ]);
-        setListings(asArray(listRes.data, 'listings'));
-        setBankAccounts(asArray(bankRes.data, 'bankaccounts'));
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchLookups();
-  }, []);
-
-  useEffect(() => {
-    const loadGuests = async () => {
-      try {
-        await hydrateGuests();
-        const all = await getAllGuests();
-        setGuests(all);
-      } catch (err) {
-        console.error('Failed to load guests', err);
-      }
-    };
-    loadGuests();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedGuestId) {
-      lastFetchedGuestIdRef.current = null;
-      return;
+  // Fetch bookings
+  const fetchData = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/Bookings/GetAllBookings`);
+      setBookings(res.data ?? []);
+    } catch (e) {
+      console.error("Error fetching data:", e.response || e.message);
+      setBookings([]);
     }
+  };
 
-    const match = guests.find(
-      g => String(g.id) === String(selectedGuestId)
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Status badge helper
+  const getStatusBadge = (status) => {
+    const colors = {
+      Upcoming: { bg: "#EAF3FF", text: "#3478F6" },
+      Ongoing: { bg: "#F1E8FF", text: "#A149FF" },
+      Completed: { bg: "#E6FFEA", text: "#2FA84F" },
+      Cancelled: { bg: "#FFECEC", text: "#FF3C3C" },
+    };
+    const current = colors[status] ?? colors["Upcoming"];
+    return (
+      <span
+        style={{
+          backgroundColor: current.bg,
+          color: current.text,
+          padding: "4px 10px",
+          borderRadius: "8px",
+          fontSize: "12px",
+          fontWeight: 600,
+        }}
+      >
+        {status}
+      </span>
     );
-
-    if (match) {
-      lastFetchedGuestIdRef.current = null;
-      if (!selectedGuest || String(selectedGuest.id) !== String(match.id)) {
-        setSelectedGuest(match);
-      }
-      setGuest({
-        name: match.name || '',
-        phone: match.phone || '',
-        email: match.email || ''
-      });
-      return;
-    }
-
-    if (formMode !== 'edit') return;
-
-    if (lastFetchedGuestIdRef.current === selectedGuestId) {
-      if (selectedGuest && String(selectedGuest.id) === String(selectedGuestId)) {
-        setGuest({
-          name: selectedGuest.name || '',
-          phone: selectedGuest.phone || '',
-          email: selectedGuest.email || ''
-        });
-      }
-      return;
-    }
-
-    lastFetchedGuestIdRef.current = selectedGuestId;
-    let active = true;
-    const fetchGuest = async () => {
-      try {
-        const { data } = await api.get(`/guests/${selectedGuestId}`);
-        if (!active) return;
-        const raw = data?.guest ?? data;
-        if (!raw) return;
-        const normalized = {
-          id: raw.id != null ? raw.id.toString() : selectedGuestId,
-          name: raw.name ?? raw.fullName ?? '',
-          phone: raw.phone ?? '',
-          email: raw.email ?? ''
-        };
-        setSelectedGuest(normalized);
-        setGuest({
-          name: normalized.name || '',
-          phone: normalized.phone || '',
-          email: normalized.email || ''
-        });
-        setGuests(prev => {
-          const idx = prev.findIndex(g => String(g.id) === String(normalized.id));
-          if (idx === -1) {
-            return [...prev, normalized];
-          }
-          const next = [...prev];
-          next[idx] = { ...next[idx], ...normalized };
-          return next;
-        });
-      } catch (err) {
-        console.error('Failed to fetch guest details', err);
-      }
-    };
-    fetchGuest();
-    return () => {
-      active = false;
-    };
-  }, [formMode, guests, selectedGuestId, selectedGuest]);
-
-  const handleAddNewGuest = () => {
-    setNewGuest({ name: '', phone: '', email: '' });
-    setAddGuestOpen(true);
   };
 
-  const saveNewGuest = async () => {
-      try {
-        const res = await api.post(`/guests`, newGuest);
-        const g = res.data;
+  // Counts
+  const allCount = bookings.length;
+  const arrivingSoonCount = bookings.filter(b => dayjs(b.checkInDate).isAfter(dayjs()) && dayjs(b.checkInDate).isBefore(dayjs().add(3, "day"))).length;
+  const pendingReviewCount = bookings.filter(b => b.paymentStatus === "Pending Review").length;
+  const checkinCount = bookings.filter(b => dayjs(b.checkInDate).isSame(dayjs(), "day")).length;
+  const checkoutCount = bookings.filter(b => dayjs(b.checkOutDate).isSame(dayjs(), "day")).length;
+  const offlineBookingCount = bookings.filter(b => b.source === "Offline").length;
+  const bookingLeadsCount = bookings.filter(b => b.source === "Lead").length;
+  const ongoingCount = bookings.filter(b => b.paymentStatus === "Ongoing").length;
+  const upcomingCount = bookings.filter(b => b.paymentStatus === "Upcoming").length;
+  const completedCount = bookings.filter(b => b.paymentStatus === "Completed").length;
+  const cancelledCount = bookings.filter(b => b.paymentStatus === "Cancelled").length;
 
-        // Refresh the local guest cache so that future searches include the
-        // newly added guest and so other pages see the update.
-        await hydrateGuests(true);
-        const all = await getAllGuests();
-        setGuests(all);
+  const last7DaysCount = bookings.filter(b => dayjs(b.checkInDate).isAfter(dayjs().subtract(7, "day"))).length;
+  const last30DaysCount = bookings.filter(b => dayjs(b.checkInDate).isAfter(dayjs().subtract(30, "day"))).length;
+  const last12MonthsCount = bookings.filter(b => dayjs(b.checkInDate).isAfter(dayjs().subtract(12, "month"))).length;
 
-        setGuest({ name: g.name, phone: g.phone || '', email: g.email || '' });
-        setSelectedGuestId(g.id.toString());
-        setSelectedGuest(g);
-        setAddGuestOpen(false);
-      } catch (err) {
-      console.error(err);
-    }
-  };
+  const properties = [...new Set(bookings.map(b => b.propertyName))];
+  const sources = [...new Set(bookings.map(b => b.source))];
 
-  const fetchBookings = async (start, end) => {
-    setIsLoading(true);
-    setFetchError('');
-    try {
-        let url = `/bookings`;
-        if (start && end) {
-          url += `?checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
-        }
-        const { data } = await api.get(url);
-      const sorted = [...asArray(data, 'bookings')].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
-      );
-      setBookings(sorted);
-    } catch (err) {
-      setFetchError('Failed to load bookings.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const filteredBookings = bookings.filter(
+    (b) =>
+      (!search ||
+        b.bookingId?.toString().toLowerCase().includes(search.toLowerCase()) ||
+        b.guestName?.toLowerCase().includes(search.toLowerCase())) &&
+      (!checkinFrom || dayjs(b.checkInDate).isAfter(dayjs(checkinFrom).subtract(1, "day"))) &&
+      (!checkinTo || dayjs(b.checkInDate).isBefore(dayjs(checkinTo).add(1, "day"))) &&
+      (!selectedProperty || b.propertyName === selectedProperty) &&
+      (!selectedSource || b.source === selectedSource)
+  );
 
-  useEffect(() => {
-    if ((checkinStart && checkinEnd) || (!checkinStart && !checkinEnd)) {
-      fetchBookings(checkinStart, checkinEnd);
-    }
-  }, [checkinStart, checkinEnd]);
-
-  useEffect(() => {
-    if (successMsg || errorMsg) {
-      messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [successMsg, errorMsg]);
-
-  useEffect(() => {
-    if (successMsg) {
-      const timer = setTimeout(() => setSuccessMsg(''), 3000); // 3 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [successMsg]);
-
-  const reset = () => {
-    setGuest({ name: '', phone: '', email: '' });
-    setSelectedGuestId('');
-    setSelectedGuest(null);
-    lastFetchedGuestIdRef.current = null;
-    setFormMode('create');
-    setSelectedBookingId(null);
-    setBooking({
-      id: null,
-      listingId: '',
-      checkinDate: '',
-      checkoutDate: '',
-
-      bookingSource: 'Walk-in',
-      commissionAmount: 0,
-      amountReceived: 0,
-      notes: '',
-      bankAccountId: ''
-    });
-    setGuestsPlanned(2);
-    setGuestsActual(2);
-    setExtraGuestCharge(0);
-    setShowExtras(false);
-    setSuccessMsg('');
-    setErrorMsg('');
-  };
-
-  const submit = async () => {
-    setLoading(true);
-    setSuccessMsg('');
-    setErrorMsg('');
-    try {
-      const guestIdRaw = selectedGuest?.id ?? selectedGuestId;
-      const guestId = guestIdRaw ? Number(guestIdRaw) : NaN;
-      const listingId = booking.listingId ? Number(booking.listingId) : NaN;
-
-      if (!guestId || !listingId || !booking.checkinDate || !booking.checkoutDate) {
-        setErrorMsg('Please fill in all required fields.');
-        setLoading(false);
-        return;
-      }
-
-      const payload = buildBookingPayload({
-        booking,
-        selectedGuest,
-        selectedGuestId,
-        guestsPlanned,
-        guestsActual,
-        extraGuestCharge
-      });
-      console.log(payload);
-      if (formMode === 'edit' && selectedBookingId) {
-        await api.put(
-          `/bookings/${selectedBookingId}`,
-          payload
-        );
-        setSuccessMsg('Booking updated successfully!');
-      } else {
-        const { id, ...createPayload } = payload;
-        await api.post(`/bookings`, createPayload);
-        setSuccessMsg('Booking created successfully!');
-      }
-      reset();
-      const { data: updatedData } = await api.get(`/bookings`);
-      const sorted = [...asArray(updatedData, 'bookings')].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
-      );
-      setBookings(sorted);
-    } catch (err) {
-      setErrorMsg(err?.response?.data?.message || err.message || "Booking failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resolveListingId = (bookingToEdit) => {
-    const directId = [
-      bookingToEdit.listingId,
-      bookingToEdit.listing_id,
-      bookingToEdit.listingID,
-      bookingToEdit?.listing?.id
-    ].find(id => id !== undefined && id !== null && id !== '');
-
-    if (directId !== undefined && directId !== null && directId !== '') {
-      return directId.toString();
-    }
-
-    const normalizedListingName = (bookingToEdit.listing ?? '').toString().toLowerCase().trim();
-    if (normalizedListingName && listings.length) {
-      const match = listings.find(
-        l => (l.name || '').toLowerCase().trim() === normalizedListingName
-      );
-      if (match?.id !== undefined && match?.id !== null) {
-        return match.id.toString();
-      }
-    }
-
-    return '';
-  };
-
-  const handleEdit = (bookingToEdit) => {
-    console.log('Editing booking', bookingToEdit);
-    setFormMode('edit');
-    setSelectedBookingId(bookingToEdit.id);
-    lastFetchedGuestIdRef.current = null;
-    const listingId = resolveListingId(bookingToEdit);
-    setBooking({
-      id: bookingToEdit.id,
-      listingId,
-      // Support both camelCase variations returned from the API
-      checkinDate: (bookingToEdit.checkinDate || bookingToEdit.checkInDate)
-        ? dayjs(bookingToEdit.checkinDate || bookingToEdit.checkInDate).format('YYYY-MM-DD')
-        : '',
-      checkoutDate: (bookingToEdit.checkoutDate || bookingToEdit.checkOutDate)
-        ? dayjs(bookingToEdit.checkoutDate || bookingToEdit.checkOutDate).format('YYYY-MM-DD')
-        : '',
-      bookingSource: bookingToEdit.bookingSource || 'Walk-in',
-      commissionAmount: bookingToEdit.commissionAmount ?? 0,
-      amountReceived: bookingToEdit.amountReceived ?? 0,
-      notes: bookingToEdit.notes || '',
-      bankAccountId: bookingToEdit.bankAccountId ? bookingToEdit.bankAccountId.toString() : ''
-    });
-    setGuestsPlanned(bookingToEdit.guestsPlanned ?? 2);
-    setGuestsActual(bookingToEdit.guestsActual ?? 2);
-    setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
-    setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
-    const guestFromList = guests.find(
-      g => String(g.id) === String(bookingToEdit.guestId)
-    ) || null;
-    const fallbackGuest = {
-      id: bookingToEdit.guestId != null ? bookingToEdit.guestId.toString() : '',
-      name: bookingToEdit.guest || '',
-      phone: bookingToEdit.guestPhone || '',
-      email: bookingToEdit.guestEmail || ''
-    };
-    const guestObj = guestFromList || (fallbackGuest.id ? fallbackGuest : null);
-    setSelectedGuestId(guestObj?.id?.toString() || '');
-    setGuest({
-      name: guestObj?.name || '',
-      phone: guestObj?.phone || '',
-      email: guestObj?.email || ''
-    });
-    setSelectedGuest(guestObj);
-    setSuccessMsg('');
-  };
-
-  const handleDelete = async (id) => {
-    const confirmed = window.confirm('Are you sure you want to delete this booking?');
-    if (!confirmed) return;
-    try {
-      await api.delete(`/bookings/${id}`);
-      setBookings(prev => prev.filter(b => b.id !== id));
-    } catch (err) {
-      console.error(err);
-      setDeleteError(err?.response?.data?.message || err.message || 'Failed to delete booking.');
-    }
-  };
-
-  // Filtering logic
-  const filteredBookings = bookings.filter(b => (
-    (!filters.listing || (b.listing || '').toLowerCase().includes(filters.listing.toLowerCase())) &&
-    (!filters.guest || (b.guest || '').toLowerCase().includes(filters.guest.toLowerCase()))
-  ));
-
-  // Sorting logic
-  const sortedBookings = [...filteredBookings].sort((a, b) => {
-    if (!sortField) return 0;
-    let aValue, bValue;
-    if (sortField === 'checkinDate') {
-      aValue = a.checkinDate;
-      bValue = b.checkinDate;
-    } else if (sortField === 'amountReceived') {
-      aValue = a.amountReceived;
-      bValue = b.amountReceived;
-    } else {
-      return 0;
-    }
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-    const paginatedBookings = sortedBookings.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
+  // Filtered properties for Manual Booking popup
+  const filteredProperties = propertiesList.filter(p =>
+    p.name.toLowerCase().includes(propertySearch.toLowerCase())
   );
 
   return (
-    <Box>
-      <Card sx={{ mx: 'auto', mt: 2, mb: 2, bgcolor: formMode === 'edit' ? '#fffbe6' : 'inherit' }}>
-        <CardContent>
-          <Typography variant="h4" component="h2" gutterBottom>
-            {formMode === 'edit' ? 'Edit Booking' : 'Create Booking'}
-          </Typography>
-          {formMode === 'edit' && (
-            <Typography variant="subtitle2" color="secondary" gutterBottom>
-              Edit Mode
-            </Typography>
-          )}
+    <Box sx={{ padding: 3, background: "#fafafa" }}>
+      <Typography sx={{ fontWeight: 700, fontSize: 20, mb: 3 }}>Bookings</Typography>
 
-          <Box ref={messageRef} sx={{ mb: 2 }}>
-            {errorMsg && (
-              <Alert severity="error" sx={{ mb: 1 }}>
-                {errorMsg}
-              </Alert>
-            )}
+      <Box sx={{ display: "flex", gap: 3 }}>
+        {/* LEFT PANEL */}
+        <Box sx={{ width: 260, background: "#fff", borderRadius: "10px", padding: "15px", border: "1px solid #e8e8e8", height: "fit-content" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1 }}>General</Typography>
+          <LeftMenu title={`All (${allCount})`} active />
+          <LeftMenu title={`Arriving Soon (${arrivingSoonCount})`} />
+          <LeftMenu title={`Pending Review (${pendingReviewCount})`} />
+
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Today</Typography>
+          <LeftMenu title={`Check-in (${checkinCount})`} />
+          <LeftMenu title={`Check-out (${checkoutCount})`} />
+
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Others</Typography>
+          <LeftMenu title={`Offline Direct Booking (${offlineBookingCount})`} />
+          <LeftMenu title={`Booking Leads (${bookingLeadsCount})`} />
+
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Status</Typography>
+          <LeftMenu title={`Ongoing (${ongoingCount})`} color="purple" />
+          <LeftMenu title={`Upcoming (${upcomingCount})`} color="blue" />
+          <LeftMenu title={`Completed (${completedCount})`} color="green" />
+          <LeftMenu title={`Cancelled (${cancelledCount})`} color="red" />
+
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Summary</Typography>
+          <LeftMenu title={`📅 Last 7 Days (${last7DaysCount})`} />
+          <LeftMenu title={`📅 Last 30 Days (${last30DaysCount})`} />
+          <LeftMenu title={`📅 Last 12 Months (${last12MonthsCount})`} />
+        </Box>
+
+        {/* RIGHT PANEL */}
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
+            <TextField placeholder="Search Booking ID or Guest..." size="small" sx={{ width: 120 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+
+            <FormControl size="small" sx={{ width: 90 }}>
+              <InputLabel>Source</InputLabel>
+              <Select label="Source" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
+                <MenuItem value="">All</MenuItem>
+                {sources.map((s) => (<MenuItem key={s} value={s}>{s}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ width: 100 }}>
+              <InputLabel>Property</InputLabel>
+              <Select label="Property" value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)}>
+                <MenuItem value="">All</MenuItem>
+                {properties.map((p) => (<MenuItem key={p} value={p}>{p}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Check-in & Check-out"
+                value={checkinFrom}
+                onChange={(val) => { setCheckinFrom(val); setCheckinTo(val); }}
+                slotProps={{ textField: { size: "small", sx: { width: "20%" }, placeholder: "Select Date Range" } }}
+              />
+            </LocalizationProvider>
+
+            <TextField placeholder="All" size="small" value={extraInput} onChange={(e) => setExtraInput(e.target.value)} sx={{ width: 70 }} />
+
+            <Button variant="contained" sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }} onClick={() => setOpenManualBookingList(true)}>
+              Create Manual Booking
+            </Button>
           </Box>
 
-          <Snackbar
-            open={Boolean(successMsg)}
-            autoHideDuration={3000}
-            onClose={() => setSuccessMsg('')}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert onClose={() => setSuccessMsg('')} severity="success" sx={{ width: '100%' }}>
-              {successMsg}
-            </Alert>
-          </Snackbar>
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              submit();
-            }}
-            autoComplete="off"
-          >
-            <Box sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              '& > *': {
-                flex: '1 1 calc(33.333% - 16px)',
-                minWidth: '280px'
-              }
-            }}>
-
-              {/* Guest */}
-              <GuestTypeahead
-                allGuests={guests}
-                value={selectedGuest}
-                onSelect={(g) => {
-                  if (g) {
-                    setSelectedGuestId(g.id.toString());
-                    setSelectedGuest(g);
-                    setGuest({
-                      name: g.name,
-                      phone: g.phone || '',
-                      email: g.email || '',
-                    });
-                  } else {
-                    // Clear any previously selected guest details when the
-                    // user clears the typeahead input.  Without this check the
-                    // parent component would attempt to access properties of
-                    // `null` which results in runtime errors during typing.
-                    setSelectedGuestId('');
-                    setSelectedGuest(null);
-                    setGuest({ name: '', phone: '', email: '' });
-                  }
-                }}
-                onAddNew={handleAddNewGuest}
-              />
-
-              <TextField label="Phone" value={guest.phone} onChange={e=>setGuest({ ...guest, phone: e.target.value })} helperText="Autofilled from guest" />
-
-              <TextField label="Email" type="email" value={guest.email} onChange={e=>setGuest({ ...guest, email: e.target.value })} helperText="Autofilled from guest" />
-
-              <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
-                Booking Details
-              </Typography>
-
-              {/* Listing */}
-              <FormControl required>
-                <InputLabel>Listing</InputLabel>
-                <Select
-                  value={booking.listingId || ''}
-                  onChange={e => {
-                    const val = e.target.value === '' ? '' : e.target.value.toString();
-                    setBooking({ ...booking, listingId: val });
-                  }}
-                  label="Listing"
-                  renderValue={(selectedId) => {
-                    if (!selectedId) return '';
-                    const match = listings.find(l => String(l.id) === String(selectedId));
-                    return match?.name || '';
-                  }}
-                >
-                  <MenuItem value="">Select Listing</MenuItem>
-                  {listings.map(l => (
-                    <MenuItem key={l.id} value={l.id != null ? l.id.toString() : ''}>{l.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Check-in Date */}
-              <TextField
-                label="Check-in Date"
-                type="date"
-                value={booking.checkinDate}
-                onChange={e => setBooking({ ...booking, checkinDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-
-              {/* Check-out Date */}
-              <TextField
-                label="Check-out Date"
-                type="date"
-                value={booking.checkoutDate}
-                onChange={e => setBooking({ ...booking, checkoutDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-
-              {nights > 0 && (
-                <Typography sx={{ alignSelf: 'center' }} color="text.secondary">
-                  {nights} night{nights > 1 ? 's' : ''}
-                </Typography>
-              )}
-
-
-
-              {/* Booking Source */}
-              <FormControl required>
-                <InputLabel>Booking Source</InputLabel>
-                <Select
-                  value={booking.bookingSource}
-                  onChange={e => setBooking({ ...booking, bookingSource: e.target.value })}
-                  label="Booking Source"
-                >
-                  <MenuItem value="Walk-in">Walk-in</MenuItem>
-                  <MenuItem value="airbnb">Airbnb</MenuItem>
-                  <MenuItem value="agoda">Agoda</MenuItem>
-                  <MenuItem value="booking.com">Booking.com</MenuItem>
-                  <MenuItem value="MakeMyTrip">MakeMyTrip</MenuItem>
-                  <MenuItem value="Atlas Website">Atlas Website</MenuItem>
-                  <MenuItem value="Agent">Agent</MenuItem>
-                  <MenuItem value="Others">Others</MenuItem>
-                </Select>
-              </FormControl>
-
-              {/* Bank Account */}
-              <FormControl>
-                <InputLabel>Bank Account</InputLabel>
-                <Select
-                  value={booking.bankAccountId}
-                  onChange={e => setBooking({ ...booking, bankAccountId: e.target.value })}
-                  label="Bank Account"
-                >
-                  <MenuItem value="">Select Account</MenuItem>
-                  {bankAccounts.map(acc => (
-                    <MenuItem key={acc.id} value={acc.id}>
-                      {`${acc.bankName} - ${acc.accountNumber}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {/* Net Amount */}
-              <TextField
-                label="Net Amount"
-                type="number"
-                placeholder="Net Amount"
-                value={booking.amountReceived}
-                onChange={e => setBooking({ ...booking, amountReceived: e.target.value })}
-                inputProps={{
-                  min: 0,
-                  step: "0.01"
-                }}
-              />
-
-              {/* Commission */}
-              <TextField
-                label="Commission"
-                type="number"
-                placeholder="Commission"
-                value={booking.commissionAmount}
-                onChange={e => setBooking({ ...booking, commissionAmount: e.target.value })}
-                inputProps={{
-                  min: 0,
-                  step: "0.01"
-                }}
-              />
-
-              {/* Notes */}
-              <TextField
-                label="Notes"
-                placeholder="Notes"
-                value={booking.notes}
-                onChange={e => setBooking({ ...booking, notes: e.target.value })}
-                multiline
-                rows={2}
-                sx={{ gridColumn: 'span 2' }}
-              />
-            </Box>
-
-            <div style={{ marginTop: '1rem' }}>
-              <button
-                type="button"
-                className="text-sm text-blue-600 underline"
-                onClick={() => setShowExtras(!showExtras)}
-              >
-                {showExtras ? 'Hide Extras' : 'Add Extra Guest Info (optional)'}
-              </button>
-
-              {showExtras && (
-                <div className="grid grid-cols-3 gap-4 mt-3 p-4 border rounded-md bg-gray-50">
-                  <div>
-                    <label>Guests Planned</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={guestsPlanned}
-                      onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label>Guests Actual</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={guestsActual}
-                      onChange={(e) => {
-                        const actual = parseInt(e.target.value);
-                        setGuestsActual(actual);
-                        setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label>Extra Guest Charge (₹)</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={extraGuestCharge}
-                      onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <Box sx={{
-              display: 'flex',
-              gap: 2,
-              mt: 3,
-              justifyContent: 'flex-end'
-            }}>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading}
-                sx={{ minWidth: 120 }}
-              >
-                {loading ? 'Saving...' : formMode === 'edit' ? 'Update Booking' : 'Create Booking'}
-              </Button>
-
-              {formMode === 'edit' && (
-                <Button
-                  type="button"
-                  variant="outlined"
-                  onClick={reset}
-                  disabled={loading}
-                  sx={{ minWidth: 120 }}
-                >
-                  Cancel
-                </Button>
-              )}
-            </Box>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
-          alignItems: 'center',
-        }}
-      >
-        <TextField
-          label="Filter by Listing"
-          variant="outlined"
-          size="small"
-          value={filters.listing}
-          onChange={e => setFilters(f => ({ ...f, listing: e.target.value }))}
-        />
-
-        <TextField
-          label="Filter by Guest"
-          variant="outlined"
-          size="small"
-          value={filters.guest}
-          onChange={e => setFilters(f => ({ ...f, guest: e.target.value }))}
-        />
-
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker
-            label="Check-in Start"
-            value={checkinStart}
-            onChange={val => setCheckinStart(val)}
-            slotProps={{ textField: { size: 'small' } }}
-          />
-          <DatePicker
-            label="Check-in End"
-            value={checkinEnd}
-            onChange={val => setCheckinEnd(val)}
-            slotProps={{ textField: { size: 'small' } }}
-          />
-        </LocalizationProvider>
-
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => {
-            setCheckinStart(null);
-            setCheckinEnd(null);
-          }}
-        >
-          Clear Dates
-        </Button>
-
-
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('checkinDate');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
-          Sort by Check-in {sortField === 'checkinDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-        </Button>
-
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('amountReceived');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
-          Sort by Amount {sortField === 'amountReceived' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-        </Button>
-
-
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Booking Id</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Trip Status</TableCell>
+                  <TableCell>Check In ➜ Out</TableCell>
+                  <TableCell>Property</TableCell>
+                  <TableCell>Guest</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredBookings.map((row) => (
+                  <TableRow key={row.bookingId}>
+                    <TableCell>{row.bookingId}</TableCell>
+                    <TableCell>{row.source}</TableCell>
+                    <TableCell>{getStatusBadge(row.paymentStatus)}</TableCell>
+                    <TableCell>{row.checkInDate} ➜ {row.checkOutDate}</TableCell>
+                    <TableCell>{row.propertyName}</TableCell>
+                    <TableCell>{row.guestName}<br />{row.mobile}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       </Box>
 
-      {/* Table to display bookings */}
-      {fetchError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {fetchError}
-        </Alert>
-      )}
-
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Paper elevation={2}>
-          <Table className="booking-table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Listing</TableCell>
-              <TableCell>Guest</TableCell>
-              <TableCell>Check-in</TableCell>
-              <TableCell>Check-out</TableCell>
-              <TableCell>Payment</TableCell>
-              <TableCell>Guests</TableCell>
-              <TableCell>Extra Charge (₹)</TableCell>
-              <TableCell>Commission (₹)</TableCell>
-              <TableCell>Net (₹)</TableCell>
-              <TableCell>Bank Account</TableCell>
-              <TableCell>Source</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedBookings.map(row => (
-              <TableRow key={row.id}>
-                <TableCell>{row.listing}</TableCell>
-                <TableCell>{row.guest}</TableCell>
-                <TableCell>{new Date(row.checkinDate).toLocaleDateString()}</TableCell>
-                <TableCell>{new Date(row.checkoutDate).toLocaleDateString()}</TableCell>
-                <TableCell>₹{row.amountReceived.toLocaleString('en-IN')}</TableCell>
-                <TableCell>{row.guestsActual}</TableCell>
-                <TableCell>₹{row.extraGuestCharge.toLocaleString('en-IN')}</TableCell>
-                <TableCell>₹{row.commissionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                <TableCell>₹{(row.amountReceived - row.commissionAmount).toLocaleString('en-IN')}</TableCell>
-                <TableCell>{row.bankAccount}</TableCell>
-                <TableCell>{row.bookingSource}</TableCell>
-                <TableCell>{row.paymentStatus}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      disabled={loading}
-                      sx={{ minWidth: 60 }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(row.id)}
-                      disabled={loading}
-                      startIcon={<DeleteIcon />}
-                      sx={{ minWidth: 80 }}
-                    >
-                      Delete
-                    </Button>
-                  </Box>
-                </TableCell>
-              </TableRow>
+      {/* MANUAL BOOKING PROPERTY LIST DIALOG */}
+      <Dialog open={openManualBookingList} onClose={() => setOpenManualBookingList(false)} fullWidth maxWidth="sm" PaperProps={{ style: { position: "fixed", right: 0, margin: 0, width: "400px", maxHeight: "100%" } }}>
+        <DialogTitle>
+          Create Manual Booking
+          <IconButton aria-label="close" onClick={() => setOpenManualBookingList(false)} style={{ position: "absolute", right: 8, top: 8 }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search by Property Id, Name"
+            value={propertySearch}
+            onChange={(e) => setPropertySearch(e.target.value)}
+            style={{ marginBottom: "16px" }}
+          />
+          <List>
+            {filteredProperties.map((property) => (
+              <ListItem
+                key={property.id}
+                button
+                onClick={() => {
+                  setSelectedManualProperty(property);
+                  setOpenFullManualBooking(true);
+                  setOpenManualBookingList(false); // close property list dialog
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar src={property.image} variant="square" />
+                </ListItemAvatar>
+                <ListItemText primary={property.name} secondary={property.city + ` #${property.id}`} />
+              </ListItem>
             ))}
-          </TableBody>
-        </Table>
-
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={sortedBookings.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          sx={{
-            borderTop: '1px solid rgba(224, 224, 224, 1)',
-            '.MuiTablePagination-toolbar': {
-              paddingLeft: 2,
-              paddingRight: 2,
-            },
-          }}
-        />
-      </Paper>
-      )}
-
-      <Snackbar
-        open={Boolean(deleteError)}
-        autoHideDuration={3000}
-        onClose={() => setDeleteError('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setDeleteError('')} severity="error" sx={{ width: '100%' }}>
-          {deleteError}
-        </Alert>
-      </Snackbar>
-
-      <Dialog open={addGuestOpen} onClose={() => setAddGuestOpen(false)}>
-        <DialogTitle>Add Guest</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          <TextField
-            label="Name"
-            value={newGuest.name}
-            onChange={e => setNewGuest({ ...newGuest, name: e.target.value })}
-          />
-          <TextField
-            label="Phone"
-            value={newGuest.phone}
-            onChange={e => setNewGuest({ ...newGuest, phone: e.target.value })}
-          />
-          <TextField
-            label="Email"
-            type="email"
-            value={newGuest.email}
-            onChange={e => setNewGuest({ ...newGuest, email: e.target.value })}
-          />
+          </List>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddGuestOpen(false)}>Cancel</Button>
-          <Button onClick={saveNewGuest} disabled={!newGuest.name}>Save</Button>
-        </DialogActions>
       </Dialog>
 
+      {/* FULL MANUAL BOOKING POPUP */}
+      {selectedManualProperty && (
+        <ManualBookingPopup
+          open={openFullManualBooking}
+          onClose={() => setOpenFullManualBooking(false)}
+          property={selectedManualProperty}
+        />
+      )}
     </Box>
+  );
+}
+
+// Left Menu Component
+const LeftMenu = ({ title, active, color }) => {
+  let clr = "#000";
+  if (color === "purple") clr = "#A149FF";
+  if (color === "blue") clr = "#3478F6";
+  if (color === "green") clr = "#2FA84F";
+  if (color === "red") clr = "#FF3C3C";
+
+  return (
+    <Typography sx={{ ml: 2, fontSize: 14, padding: "4px 0", cursor: "pointer", fontWeight: active ? 700 : 400, color: active ? "#e63e3e" : clr }}>
+      {title}
+    </Typography>
   );
 };
 
-export default Bookings;
+export default Booking;
