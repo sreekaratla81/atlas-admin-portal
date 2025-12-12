@@ -22,15 +22,17 @@ export default defineConfig(({ command, mode }) => ({
     },
   },
   server: {
-    port: 5173,
-    proxy: {
-      "/api": {
-        target: process.env.VITE_API_BASE ?? "http://localhost:5287",
-        changeOrigin: true,
-        secure: false,
-      },
+  port: 5173,
+  proxy: {
+    "/api": {
+      target: "https://atlas-homes-api-gxdqfjc2btc0atbv.centralus-01.azurewebsites.net",
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/api/, ""), // Removes /api when forwarding
     },
   },
+},
+
   test: {
     environment: "node",
   },

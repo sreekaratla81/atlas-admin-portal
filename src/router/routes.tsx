@@ -9,6 +9,7 @@ import Guests from "@/pages/Guests";
 import BankAccountsPage from "@/pages/BankAccountsPage";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import DevConfig from "@/pages/DevConfig";
+import ReservationPage from "@/pages/Reservation"; // ✅ NEW IMPORT
 
 export type AppRoute = {
   path: string;
@@ -22,6 +23,10 @@ const baseRoutes: AppRoute[] = [
   { path: "/", element: <Navigate to="/bookings" replace /> },
   { path: "/auth/callback", element: <CallbackPage /> },
   { path: "/bookings", element: <ProtectedRoute><BookingsPage /></ProtectedRoute>, label: "Bookings" },
+
+  // ✅ NEW RESERVATION ROUTE
+  { path: "/reservation", element: <ProtectedRoute><ReservationPage /></ProtectedRoute>, label: "Reservation" },
+
   { path: "/listings", element: <ProtectedRoute><Listings /></ProtectedRoute>, label: "Listings" },
   { path: "/guests", element: <ProtectedRoute><Guests /></ProtectedRoute>, label: "Guests" },
   { path: "/properties", element: <ProtectedRoute><Properties /></ProtectedRoute>, label: "Properties" },
