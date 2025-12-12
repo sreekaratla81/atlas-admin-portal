@@ -37,7 +37,7 @@ const Guests = () => {
     setLoading(true);
     setError('');
       try {
-        const { data } = await api.get(`/guests`);
+        const { data } = await api.get(`/api/guests`);
         setGuests(asArray(data, 'guests'));
       } catch (err) {
       setError('Failed to fetch guests.');

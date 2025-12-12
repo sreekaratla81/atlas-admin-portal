@@ -2,6 +2,10 @@ import { NavLink } from "react-router-dom";
 
 const navItems = [
   { path: "/bookings", label: "Bookings" },
+
+  // ✅ NEW — RESERVATION MENU
+  { path: "/reservation", label: "Reservation" },
+
   { path: "/listings", label: "Listings" },
   { path: "/guests", label: "Guests" },
   { path: "/properties", label: "Properties" },
