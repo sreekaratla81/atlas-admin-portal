@@ -6,7 +6,9 @@
     "build": "node scripts/no-localhost.js && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "scan-localhost": "node scripts/no-localhost.js"
+    "scan-localhost": "node scripts/no-localhost.js",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --check \"**/*.{md,json,yml,yaml}\""
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.4.0",
