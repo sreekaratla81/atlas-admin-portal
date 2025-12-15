@@ -1,47 +1,68 @@
-# atlas-admin-portal
-Admin dashboard for managers and staff to manage listings, bookings, guests, and incidents
+# Atlas Admin Portal
 
-## API configuration
+Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, listings, guests, and payout reports against the Atlas API. It authenticates with Auth0 (or a local bypass) and caches guest lookups in IndexedDB for responsive search. 【F:src/main.tsx†L4-L30】【F:src/auth/AuthProvider.tsx†L5-L35】【F:src/services/guests.local.ts†L1-L25】【F:src/db/idb.ts†L1-L26】
 
-This project uses Vite environment variables for configuration. Copy `.env.example` to `.env.local` and update the values for local development. The `.env.local` file is ignored by git.
+## TL;DR
 
-Set `VITE_API_BASE` to your API's base URL. In development, requests are proxied to `/api` if this variable is not provided. For production deployments (e.g., Cloudflare Pages), define `VITE_API_BASE` and any other required `VITE_*` variables as build-time environment variables in Cloudflare.
+- React 18 + Vite SPA that talks to the REST API configured by `VITE_API_BASE` via a shared Axios client. 【F:src/lib/api.ts†L1-L32】【F:src/utils/env.ts†L1-L8】
+- Auth0-powered login with optional local bypass and email allow list enforcement. 【F:src/auth/AuthProvider.tsx†L5-L35】【F:src/auth/ProtectedRoute.tsx†L1-L24】【F:src/auth/RequireAuth.tsx†L1-L15】
+- Guest search hydrates the `/guests` endpoint into IndexedDB for offline-friendly lookups. 【F:src/services/guests.local.ts†L1-L25】【F:src/db/idb.ts†L1-L26】
 
-The reports page fetches data from REST endpoints such as:
+## Quickstart
 
-```
-GET /admin/reports/earnings/monthly
-GET /admin/reports/payouts/daily
-GET /admin/reports/bookings/calendar
-```
+1. **Install prerequisites** – Node.js 18+ and npm 9+.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+3. **Copy the sample environment**
+   ```bash
+   cp .env.example .env.local
+   ```
+   Update `VITE_API_BASE`, Auth0 fields, and `VITE_ALLOWED_EMAILS` for your tenant. 【F:.env.example†L1-L12】
+4. **Run the dev server**
+   ```bash
+   npm run dev
+   ```
+   The app serves at http://localhost:5173 with API calls proxied to `VITE_API_BASE` during development. 【F:vite.config.ts†L1-L33】
+5. **Execute checks**
 
-If these endpoints are unavailable the application will automatically fall back
-to the standard `/admin/reports/bookings`, `/admin/reports/listings` and
-`/admin/reports/payouts` endpoints.
+   ```bash
+   npm test -- --run
+   npm run lint
+   npm run format
+   ```
 
-Guest search is performed client-side using the hydrated guest list.
+   - `npm test` runs the Vitest suite (React components, hooks, utilities). 【F:package.json†L6-L12】
+   - `npm run lint` enforces ESLint with React/TypeScript rules. 【F:package.json†L6-L12】【F:.eslintrc.cjs†L1-L27】
+   - `npm run format` verifies Markdown/YAML/JSON formatting with Prettier. 【F:package.json†L6-L12】
 
-# Go to the directory where you want to store all repos
-cd ~/Projects/AtlasHomestays  # or any preferred location
+## Project Map
 
-# Clone each repository
-git clone https://github.com/sreekaratla81/atlas-guest-portal.git
-git clone https://github.com/sreekaratla81/atlas-admin-portal.git
-git clone https://github.com/sreekaratla81/atlas-api.git
-git clone https://github.com/sreekaratla81/atlas-staff-app.git
-git clone https://github.com/sreekaratla81/atlas-sql.git
-git clone https://github.com/sreekaratla81/atlas-shared-utils.git
+- `src/main.tsx` – entry point wiring React Query, AuthProvider, router, and error boundary. 【F:src/main.tsx†L4-L30】
+- `src/App.tsx` – top-level layout and config guard for API base. 【F:src/App.tsx†L1-L25】
+- `src/router/` – route table and `<AppRouter />` tests. 【F:src/router/routes.tsx†L1-L37】【F:src/router/AppRouter.tsx†L1-L33】
+- `src/pages/` – feature pages for bookings, guests, listings, properties, bank accounts, and reports. 【F:src/pages/Bookings.jsx†L1-L120】【F:src/pages/Reports.jsx†L1-L37】
+- `src/components/` – reusable MUI components (forms, reports, nav bar, error boundary). 【F:src/components/BankAccountForm.jsx†L1-L40】【F:src/components/NavBar.tsx†L1-L120】
+- `src/api/` – thin REST clients over the shared Axios instance. 【F:src/api/bookingsApi.js†L1-L21】【F:src/lib/api.ts†L1-L32】
+- `src/services/` & `src/db/` – guest hydration service backed by IndexedDB. 【F:src/services/guests.local.ts†L1-L25】【F:src/db/idb.ts†L1-L26】
+- `src/config/env.ts` – normalizes Vite env vars (Auth0, email allow-list). 【F:src/config/env.ts†L1-L35】
+- `scripts/no-localhost.js` – CI guard against shipping hard-coded `http://localhost` URLs. 【F:scripts/no-localhost.js†L1-L24】
 
-## Auth0 configuration
+## Common Tasks
 
-The application uses Auth0 for authentication. Configure the following variables via environment variables (e.g., in `.env.local` or in Cloudflare Pages build settings):
+- **Authenticate locally** – set `VITE_AUTH_BYPASS=true` and edit `public/auth-bypass.json` with a mock Auth0 profile. 【F:src/auth/AuthProvider.tsx†L5-L18】
+- **Update allowed users** – adjust `VITE_ALLOWED_EMAILS` (JSON array or CSV). 【F:src/config/env.ts†L24-L35】
+- **Refresh guest cache** – call `hydrateGuests(true)` in DevTools console to force a `/guests` sync. 【F:src/services/guests.local.ts†L13-L25】
+- **Build for production**
+  ```bash
+  npm run build
+  ```
+  The build step enforces HTTPS API bases and produces assets in `dist/`. 【F:package.json†L6-L12】【F:vite.config.ts†L5-L20】
 
-```
-VITE_AUTH_BYPASS=false
-VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
-VITE_AUTH0_CLIENT_ID=xxxx
-VITE_AUTH0_CALLBACK_PATH=/auth/callback
-VITE_DEFAULT_AFTER_LOGIN=/bookings
-```
-Set `VITE_AUTH_BYPASS=true` in `.env.local` and create `public/auth-bypass.json`
-with the desired user object to bypass Auth0 during local development.
+## Troubleshooting
+
+- **Blank screen after login** – ensure `VITE_ALLOWED_EMAILS` includes your Auth0 email or disable allow-listing locally. 【F:src/auth/RequireAuth.tsx†L1-L15】
+- **API requests hitting localhost in production** – `getApiBase` throws if a production build points to localhost; confirm deployment env vars. 【F:src/utils/env.ts†L1-L8】
+- **Auth redirect loops** – Auth0 redirect uses `VITE_AUTH0_CALLBACK_PATH`; verify the callback is allowed in your Auth0 app. 【F:src/auth/AuthProvider.tsx†L20-L33】
+- **CORS errors during development** – Vite proxies `/api` to `VITE_API_BASE`; set it to your backend origin or adjust the proxy target. 【F:vite.config.ts†L21-L33】
