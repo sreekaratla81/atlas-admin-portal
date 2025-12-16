@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import {
-  Drawer,
+  Dialog,
+  DialogTitle,
+  DialogContent,
   Box,
   Typography,
   TextField,
@@ -73,31 +75,31 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
   };
 
   return (
-    <Drawer
-      anchor="right"
+    <Dialog
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: { width: 450, height: "100%" } }}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        style: {
+          maxHeight: "90%",
+          margin: "auto",
+          top: "50%",
+          transform: "translateY(-50%)",
+        },
+      }}
     >
-      <Box
-        sx={{
-          height: "100%",
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          p: 3,
-        }}
-      >
-        {/* Header with title and close button */}
-        <Box display="flex" alignItems="center" mb={2}>
-          <Typography variant="h6" gutterBottom sx={{ flexGrow: 1 }}>
-            Create Manual Booking
-          </Typography>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-
+      <DialogTitle>
+        Create Manual Booking
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          style={{ position: "absolute", right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
         {/* Property Info */}
         {property && (
           <Box display="flex" alignItems="center" mb={2}>
@@ -109,7 +111,7 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
             <Box>
               <Typography variant="subtitle1">{property.name}</Typography>
               <Typography variant="body2" color="textSecondary">
-                {property.city}
+                {property.city || property.fullAddress || ""}
               </Typography>
             </Box>
             <Button size="small" sx={{ ml: "auto" }}>
@@ -163,7 +165,6 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
           sx={{ mb: 2 }}
         />
 
-        {/* Conditionally render GST fields */}
         {guestDetails.hasGST && (
           <Box display="flex" gap={1} mb={2}>
             <TextField
@@ -258,8 +259,7 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
           sx={{ mb: 2 }}
         />
 
-        {/* Submit Button fixed at bottom with small gap */}
-        <Box sx={{ mt: "auto" }}>
+        <Box sx={{ mt: 2 }}>
           <Button
             variant="contained"
             color="primary"
@@ -269,8 +269,8 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
             Create Booking
           </Button>
         </Box>
-      </Box>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 };
 

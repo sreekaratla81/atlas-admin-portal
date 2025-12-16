@@ -23,9 +23,8 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemAvatar,
-  Avatar,
   IconButton,
+  TablePagination,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -33,6 +32,16 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { Search as SearchIcon } from "@mui/icons-material";
 import ManualBookingPopup from "./ManualBookingPopup";
+
+const propertyImages = [
+  'https://atlashomestorage.blob.core.windows.net/listing-images/101/cover.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/102/img_1.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/201/img_11.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/202/cover.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/301/cover.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/302/cover.jpg',
+  'https://atlashomestorage.blob.core.windows.net/listing-images/501/IMG_1.jpg'
+];
 
 function Reservation() {
   const [bookings, setBookings] = useState([]);
@@ -48,21 +57,20 @@ function Reservation() {
   const [openFullManualBooking, setOpenFullManualBooking] = useState(false);
   const [propertiesList, setPropertiesList] = useState([]);
 
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // ================================
   // FETCH BOOKINGS
   // ================================
   const fetchBookings = async () => {
     try {
       const res = await api.get("/bookings");
-      console.log("Raw bookings API:", res.data);
-
-      // Map API response to match table fields
       const bookingsData = asArray(res.data).map((b) => {
-        // Split guest string into name and mobile
         const guestParts = b.guest ? b.guest.trim().split(" ") : [];
-        const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A"; // last part is mobile
-        const name = guestParts.length ? guestParts.join(" ") : "N/A"; // rest is name
-
+        const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A";
+        const name = guestParts.length ? guestParts.join(" ") : "N/A";
         return {
           bookingId: b.bookingId || b.id || b.bookingNumber,
           source: b.bookingSource || "N/A",
@@ -74,7 +82,6 @@ function Reservation() {
           paymentStatus: b.paymentStatus,
         };
       });
-
       setBookings(bookingsData);
     } catch (e) {
       console.error("Error fetching bookings:", e.message || e);
@@ -82,21 +89,16 @@ function Reservation() {
     }
   };
 
-  // ================================
-  // FETCH PROPERTIES
-  // ================================
   const loadProperties = async () => {
     try {
       const response = await api.get("/listings");
       const data = asArray(response.data);
-
-      const formatted = data.map((item) => ({
+      const formatted = data.map((item, index) => ({
         id: item.id,
         name: `${item.name} ${item.property?.name || ""}`.trim(),
-        image: item.imageUrl || item.photoUrl || "https://via.placeholder.com/50",
+        image: propertyImages[index % propertyImages.length], // use static images
         fullAddress: item.property?.address || "Address not available",
       }));
-
       setPropertiesList(formatted);
     } catch (error) {
       console.error("Error loading properties:", error);
@@ -137,7 +139,7 @@ function Reservation() {
   };
 
   // ================================
-  // COUNTS & FILTERS
+  // FILTERS & COUNTS
   // ================================
   const allCount = bookings.length;
   const arrivingSoonCount = bookings.filter((b) =>
@@ -146,18 +148,12 @@ function Reservation() {
   const pendingReviewCount = bookings.filter((b) => b.paymentStatus === "Pending Review").length;
   const checkinCount = bookings.filter((b) => dayjs(b.checkInDate).isSame(dayjs(), "day")).length;
   const checkoutCount = bookings.filter((b) => dayjs(b.checkOutDate).isSame(dayjs(), "day")).length;
-
-  // ✅ Offline = Walk-in only
   const offlineBookingCount = bookings.filter((b) => b.source === "Walk-in").length;
-
-  // ✅ Booking Leads = everything except Walk-in
   const bookingLeadsCount = bookings.filter((b) => b.source !== "Walk-in").length;
-
-const completedCount = bookings.filter((b) => b.paymentStatus === "Paid").length;
-const PendingCount = bookings.filter((b) => b.paymentStatus === "Pending").length;
-const ongoingCount = bookings.filter((b) => b.paymentStatus === "Present").length;
-const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").length;
-
+  const completedCount = bookings.filter((b) => b.paymentStatus === "Paid").length;
+  const PendingCount = bookings.filter((b) => b.paymentStatus === "Pending").length;
+  const ongoingCount = bookings.filter((b) => b.paymentStatus === "Present").length;
+  const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").length;
 
   const last7DaysCount = bookings.filter((b) => dayjs(b.checkInDate).isAfter(dayjs().subtract(7, "day"))).length;
   const last30DaysCount = bookings.filter((b) => dayjs(b.checkInDate).isAfter(dayjs().subtract(30, "day"))).length;
@@ -182,12 +178,18 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
     p.name.toLowerCase().includes(propertySearch.toLowerCase())
   );
 
+  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+  const paginatedBookings = filteredBookings.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   // ================================
   // RENDER
   // ================================
   return (
     <Box sx={{ padding: 3, background: "#fafafa" }}>
-      
       <Box sx={{ display: "flex", gap: 3 }}>
         {/* LEFT PANEL */}
         <Box sx={{ width: 260, background: "#fff", borderRadius: "10px", padding: "15px", border: "1px solid #e8e8e8", height: "fit-content" }}>
@@ -195,21 +197,17 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
           <LeftMenu title={`All (${allCount})`} active />
           <LeftMenu title={`Arriving Soon (${arrivingSoonCount})`} />
           <LeftMenu title={`Pending Review (${pendingReviewCount})`} />
-
           <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Today</Typography>
           <LeftMenu title={`Check-in (${checkinCount})`} />
           <LeftMenu title={`Check-out (${checkoutCount})`} />
-
           <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Others</Typography>
           <LeftMenu title={`Offline Direct Booking (${offlineBookingCount})`} />
           <LeftMenu title={`Booking Leads (${bookingLeadsCount})`} />
-
           <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Status</Typography>
           <LeftMenu title={`Ongoing (${ongoingCount})`} color="purple" />
           <LeftMenu title={`Upcoming (${upcomingCount})`} color="blue" />
           <LeftMenu title={`Completed (${completedCount})`} color="green" />
           <LeftMenu title={`Pending (${PendingCount})`} color="red" />
-
           <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Summary</Typography>
           <LeftMenu title={`📅 Last 7 Days (${last7DaysCount})`} />
           <LeftMenu title={`📅 Last 30 Days (${last30DaysCount})`} />
@@ -267,11 +265,16 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
 
             <TextField placeholder="All" size="small" value={extraInput} onChange={(e) => setExtraInput(e.target.value)} sx={{ width: 70 }} />
 
-            <Button variant="contained" sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }} onClick={() => setOpenManualBookingList(true)}>
+            <Button
+              variant="contained"
+              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }}
+              onClick={() => setOpenManualBookingList(true)}
+            >
               Create Manual Booking
             </Button>
           </Box>
 
+          {/* BOOKINGS TABLE */}
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
@@ -285,7 +288,7 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredBookings.map((row) => (
+                {paginatedBookings.map((row) => (
                   <TableRow key={row.bookingId}>
                     <TableCell>{row.bookingId}</TableCell>
                     <TableCell>{row.source}</TableCell>
@@ -298,11 +301,36 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredBookings.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            sx={{ mt: 2 }}
+          />
         </Box>
       </Box>
 
       {/* MANUAL BOOKING PROPERTY LIST DIALOG */}
-      <Dialog open={openManualBookingList} onClose={() => setOpenManualBookingList(false)} fullWidth maxWidth="sm" PaperProps={{ style: { position: "fixed", right: 0, margin: 0, width: "400px", maxHeight: "100%" } }}>
+      <Dialog
+        open={openManualBookingList}
+        onClose={() => setOpenManualBookingList(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          style: {
+            margin: "auto",
+            width: "400px",
+            maxHeight: "90%",
+            top: "50%",
+            transform: "translateY(-50%)",
+          },
+        }}
+      >
         <DialogTitle>
           Create Manual Booking
           <IconButton aria-label="close" onClick={() => setOpenManualBookingList(false)} style={{ position: "absolute", right: 8, top: 8 }}>
@@ -310,7 +338,14 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          <TextField fullWidth variant="outlined" placeholder="Search by Property Id, Name" value={propertySearch} onChange={(e) => setPropertySearch(e.target.value)} style={{ marginBottom: "16px" }} />
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search by Property Id, Name"
+            value={propertySearch}
+            onChange={(e) => setPropertySearch(e.target.value)}
+            style={{ marginBottom: "16px" }}
+          />
           <List>
             {filteredProperties.map((property) => (
               <ListItem
@@ -322,21 +357,26 @@ const upcomingCount = bookings.filter((b) => b.paymentStatus === "Future").lengt
                   setOpenManualBookingList(false);
                 }}
               >
-                <ListItemAvatar>
-                  <Avatar src={property.image} variant="square" />
-                </ListItemAvatar>
-                <ListItemText
-                  primary={property.name}
-                  secondary={property.fullAddress}
+                <Box
+                  component="img"
+                  src={property.image}
+                  alt={property.name}
+                  sx={{ width: 60, height: 60, borderRadius: 2, objectFit: "cover", mr: 2 }}
                 />
+                <ListItemText primary={property.name} secondary={property.fullAddress} />
               </ListItem>
             ))}
           </List>
         </DialogContent>
       </Dialog>
 
+      {/* FULL MANUAL BOOKING POPUP */}
       {selectedManualProperty && (
-        <ManualBookingPopup open={openFullManualBooking} onClose={() => setOpenFullManualBooking(false)} property={selectedManualProperty} />
+        <ManualBookingPopup
+          open={openFullManualBooking}
+          onClose={() => setOpenFullManualBooking(false)}
+          property={selectedManualProperty}
+        />
       )}
     </Box>
   );
@@ -351,7 +391,16 @@ const LeftMenu = ({ title, active, color }) => {
   if (color === "red") clr = "#FF3C3C";
 
   return (
-    <Typography sx={{ ml: 2, fontSize: 14, padding: "4px 0", cursor: "pointer", fontWeight: active ? 700 : 400, color: active ? "#e63e3e" : clr }}>
+    <Typography
+      sx={{
+        ml: 2,
+        fontSize: 14,
+        padding: "4px 0",
+        cursor: "pointer",
+        fontWeight: active ? 700 : 400,
+        color: active ? "#e63e3e" : clr,
+      }}
+    >
       {title}
     </Typography>
   );
