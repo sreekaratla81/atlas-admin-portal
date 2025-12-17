@@ -1,7 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useMemo } from "react";
 
-type NavItem = { path: string; label: string };
+type NavItem = {
+  path: string;
+  label: string;
+};
 
 const navItems: NavItem[] = [
   { path: "/reservations", label: "Reservations" },
@@ -22,9 +25,8 @@ export default function NavBar() {
 
   return (
     <header
-      className="top-nav"
       style={{
-        background: "var(--nav-bg)",
+        background: "#020617",
         color: "#e2e8f0",
         padding: "0 20px",
         position: "sticky",
@@ -38,17 +40,29 @@ export default function NavBar() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 18,
-          minHeight: "var(--nav-height)",
+          gap: 16,
+          minHeight: 72,
+          overflowX: "auto",      // 🔑 prevents wrapping
+          whiteSpace: "nowrap",   // 🔑 keeps single line
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* LOGO */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
+        >
           <img
             src="https://atlashomestorage.blob.core.windows.net/listing-images/logo-removebg-preview (3).png"
             alt="Atlas logo"
-            style={{ height: 42, width: "auto" }}
+            style={{ height: 42 }}
           />
-          <div style={{ fontWeight: 700, letterSpacing: 0.4, color: "#fff" }}>Atlas Admin</div>
+          <div style={{ fontWeight: 700, color: "#fff" }}>
+            Atlas Admin
+          </div>
         </div>
 
         <div
@@ -67,20 +81,26 @@ export default function NavBar() {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                [
-                  "nav-pill",
-                  isActive ? "active" : "",
-                ].join(" ")
-              }
               style={({ isActive }) => ({
                 padding: kioskMode ? "12px 16px" : "10px 14px",
                 borderRadius: 12,
-                color: "inherit",
+                color: "#e2e8f0",
                 textDecoration: "none",
-                background: isActive ? "linear-gradient(135deg, #22d3ee, #0ea5e9)" : "#1e293b",
-                border: isActive ? "1px solid #22d3ee" : "1px solid #1f2937",
-                boxShadow: isActive ? "0 8px 20px rgba(14,165,233,0.35)" : undefined,
+
+                /* 🔑 LAYOUT FIX */
+                boxSizing: "border-box",
+                border: "1px solid #22d3ee",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+
+                background: isActive
+                  ? "linear-gradient(135deg, #22d3ee, #0ea5e9)"
+                  : "#1e293b",
+
+                boxShadow: isActive
+                  ? "0 8px 20px rgba(14,165,233,0.35)"
+                  : "none",
+
                 fontWeight: 700,
                 transition: "transform 0.15s ease, box-shadow 0.2s ease",
                 whiteSpace: "nowrap",
