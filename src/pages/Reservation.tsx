@@ -26,6 +26,7 @@ import {
   ListItemText,
   IconButton,
   TablePagination,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -35,13 +36,13 @@ import { Search as SearchIcon } from "@mui/icons-material";
 import ManualBookingPopup from "./ManualBookingPopup";
 
 const propertyImages = [
-  'https://atlashomestorage.blob.core.windows.net/listing-images/101/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/102/img_1.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/201/img_11.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/202/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/301/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/302/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/501/IMG_1.jpg'
+  "https://atlashomestorage.blob.core.windows.net/listing-images/101/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/102/img_1.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/201/img_11.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/202/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/301/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/302/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/501/IMG_1.jpg",
 ];
 
 function Reservation() {
@@ -58,8 +59,7 @@ function Reservation() {
   const [openFullManualBooking, setOpenFullManualBooking] = useState(false);
   const [propertiesList, setPropertiesList] = useState([]);
   const [loadingError, setLoadingError] = useState("");
-const [loadingBookings, setLoadingBookings] = useState(true);
-
+  const [loadingBookings, setLoadingBookings] = useState(true);
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -68,39 +68,39 @@ const [loadingBookings, setLoadingBookings] = useState(true);
   // ================================
   // FETCH BOOKINGS
   // ================================
- const fetchBookings = async () => {
-  setLoadingBookings(true);        // 🔒 LOCK SPINNER
-  setLoadingError("");
+  const fetchBookings = async () => {
+    setLoadingBookings(true); // 🔒 LOCK SPINNER
+    setLoadingError("");
 
-  try {
-    const res = await api.get("/bookings"); // ⏳ WAIT HERE UNTIL API FINISHES
+    try {
+      const res = await api.get("/bookings"); // ⏳ WAIT HERE UNTIL API FINISHES
 
-    const bookingsData = asArray(res.data).map((b) => {
-      const guestParts = b.guest ? b.guest.trim().split(" ") : [];
-      const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A";
-      const name = guestParts.length ? guestParts.join(" ") : "N/A";
+      const bookingsData = asArray(res.data).map((b) => {
+        const guestParts = b.guest ? b.guest.trim().split(" ") : [];
+        const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A";
+        const name = guestParts.length ? guestParts.join(" ") : "N/A";
 
-      return {
-        bookingId: b.bookingId || b.id || b.bookingNumber,
-        source: b.bookingSource || "N/A",
-        guestName: name,
-        mobile,
-        propertyName: b.listing || b.property?.name || "N/A",
-        checkInDate: dayjs(b.checkinDate).format("YYYY-MM-DD"),
-        checkOutDate: dayjs(b.checkoutDate).format("YYYY-MM-DD"),
-        paymentStatus: b.paymentStatus,
-      };
-    });
+        return {
+          bookingId: b.bookingId || b.id || b.bookingNumber,
+          source: b.bookingSource || "N/A",
+          guestName: name,
+          mobile,
+          propertyName: b.listing || b.property?.name || "N/A",
+          checkInDate: dayjs(b.checkinDate).format("YYYY-MM-DD"),
+          checkOutDate: dayjs(b.checkoutDate).format("YYYY-MM-DD"),
+          paymentStatus: b.paymentStatus,
+        };
+      });
 
-    setBookings(bookingsData);
-    setLoadingBookings(false);     // ✅ UNLOCK ONLY AFTER SUCCESS
-  } catch (err) {
-    console.error(err);
-    setLoadingError("Please Wait Reservations Loading");
-    setBookings([]);
-    setLoadingBookings(true);      // ❗ KEEP SPINNER ON ERROR
-  }
-};
+      setBookings(bookingsData);
+      setLoadingBookings(false); // ✅ UNLOCK ONLY AFTER SUCCESS
+    } catch (err) {
+      console.error(err);
+      setLoadingError("Please Wait Reservations Loading");
+      setBookings([]);
+      setLoadingBookings(true); // ❗ KEEP SPINNER ON ERROR
+    }
+  };
 
   // ================================
   // LOAD PROPERTIES
@@ -139,18 +139,17 @@ const [loadingBookings, setLoadingBookings] = useState(true);
     };
     const s = colors[status] || colors["Upcoming"];
     return (
-      <span
-        style={{
+      <Chip
+        label={status}
+        sx={{
           background: s.bg,
           color: s.text,
-          padding: "4px 10px",
+          fontWeight: 700,
           borderRadius: "8px",
-          fontSize: 12,
-          fontWeight: 600,
+          paddingX: 0.5,
+          height: 28,
         }}
-      >
-        {status}
-      </span>
+      />
     );
   };
 
@@ -205,39 +204,63 @@ const [loadingBookings, setLoadingBookings] = useState(true);
   // RENDER
   // ================================
   return (
-    <Box sx={{ padding: 3, background: "#fafafa" }}>
-      <Box sx={{ display: "flex", gap: 3 }}>
+    <Box sx={{ padding: 3, background: "var(--shell-bg)" }}>
+      <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
         {/* LEFT PANEL */}
-        <Box sx={{ width: 260, background: "#fff", borderRadius: "10px", padding: "15px", border: "1px solid #e8e8e8", height: "fit-content" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1 }}>General</Typography>
+        <Box
+          sx={{
+            width: 260,
+            background: "#fff",
+            borderRadius: "12px",
+            padding: "16px",
+            border: "1px solid #e8e8e8",
+            position: "sticky",
+            top: 100,
+            alignSelf: "flex-start",
+          }}
+        >
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1, color: "#475569" }}>General</Typography>
           <LeftMenu title={`All (${allCount})`} active />
           <LeftMenu title={`Arriving Soon (${arrivingSoonCount})`} />
           <LeftMenu title={`Pending Review (${pendingReviewCount})`} />
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Today</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1, color: "#475569" }}>Today</Typography>
           <LeftMenu title={`Check-in (${checkinCount})`} />
           <LeftMenu title={`Check-out (${checkoutCount})`} />
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Others</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1, color: "#475569" }}>Others</Typography>
           <LeftMenu title={`Offline Direct Booking (${offlineBookingCount})`} />
           <LeftMenu title={`Booking Leads (${bookingLeadsCount})`} />
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Status</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1, color: "#475569" }}>Status</Typography>
           <LeftMenu title={`Ongoing (${ongoingCount})`} color="purple" />
           <LeftMenu title={`Upcoming (${upcomingCount})`} color="blue" />
           <LeftMenu title={`Completed (${completedCount})`} color="green" />
           <LeftMenu title={`Pending (${PendingCount})`} color="red" />
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Summary</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1, color: "#475569" }}>Summary</Typography>
           <LeftMenu title={`📅 Last 7 Days (${last7DaysCount})`} />
           <LeftMenu title={`📅 Last 30 Days (${last30DaysCount})`} />
           <LeftMenu title={`📅 Last 12 Months (${last12MonthsCount})`} />
         </Box>
 
         {/* RIGHT PANEL */}
-        <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ flexGrow: 1, display: "grid", gap: 2 }}>
           {/* FILTERS */}
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              alignItems: "center",
+              mb: 2,
+              flexWrap: "wrap",
+              background: "#fff",
+              borderRadius: 2,
+              p: 2,
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 2px rgba(15,23,42,0.08)",
+            }}
+          >
             <TextField
               placeholder="Search Booking ID or Guest..."
               size="small"
-              sx={{ width: 220 }}
+              sx={{ width: 240 }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{
@@ -248,14 +271,14 @@ const [loadingBookings, setLoadingBookings] = useState(true);
                 ),
               }}
             />
-            <FormControl size="small" sx={{ width: 120 }}>
+            <FormControl size="small" sx={{ width: 140 }}>
               <InputLabel>Source</InputLabel>
               <Select label="Source" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
                 <MenuItem value="">All</MenuItem>
                 {sources.map((s) => (<MenuItem key={s} value={s}>{s}</MenuItem>))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ width: 180 }}>
+            <FormControl size="small" sx={{ width: 200 }}>
               <InputLabel>Property</InputLabel>
               <Select label="Property" value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)}>
                 <MenuItem value="">All</MenuItem>
@@ -267,48 +290,54 @@ const [loadingBookings, setLoadingBookings] = useState(true);
                 label="From"
                 value={checkinFrom}
                 onChange={(val) => setCheckinFrom(val)}
-                slotProps={{ textField: { size: "small", sx: { width: 140 } } }}
+                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
               <DatePicker
                 label="To"
                 value={checkinTo}
                 onChange={(val) => setCheckinTo(val)}
-                slotProps={{ textField: { size: "small", sx: { width: 140 } } }}
+                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
             </LocalizationProvider>
-            <TextField placeholder="All" size="small" value={extraInput} onChange={(e) => setExtraInput(e.target.value)} sx={{ width: 70 }} />
+            <TextField placeholder="All" size="small" value={extraInput} onChange={(e) => setExtraInput(e.target.value)} sx={{ width: 80 }} />
             <Button
               variant="contained"
-              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }}
+              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 240, "&:hover": { bgcolor: "#d53024" } }}
               onClick={() => setOpenManualBookingList(true)}
             >
-              Create Manual Booking
+              CREATE MANUAL BOOKING
             </Button>
           </Box>
 
           {/* BOOKINGS TABLE */}
-          <Box sx={{ position: "relative" }}>
-            <TableContainer component={Paper}>
-              <Table>
+          <Box sx={{ position: "relative", background: "#fff", borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
+              <Table stickyHeader>
                 <TableHead>
-                  <TableRow>
-                    <TableCell>Booking Id</TableCell>
-                    <TableCell>Source</TableCell>
-                    <TableCell>Trip Status</TableCell>
-                    <TableCell>Check In ➜ Out</TableCell>
-                    <TableCell>Property</TableCell>
-                    <TableCell>Guest</TableCell>
+                  <TableRow sx={{ background: "#f8fafc" }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Booking Id</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Source</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Trip Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Check In ➜ Out</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Property</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Guest</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {paginatedBookings.map((row) => (
-                    <TableRow key={row.bookingId}>
+                    <TableRow
+                      key={row.bookingId}
+                      sx={{ "&:hover": { background: "#f8fafc" } }}
+                    >
                       <TableCell>{row.bookingId}</TableCell>
                       <TableCell>{row.source}</TableCell>
                       <TableCell>{getStatusBadge(row.paymentStatus)}</TableCell>
                       <TableCell>{row.checkInDate} ➜ {row.checkOutDate}</TableCell>
                       <TableCell>{row.propertyName}</TableCell>
-                      <TableCell>{row.guestName}<br />{row.mobile}</TableCell>
+                      <TableCell>
+                        <Typography fontWeight={700}>{row.guestName}</Typography>
+                        <Typography color="text.secondary" fontSize={13}>{row.mobile}</Typography>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -348,7 +377,7 @@ const [loadingBookings, setLoadingBookings] = useState(true);
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[5, 10, 25, 50]}
-            sx={{ mt: 2 }}
+            sx={{ mt: 1, background: "#fff", borderRadius: 1 }}
           />
         </Box>
       </Box>
@@ -422,7 +451,7 @@ const [loadingBookings, setLoadingBookings] = useState(true);
 
 // LEFT MENU COMPONENT
 const LeftMenu = ({ title, active, color }) => {
-  let clr = "#000";
+  let clr = "#0f172a";
   if (color === "purple") clr = "#A149FF";
 
   if (color === "blue") clr = "#3478F6";
@@ -432,15 +461,20 @@ const LeftMenu = ({ title, active, color }) => {
   return (
     <Typography
       sx={{
-        ml: 2,
+        ml: 1,
         fontSize: 14,
-        padding: "4px 0",
+        padding: "6px 10px",
         cursor: "pointer",
-        fontWeight: active ? 700 : 400,
+        fontWeight: active ? 700 : 500,
         color: active ? "#e63e3e" : clr,
+        borderRadius: 1,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: active ? "#fff1f2" : "transparent",
       }}
     >
-      {title}
+      <span>{title}</span>
     </Typography>
   );
 };
