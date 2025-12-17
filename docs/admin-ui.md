@@ -7,8 +7,10 @@
 - `?kiosk=1` query flag activates kiosk-friendly nav sizing inside the shell.
 
 ## Navigation rules
-- Primary nav items: Dashboard, Calendar, Channel Manager.
-- Legacy items remain accessible under the **More** menu: Bookings/Reservation, Listings, Guests, Properties, Reports, Bank Accounts.
+- Default landing route: `/reservations` (root `/` redirects here; legacy `/reservation` also forwards).
+- Top nav order (left → right): Reservations, Bookings, Guests, Listings, Properties, Calendar, Channel Manager, Dashboard.
+- Reports and Bank Accounts remain accessible directly in the top nav (no **More** menu).
+- No “More” menu; on small screens the nav wraps or scrolls horizontally so every item stays visible.
 - Do not remove legacy navigation; additions only.
 
 ## DTO notes

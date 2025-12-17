@@ -6,26 +6,22 @@ type NavItem = {
   label: string;
 };
 
-const primaryItems: NavItem[] = [
-  { path: "/dashboard", label: "Dashboard" },
+const navItems: NavItem[] = [
+  { path: "/reservations", label: "Reservations" },
+  { path: "/bookings", label: "Bookings" },
+  { path: "/guests", label: "Guests" },
+  { path: "/listings", label: "Listings" },
+  { path: "/properties", label: "Properties" },
   { path: "/calendar", label: "Calendar" },
   { path: "/channel-manager", label: "Channel Manager" },
-  { path: "/bookings", label: "Bookings" },
-  { path: "/reservation", label: "Reservation" },
-  { path: "/listings", label: "Listings" },
-  { path: "/guests", label: "Guests" },
-  { path: "/properties", label: "Properties" },
   { path: "/reports", label: "Reports" },
   { path: "/bank-accounts", label: "Bank Accounts" },
+  { path: "/dashboard", label: "Dashboard" },
 ];
 
 export default function NavBar() {
   const { search } = useLocation();
-
-  const kioskMode = useMemo(
-    () => new URLSearchParams(search).get("kiosk") === "1",
-    [search]
-  );
+  const kioskMode = useMemo(() => new URLSearchParams(search).get("kiosk") === "1", [search]);
 
   return (
     <header
@@ -69,16 +65,19 @@ export default function NavBar() {
           </div>
         </div>
 
-        {/* NAV ITEMS */}
         <div
           style={{
             display: "flex",
-            gap: 6,
             alignItems: "center",
-            flexShrink: 0,
+            gap: 6,
+            flexWrap: "wrap",
+            overflowX: "auto",
+            padding: "8px 0",
+            marginLeft: 16,
+            flex: 1,
           }}
         >
-          {primaryItems.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -103,7 +102,8 @@ export default function NavBar() {
                   : "none",
 
                 fontWeight: 700,
-                transition: "all 0.2s ease",
+                transition: "transform 0.15s ease, box-shadow 0.2s ease",
+                whiteSpace: "nowrap",
               })}
             >
               {item.label}
