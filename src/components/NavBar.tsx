@@ -1,11 +1,17 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useMemo } from "react";
 
-const navItems = [
+type NavItem = {
+  path: string;
+  label: string;
+};
+
+const primaryItems: NavItem[] = [
+  { path: "/dashboard", label: "Dashboard" },
+  { path: "/calendar", label: "Calendar" },
+  { path: "/channel-manager", label: "Channel Manager" },
   { path: "/bookings", label: "Bookings" },
-
-  // ✅ RESERVATION MENU
   { path: "/reservation", label: "Reservation" },
-
   { path: "/listings", label: "Listings" },
   { path: "/guests", label: "Guests" },
   { path: "/properties", label: "Properties" },
@@ -14,44 +20,97 @@ const navItems = [
 ];
 
 export default function NavBar() {
+  const { search } = useLocation();
+
+  const kioskMode = useMemo(
+    () => new URLSearchParams(search).get("kiosk") === "1",
+    [search]
+  );
+
   return (
-    <nav
-      className="navbar"
+    <header
       style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        gap: "2rem",
-        background: "#333",
-        padding: "0.75rem 1.5rem",
+        background: "#020617",
+        color: "#e2e8f0",
+        padding: "0 20px",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
       }}
     >
-      {/* ✅ LOGO — placed before Bookings */}
-      <img
-        src="https://atlashomestorage.blob.core.windows.net/listing-images/logo-removebg-preview (3).png"
-        alt="Logo"
+      <nav
+        aria-label="Primary navigation"
         style={{
-          height: "40px",
-          width: "auto",
-          marginRight: "0.5rem",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          minHeight: 72,
+          overflowX: "auto",      // 🔑 prevents wrapping
+          whiteSpace: "nowrap",   // 🔑 keeps single line
         }}
-      />
-
-      {/* ✅ NAV ITEMS */}
-      {navItems.map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          style={({ isActive }) => ({
-            color: isActive ? "#fff" : "#ccc",
-            textDecoration: "none",
-            borderBottom: isActive ? "2px solid #00aaff" : "none",
-            paddingBottom: "0.25rem",
-          })}
+      >
+        {/* LOGO */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexShrink: 0,
+          }}
         >
-          {item.label}
-        </NavLink>
-      ))}
-    </nav>
+          <img
+            src="https://atlashomestorage.blob.core.windows.net/listing-images/logo-removebg-preview (3).png"
+            alt="Atlas logo"
+            style={{ height: 42 }}
+          />
+          <div style={{ fontWeight: 700, color: "#fff" }}>
+            Atlas Admin
+          </div>
+        </div>
+
+        {/* NAV ITEMS */}
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {primaryItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              style={({ isActive }) => ({
+                padding: kioskMode ? "12px 16px" : "10px 14px",
+                borderRadius: 12,
+                color: "#e2e8f0",
+                textDecoration: "none",
+
+                /* 🔑 LAYOUT FIX */
+                boxSizing: "border-box",
+                border: "1px solid #22d3ee",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+
+                background: isActive
+                  ? "linear-gradient(135deg, #22d3ee, #0ea5e9)"
+                  : "#1e293b",
+
+                boxShadow: isActive
+                  ? "0 8px 20px rgba(14,165,233,0.35)"
+                  : "none",
+
+                fontWeight: 700,
+                transition: "all 0.2s ease",
+              })}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </header>
   );
 }
