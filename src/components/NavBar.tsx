@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 const navItems = [
   { path: "/bookings", label: "Bookings" },
 
-  // ✅ NEW — RESERVATION MENU
+  // ✅ RESERVATION MENU
   { path: "/reservation", label: "Reservation" },
 
   { path: "/listings", label: "Listings" },
@@ -26,6 +26,18 @@ export default function NavBar() {
         padding: "0.75rem 1.5rem",
       }}
     >
+      {/* ✅ LOGO — placed before Bookings */}
+      <img
+        src="https://atlashomestorage.blob.core.windows.net/listing-images/logo-removebg-preview (3).png"
+        alt="Logo"
+        style={{
+          height: "40px",
+          width: "auto",
+          marginRight: "0.5rem",
+        }}
+      />
+
+      {/* ✅ NAV ITEMS */}
       {navItems.map((item) => (
         <NavLink
           key={item.path}
