@@ -334,7 +334,7 @@ const [loadingBookings, setLoadingBookings] = useState(true);
               >
                 <CircularProgress size={50} sx={{ mb: 2, color: "#FF3C2F" }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#333" }}>
-                  {loadingError || "Backend Processing..."}
+                  {loadingError || "Please Wait Reservations Loading..."}
                 </Typography>
               </Box>
             )}
