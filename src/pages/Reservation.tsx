@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import CircularProgress from "@mui/material/CircularProgress";
 import {
@@ -109,6 +109,8 @@ const Reservation: React.FC = () => {
   const [propertiesList, setPropertiesList] = useState<Property[]>([]);
   const [loadingError, setLoadingError] = useState<string>("");
   const [loadingBookings, setLoadingBookings] = useState<boolean>(true);
+  const [retryScheduled, setRetryScheduled] = useState<boolean>(false);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pagination
   const [page, setPage] = useState<number>(0);
@@ -134,8 +136,13 @@ const Reservation: React.FC = () => {
   // FETCH BOOKINGS
   // ----------------------
   const fetchBookings = async () => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
     setLoadingBookings(true);
     setLoadingError("");
+    setRetryScheduled(false);
     try {
       const res = await api.get<BookingApiResponse[]>("/bookings");
       const bookingsData: Booking[] = asArray(res.data).map((b) => {
@@ -178,9 +185,16 @@ const Reservation: React.FC = () => {
       setLast12MonthsCount(bookingsData.filter(b => dayjs(b.checkInDate).isAfter(dayjs().subtract(12, "month"))).length);
     } catch (err) {
       console.error(err);
-      setLoadingError("Please wait reservations loading...");
-      setBookings([]);
-      setLoadingBookings(true);
+      setLoadingError("Failed to load reservations. Please try again.");
+      setLoadingBookings(false);
+
+      if (!retryTimeoutRef.current) {
+        setRetryScheduled(true);
+        retryTimeoutRef.current = setTimeout(() => {
+          retryTimeoutRef.current = null;
+          fetchBookings();
+        }, 5000);
+      }
     }
   };
 
@@ -207,6 +221,12 @@ const Reservation: React.FC = () => {
   useEffect(() => {
     fetchBookings();
     loadProperties();
+
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
   }, []);
 
   // ----------------------
@@ -428,6 +448,39 @@ const Reservation: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            {!loadingBookings && loadingError && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  p: 2,
+                  borderTop: "1px solid #e2e8f0",
+                  backgroundColor: "#fff4f4",
+                }}
+              >
+                <Box>
+                  <Typography fontWeight={700} color="error">
+                    {loadingError}
+                  </Typography>
+                  {retryScheduled && (
+                    <Typography color="text.secondary" fontSize={13}>
+                      Retrying in a few seconds...
+                    </Typography>
+                  )}
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="error"
+                  onClick={fetchBookings}
+                >
+                  Retry now
+                </Button>
+              </Box>
+            )}
 
             {loadingBookings && (
               <Box
