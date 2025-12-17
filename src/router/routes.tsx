@@ -30,7 +30,7 @@ const withLegacy = (node: React.ReactNode, title?: string) => (
 );
 
 const baseRoutes: AppRoute[] = [
-  { path: "/", element: <Navigate to="/bookings" replace /> },
+  { path: "/", element: <Navigate to="/reservations" replace /> },
   { path: "/auth/callback", element: <CallbackPage /> },
   { path: "/dashboard", element: <ProtectedRoute><DashboardPage /></ProtectedRoute>, label: "Dashboard" },
   { path: "/calendar", element: <ProtectedRoute><UnifiedCalendarPage /></ProtectedRoute>, label: "Calendar" },
@@ -38,14 +38,15 @@ const baseRoutes: AppRoute[] = [
   { path: "/bookings", element: <ProtectedRoute>{withLegacy(<BookingsPage />, "Bookings")}</ProtectedRoute>, label: "Bookings" },
 
   // ✅ NEW RESERVATION ROUTE
-  { path: "/reservation", element: <ProtectedRoute>{withLegacy(<ReservationPage />, "Reservation")}</ProtectedRoute>, label: "Reservation" },
+  { path: "/reservations", element: <ProtectedRoute>{withLegacy(<ReservationPage />, "Reservations")}</ProtectedRoute>, label: "Reservations" },
+  { path: "/reservation", element: <Navigate to="/reservations" replace /> },
 
   { path: "/listings", element: <ProtectedRoute>{withLegacy(<Listings />, "Listings")}</ProtectedRoute>, label: "Listings" },
   { path: "/guests", element: <ProtectedRoute>{withLegacy(<Guests />, "Guests")}</ProtectedRoute>, label: "Guests" },
   { path: "/properties", element: <ProtectedRoute>{withLegacy(<Properties />, "Properties")}</ProtectedRoute>, label: "Properties" },
   { path: "/reports", element: <ProtectedRoute>{withLegacy(<Reports />, "Reports")}</ProtectedRoute>, label: "Reports" },
   { path: "/bank-accounts", element: <ProtectedRoute>{withLegacy(<BankAccountsPage />, "Bank Accounts")}</ProtectedRoute>, label: "Bank Accounts" },
-  { path: "*", element: <Navigate to="/bookings" replace /> }
+  { path: "*", element: <Navigate to="/reservations" replace /> }
 ];
 
 if (import.meta.env.DEV) {

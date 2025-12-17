@@ -70,9 +70,19 @@ describe("App routes", () => {
     expect(screen.getByText(/Mock Channel Manager/i)).toBeInTheDocument();
   });
 
-  it("renders reservation CTA", () => {
+  it("lands on reservations by default", async () => {
+    renderAt("/");
+    await waitFor(() => expect(screen.getAllByText(/CREATE MANUAL BOOKING/i).length).toBeGreaterThan(0));
+  });
+
+  it("renders reservations", async () => {
+    renderAt("/reservations");
+    await waitFor(() => expect(screen.getAllByText(/CREATE MANUAL BOOKING/i).length).toBeGreaterThan(0));
+  });
+
+  it("redirects legacy reservation path", async () => {
     renderAt("/reservation");
-    expect(screen.getByText(/CREATE MANUAL BOOKING/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(/CREATE MANUAL BOOKING/i).length).toBeGreaterThan(0));
   });
 
   const legacyRoutes = [
