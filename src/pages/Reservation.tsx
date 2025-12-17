@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, asArray } from "@/lib/api";
+import CircularProgress from "@mui/material/CircularProgress";
 import {
   Box,
   Button,
@@ -56,39 +57,54 @@ function Reservation() {
   const [selectedManualProperty, setSelectedManualProperty] = useState(null);
   const [openFullManualBooking, setOpenFullManualBooking] = useState(false);
   const [propertiesList, setPropertiesList] = useState([]);
+  const [loadingError, setLoadingError] = useState("");
+const [loadingBookings, setLoadingBookings] = useState(true);
 
-  // Pagination state
+
+  // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // ================================
   // FETCH BOOKINGS
   // ================================
-  const fetchBookings = async () => {
-    try {
-      const res = await api.get("/bookings");
-      const bookingsData = asArray(res.data).map((b) => {
-        const guestParts = b.guest ? b.guest.trim().split(" ") : [];
-        const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A";
-        const name = guestParts.length ? guestParts.join(" ") : "N/A";
-        return {
-          bookingId: b.bookingId || b.id || b.bookingNumber,
-          source: b.bookingSource || "N/A",
-          guestName: name,
-          mobile: mobile,
-          propertyName: b.listing || b.property?.name || "N/A",
-          checkInDate: dayjs(b.checkinDate).format("YYYY-MM-DD"),
-          checkOutDate: dayjs(b.checkoutDate).format("YYYY-MM-DD"),
-          paymentStatus: b.paymentStatus,
-        };
-      });
-      setBookings(bookingsData);
-    } catch (e) {
-      console.error("Error fetching bookings:", e.message || e);
-      setBookings([]);
-    }
-  };
+ const fetchBookings = async () => {
+  setLoadingBookings(true);        // 🔒 LOCK SPINNER
+  setLoadingError("");
 
+  try {
+    const res = await api.get("/bookings"); // ⏳ WAIT HERE UNTIL API FINISHES
+
+    const bookingsData = asArray(res.data).map((b) => {
+      const guestParts = b.guest ? b.guest.trim().split(" ") : [];
+      const mobile = guestParts.length > 1 ? guestParts.pop() : "N/A";
+      const name = guestParts.length ? guestParts.join(" ") : "N/A";
+
+      return {
+        bookingId: b.bookingId || b.id || b.bookingNumber,
+        source: b.bookingSource || "N/A",
+        guestName: name,
+        mobile,
+        propertyName: b.listing || b.property?.name || "N/A",
+        checkInDate: dayjs(b.checkinDate).format("YYYY-MM-DD"),
+        checkOutDate: dayjs(b.checkoutDate).format("YYYY-MM-DD"),
+        paymentStatus: b.paymentStatus,
+      };
+    });
+
+    setBookings(bookingsData);
+    setLoadingBookings(false);     // ✅ UNLOCK ONLY AFTER SUCCESS
+  } catch (err) {
+    console.error(err);
+    setLoadingError("Please Wait Reservations Loading");
+    setBookings([]);
+    setLoadingBookings(true);      // ❗ KEEP SPINNER ON ERROR
+  }
+};
+
+  // ================================
+  // LOAD PROPERTIES
+  // ================================
   const loadProperties = async () => {
     try {
       const response = await api.get("/listings");
@@ -96,19 +112,19 @@ function Reservation() {
       const formatted = data.map((item, index) => ({
         id: item.id,
         name: `${item.name} ${item.property?.name || ""}`.trim(),
-        image: propertyImages[index % propertyImages.length], // use static images
+        image: propertyImages[index % propertyImages.length],
         fullAddress: item.property?.address || "Address not available",
       }));
       setPropertiesList(formatted);
-    } catch (error) {
-      console.error("Error loading properties:", error);
+    } catch (err) {
+      console.error(err);
       setPropertiesList([]);
     }
   };
 
   useEffect(() => {
-    fetchBookings();
-    loadProperties();
+    fetchBookings(); // spinner depends only on bookings
+    loadProperties(); // no spinner for properties
   }, []);
 
   // ================================
@@ -216,6 +232,7 @@ function Reservation() {
 
         {/* RIGHT PANEL */}
         <Box sx={{ flexGrow: 1 }}>
+          {/* FILTERS */}
           <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
             <TextField
               placeholder="Search Booking ID or Guest..."
@@ -231,7 +248,6 @@ function Reservation() {
                 ),
               }}
             />
-
             <FormControl size="small" sx={{ width: 120 }}>
               <InputLabel>Source</InputLabel>
               <Select label="Source" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
@@ -239,7 +255,6 @@ function Reservation() {
                 {sources.map((s) => (<MenuItem key={s} value={s}>{s}</MenuItem>))}
               </Select>
             </FormControl>
-
             <FormControl size="small" sx={{ width: 180 }}>
               <InputLabel>Property</InputLabel>
               <Select label="Property" value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)}>
@@ -247,7 +262,6 @@ function Reservation() {
                 {properties.map((p) => (<MenuItem key={p} value={p}>{p}</MenuItem>))}
               </Select>
             </FormControl>
-
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DatePicker
                 label="From"
@@ -262,9 +276,7 @@ function Reservation() {
                 slotProps={{ textField: { size: "small", sx: { width: 140 } } }}
               />
             </LocalizationProvider>
-
             <TextField placeholder="All" size="small" value={extraInput} onChange={(e) => setExtraInput(e.target.value)} sx={{ width: 70 }} />
-
             <Button
               variant="contained"
               sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }}
@@ -275,32 +287,58 @@ function Reservation() {
           </Box>
 
           {/* BOOKINGS TABLE */}
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Booking Id</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Trip Status</TableCell>
-                  <TableCell>Check In ➜ Out</TableCell>
-                  <TableCell>Property</TableCell>
-                  <TableCell>Guest</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedBookings.map((row) => (
-                  <TableRow key={row.bookingId}>
-                    <TableCell>{row.bookingId}</TableCell>
-                    <TableCell>{row.source}</TableCell>
-                    <TableCell>{getStatusBadge(row.paymentStatus)}</TableCell>
-                    <TableCell>{row.checkInDate} ➜ {row.checkOutDate}</TableCell>
-                    <TableCell>{row.propertyName}</TableCell>
-                    <TableCell>{row.guestName}<br />{row.mobile}</TableCell>
+          <Box sx={{ position: "relative" }}>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Booking Id</TableCell>
+                    <TableCell>Source</TableCell>
+                    <TableCell>Trip Status</TableCell>
+                    <TableCell>Check In ➜ Out</TableCell>
+                    <TableCell>Property</TableCell>
+                    <TableCell>Guest</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {paginatedBookings.map((row) => (
+                    <TableRow key={row.bookingId}>
+                      <TableCell>{row.bookingId}</TableCell>
+                      <TableCell>{row.source}</TableCell>
+                      <TableCell>{getStatusBadge(row.paymentStatus)}</TableCell>
+                      <TableCell>{row.checkInDate} ➜ {row.checkOutDate}</TableCell>
+                      <TableCell>{row.propertyName}</TableCell>
+                      <TableCell>{row.guestName}<br />{row.mobile}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* LOADING OVERLAY ONLY FOR BOOKINGS */}
+            {loadingBookings && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "rgba(255,255,255,0.7)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 10,
+                }}
+              >
+                <CircularProgress size={50} sx={{ mb: 2, color: "#FF3C2F" }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#333" }}>
+                  {loadingError || "Backend Processing..."}
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
           <TablePagination
             component="div"
@@ -315,7 +353,7 @@ function Reservation() {
         </Box>
       </Box>
 
-      {/* MANUAL BOOKING PROPERTY LIST DIALOG */}
+      {/* MANUAL BOOKING DIALOG */}
       <Dialog
         open={openManualBookingList}
         onClose={() => setOpenManualBookingList(false)}
@@ -386,6 +424,7 @@ function Reservation() {
 const LeftMenu = ({ title, active, color }) => {
   let clr = "#000";
   if (color === "purple") clr = "#A149FF";
+
   if (color === "blue") clr = "#3478F6";
   if (color === "green") clr = "#2FA84F";
   if (color === "red") clr = "#FF3C3C";
