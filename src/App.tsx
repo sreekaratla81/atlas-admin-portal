@@ -1,6 +1,5 @@
 import React from "react";
 import AppRouter from "@/router/AppRouter";
-import NavBar from "@/components/NavBar";
 import { getApiBase } from "@/utils/env";
 
 function ConfigGuard({ children }: React.PropsWithChildren) {
@@ -20,7 +19,6 @@ function ConfigGuard({ children }: React.PropsWithChildren) {
 export default function App() {
   return (
     <ConfigGuard>
-      <NavBar />
       <AppRouter />
     </ConfigGuard>
   );

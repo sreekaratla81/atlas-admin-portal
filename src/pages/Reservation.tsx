@@ -27,6 +27,7 @@ import {
   ListItemText,
   IconButton,
   TablePagination,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -79,13 +80,13 @@ function asArray<T>(value: T | T[] | undefined | null): T[] {
 }
 
 const propertyImages = [
-  'https://atlashomestorage.blob.core.windows.net/listing-images/101/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/102/img_1.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/201/img_11.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/202/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/301/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/302/cover.jpg',
-  'https://atlashomestorage.blob.core.windows.net/listing-images/501/IMG_1.jpg'
+  "https://atlashomestorage.blob.core.windows.net/listing-images/101/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/102/img_1.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/201/img_11.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/202/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/301/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/302/cover.jpg",
+  "https://atlashomestorage.blob.core.windows.net/listing-images/501/IMG_1.jpg",
 ];
 
 // ----------------------
@@ -221,18 +222,17 @@ const Reservation: React.FC = () => {
     };
     const s = colors[status] || colors["Upcoming"];
     return (
-      <span
-        style={{
+      <Chip
+        label={status}
+        sx={{
           background: s.bg,
           color: s.text,
-          padding: "4px 10px",
+          fontWeight: 700,
           borderRadius: "8px",
-          fontSize: 12,
-          fontWeight: 600,
+          paddingX: 0.5,
+          height: 28,
         }}
-      >
-        {status}
-      </span>
+      />
     );
   };
 
@@ -297,11 +297,22 @@ const Reservation: React.FC = () => {
   // RENDER
   // ----------------------
   return (
-    <Box sx={{ padding: 3, background: "#fafafa" }}>
-      <Box sx={{ display: "flex", gap: 3 }}>
+    <Box sx={{ padding: 3, background: "var(--shell-bg)" }}>
+      <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
         {/* LEFT PANEL */}
-        <Box sx={{ width: 260, background: "#fff", borderRadius: "10px", padding: "15px", border: "1px solid #e8e8e8", height: "fit-content" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1 }}>General</Typography>
+        <Box
+          sx={{
+            width: 260,
+            background: "#fff",
+            borderRadius: "12px",
+            padding: "16px",
+            border: "1px solid #e8e8e8",
+            position: "sticky",
+            top: 100,
+            alignSelf: "flex-start",
+          }}
+        >
+          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1, color: "#475569" }}>General</Typography>
           <LeftMenu title={`All (${allCount})`} active />
           <LeftMenu title={`Arriving Soon (${arrivingSoonCount})`} />
           <LeftMenu title={`Pending Review (${pendingReviewCount})`} />
@@ -333,7 +344,7 @@ const Reservation: React.FC = () => {
             <TextField
               placeholder="Search Booking ID or Guest..."
               size="small"
-              sx={{ width: 220 }}
+              sx={{ width: 240 }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{
@@ -365,48 +376,53 @@ const Reservation: React.FC = () => {
                 label="From"
                 value={checkinFrom}
                 onChange={(val) => setCheckinFrom(val)}
-                slotProps={{ textField: { size: "small", sx: { width: 140 } } }}
+                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
               <DatePicker
                 label="To"
                 value={checkinTo}
                 onChange={(val) => setCheckinTo(val)}
-                slotProps={{ textField: { size: "small", sx: { width: 140 } } }}
+                slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
             </LocalizationProvider>
-
             <Button
               variant="contained"
-              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 220, "&:hover": { bgcolor: "#d53024" } }}
+              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 240, "&:hover": { bgcolor: "#d53024" } }}
               onClick={() => setOpenManualBookingList(true)}
             >
-              Create Manual Booking
+              CREATE MANUAL BOOKING
             </Button>
           </Box>
 
           {/* BOOKINGS TABLE */}
-          <Box sx={{ position: "relative" }}>
-            <TableContainer component={Paper}>
-              <Table>
+          <Box sx={{ position: "relative", background: "#fff", borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
+              <Table stickyHeader>
                 <TableHead>
-                  <TableRow>
-                    <TableCell>Booking Id</TableCell>
-                    <TableCell>Source</TableCell>
-                    <TableCell>Trip Status</TableCell>
-                    <TableCell>Check In ➜ Out</TableCell>
-                    <TableCell>Property</TableCell>
-                    <TableCell>Guest</TableCell>
+                  <TableRow sx={{ background: "#f8fafc" }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Booking Id</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Source</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Trip Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Check In ➜ Out</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Property</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Guest</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {paginatedBookings.map((row) => (
-                    <TableRow key={row.bookingId}>
+                    <TableRow
+                      key={row.bookingId}
+                      sx={{ "&:hover": { background: "#f8fafc" } }}
+                    >
                       <TableCell>{row.bookingId}</TableCell>
                       <TableCell>{row.source}</TableCell>
                       <TableCell>{getStatusBadge(row.paymentStatus)}</TableCell>
                       <TableCell>{row.checkInDate} ➜ {row.checkOutDate}</TableCell>
                       <TableCell>{row.propertyName}</TableCell>
-                      <TableCell>{row.guestName}<br />{row.mobile}</TableCell>
+                      <TableCell>
+                        <Typography fontWeight={700}>{row.guestName}</Typography>
+                        <Typography color="text.secondary" fontSize={13}>{row.mobile}</Typography>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
