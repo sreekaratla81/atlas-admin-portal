@@ -26,13 +26,13 @@ export default function NavBar() {
   return (
     <header
       style={{
-        background: "#020617",
-        color: "#e2e8f0",
+        background: "var(--nav-bg)",
+        color: "var(--color-text-inverse)",
         padding: "0 20px",
         position: "sticky",
         top: 0,
         zIndex: 50,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+        boxShadow: "var(--shadow-elevated)",
       }}
     >
       <nav
@@ -60,7 +60,7 @@ export default function NavBar() {
             alt="Atlas logo"
             style={{ height: 42 }}
           />
-          <div style={{ fontWeight: 700, color: "#fff" }}>
+          <div style={{ fontWeight: 700, color: "var(--color-text-inverse)" }}>
             Atlas Admin
           </div>
         </div>
@@ -84,22 +84,22 @@ export default function NavBar() {
               style={({ isActive }) => ({
                 padding: kioskMode ? "12px 16px" : "10px 14px",
                 borderRadius: 12,
-                color: "#e2e8f0",
+                color: "var(--color-text-inverse)",
                 textDecoration: "none",
 
                 /* 🔑 LAYOUT FIX */
                 boxSizing: "border-box",
-                border: "1px solid #22d3ee",
+                border: `1px solid ${isActive ? "var(--color-accent-primary)" : "var(--color-divider-strong)"}`,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
 
                 background: isActive
-                  ? "linear-gradient(135deg, #22d3ee, #0ea5e9)"
-                  : "#1e293b",
+                  ? "linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-strong))"
+                  : "var(--nav-bg)",
 
                 boxShadow: isActive
-                  ? "0 8px 20px rgba(14,165,233,0.35)"
-                  : "none",
+                  ? "var(--shadow-elevated)"
+                  : "var(--shadow-soft)",
 
                 fontWeight: 700,
                 transition: "transform 0.15s ease, box-shadow 0.2s ease",

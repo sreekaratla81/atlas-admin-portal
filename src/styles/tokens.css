@@ -1,0 +1,55 @@
+:root {
+  color-scheme: light;
+
+  /* Canvas & surfaces */
+  --color-bg-canvas: #f5f1ea; /* warm neutral canvas */
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #f0f3f7;
+  --color-bg-muted: #e8edf4;
+
+  /* Text */
+  --color-text-primary: #142033;
+  --color-text-strong: #1c2b3f;
+  --color-text-muted: #5a6474;
+  --color-text-inverse: #f8fafc;
+
+  /* Accent */
+  --color-accent-primary: #4d6b8a; /* muted/steel blue */
+  --color-accent-strong: #2f4a68;
+  --color-accent-soft: #dce5f0;
+  --color-accent-contrast: #ffffff;
+
+  /* Borders & shadows */
+  --color-border-subtle: #d4dbe5;
+  --color-border-strong: #b7c3d3;
+  --color-divider-strong: #c5cedb;
+  --shadow-soft: 0 2px 8px rgba(20, 32, 51, 0.05);
+  --shadow-elevated: 0 8px 20px rgba(52, 82, 120, 0.15);
+
+  /* Status palette */
+  --color-status-success-bg: #e6f3ec;
+  --color-status-success-border: #9ed2b0;
+  --color-status-success-text: #1f5f42;
+
+  --color-status-warning-bg: #fbf3e4;
+  --color-status-warning-border: #e4c18b;
+  --color-status-warning-text: #8a5c1a;
+
+  --color-status-error-bg: #f6e8e8;
+  --color-status-error-border: #d9a1a1;
+  --color-status-error-text: #8f3030;
+
+  --color-status-info-bg: #e4edf7;
+  --color-status-info-border: #a4bddc;
+  --color-status-info-text: #2f4a68;
+
+  /* Focus & outlines */
+  --color-focus-ring: #c2d6ef;
+}
+
+/*
+  Seasonal overrides:
+  Apply data-theme attributes (e.g., <body data-theme="winter">) and redefine the
+  accent/background groups (--color-bg-*, --color-accent-*) to swap palettes.
+  Status tokens remain stable to keep success/warning/error semantics clear year-round.
+*/

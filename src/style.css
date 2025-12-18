@@ -1,14 +1,16 @@
+@import "./styles/tokens.css";
+
 :root {
-  --shell-bg: #f4f6fb;
-  --shell-surface: #ffffff;
-  --shell-border: #e5e7eb;
+  --shell-bg: var(--color-bg-canvas);
+  --shell-surface: var(--color-bg-surface);
+  --shell-border: var(--color-border-subtle);
   --shell-radius: 12px;
   --shell-padding: 20px;
   --shell-gap: 16px;
   --nav-height: 64px;
-  --nav-bg: #0f172a;
-  --nav-accent: #2dd4bf;
-  --text-muted: #6b7280;
+  --nav-bg: var(--color-accent-strong);
+  --nav-accent: var(--color-accent-primary);
+  --text-muted: var(--color-text-muted);
 }
 
 body {
@@ -16,7 +18,7 @@ body {
   background: var(--shell-bg);
   min-height: 100vh;
   margin: 0;
-  color: #0f172a;
+  color: var(--color-text-primary);
 }
 
 @media (max-width: 600px) {
@@ -28,7 +30,7 @@ body {
 
 h2 {
   margin-top: 1rem;
-  color: #333;
+  color: var(--color-text-strong);
 }
 
 .admin-shell {
@@ -68,7 +70,7 @@ h2 {
   border: 1px solid var(--shell-border);
   border-radius: var(--shell-radius);
   padding: var(--shell-padding);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-soft);
 }
 
 .shell-card-header {
@@ -89,16 +91,16 @@ h2 {
   padding: 8px 14px;
   border-radius: 10px;
   border: 1px solid var(--shell-border);
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
   cursor: pointer;
   font-weight: 600;
 }
 
 .shell-tab.active {
-  background: #0ea5e9;
-  color: #fff;
-  border-color: #0ea5e9;
+  background: var(--color-accent-primary);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent-primary);
 }
 
 .shell-button {
@@ -109,26 +111,26 @@ h2 {
   padding: 10px 16px;
   border-radius: 10px;
   border: 1px solid transparent;
-  background: linear-gradient(135deg, #0ea5e9, #2563eb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-strong));
+  color: var(--color-accent-contrast);
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 
 .shell-button.secondary {
-  background: #fff;
-  color: #0f172a;
+  background: var(--shell-surface);
+  color: var(--color-text-primary);
   border-color: var(--shell-border);
 }
 
 .shell-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.15);
+  box-shadow: var(--shadow-elevated);
 }
 
 .shell-button:focus-visible {
-  outline: 3px solid #a5b4fc;
+  outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
@@ -147,12 +149,12 @@ h2 {
 .shell-table thead th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--color-accent-soft);
   z-index: 1;
 }
 
 .shell-table tbody tr:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-muted);
 }
 
 .status-badge {
@@ -162,6 +164,9 @@ h2 {
   border-radius: 999px;
   font-weight: 600;
   font-size: 12px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  border: 1px solid var(--shell-border);
 }
 
 .form-grid {
@@ -181,29 +186,29 @@ h2 {
   padding: 8px;
   font-size: 14px;
   border-radius: 4px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border-subtle);
   width: 100%;
   box-sizing: border-box;
 }
 
 button {
   padding: 8px 12px;
-  background-color: #007acc;
-  color: white;
-  border: none;
+  background-color: var(--color-accent-primary);
+  color: var(--color-accent-contrast);
+  border: 1px solid var(--color-accent-primary);
   border-radius: 4px;
   cursor: pointer;
 }
 
 button:hover {
-  background-color: #005fa3;
+  background-color: var(--color-accent-strong);
 }
 
 /* style.css */
 .booking-card {
-  background: #fff;
+  background: var(--shell-surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-soft);
   padding: 24px;
   margin-bottom: 24px;
   max-width: 100%;
@@ -213,23 +218,23 @@ button:hover {
 .booking-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: var(--shell-surface);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-soft);
 }
 
 .booking-table tr:nth-child(even) {
-  background: #f9f9f9;
+  background: var(--color-bg-subtle);
 }
 
 .booking-table tr:hover {
-  background: #e6f7ff;
+  background: var(--color-accent-soft);
 }
 
 .booking-btn {
-  background: #1890ff;
-  color: #fff;
-  border: none;
+  background: var(--color-accent-primary);
+  color: var(--color-accent-contrast);
+  border: 1px solid var(--color-accent-primary);
   border-radius: 4px;
   padding: 8px 16px;
   cursor: pointer;
@@ -238,30 +243,24 @@ button:hover {
 
 .booking-btn:hover,
 .booking-btn:focus {
-  background: #1769aa;
+  background: var(--color-accent-strong);
 }
 
 .booking-btn-cancel {
-  background: #faad14;
-  color: #fff;
+  background: var(--color-status-warning-text);
+  color: var(--color-accent-contrast);
 }
 
 .booking-btn-cancel:hover,
 .booking-btn-cancel:focus {
-  background: #d48806;
+  background: var(--color-status-warning-border);
 }
 
 input:focus,
 select:focus,
 button:focus {
-  outline: 2px solid #1890ff;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-button,
-.booking-btn,
-.booking-btn-cancel {
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 @media (max-width: 900px) {
