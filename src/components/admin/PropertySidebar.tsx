@@ -41,8 +41,8 @@ export default function PropertySidebar({ properties, onSelect, selectedId, titl
             className="shell-button secondary"
             style={{
               justifyContent: "flex-start",
-              borderColor: selectedId === property.id ? "#0ea5e9" : "var(--shell-border)",
-              background: selectedId === property.id ? "#e0f2fe" : "#fff",
+              borderColor: selectedId === property.id ? "var(--color-accent-primary)" : "var(--shell-border)",
+              background: selectedId === property.id ? "var(--color-accent-soft)" : "var(--shell-surface)",
             }}
           >
             <div style={{ textAlign: "left" }}>

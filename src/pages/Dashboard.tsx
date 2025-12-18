@@ -44,9 +44,9 @@ export default function DashboardPage() {
                   <span
                     className="status-badge"
                     style={{
-                      background: "#ecfeff",
-                      color: "#0ea5e9",
-                      border: "1px solid #a5f3fc",
+                      background: "var(--color-status-info-bg)",
+                      color: "var(--color-status-info-text)",
+                      border: "1px solid var(--color-status-info-border)",
                     }}
                   >
                     {row.status}
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                   padding: "12px 14px",
                   border: "1px dashed var(--shell-border)",
                   borderRadius: 10,
-                  background: "#f8fafc",
+                  background: "var(--color-accent-soft)",
                 }}
               >
                 <div style={{ fontWeight: 700 }}>Activity placeholder {item}</div>
