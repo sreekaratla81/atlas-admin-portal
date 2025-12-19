@@ -6,6 +6,20 @@ import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import { useDashboardQueues } from "@/hooks/useDashboardQueues";
 
+const STATUS_TONE_MAP: Record<string, "success" | "warning" | "error" | "info"> = {
+  upcoming: "info",
+  ongoing: "success",
+  lead: "warning",
+  completed: "success",
+  delayed: "warning",
+  cancelled: "error",
+};
+
+function getStatusTone(status: string): "success" | "warning" | "error" | "info" {
+  const normalized = status.trim().toLowerCase();
+  return STATUS_TONE_MAP[normalized] ?? "info";
+}
+
 export default function DashboardPage() {
   const { queues } = useDashboardQueues();
   const [active, setActive] = useState(queues[0]?.key ?? "");
@@ -41,16 +55,7 @@ export default function DashboardPage() {
                 key: "status",
                 header: "Status",
                 render: (row) => (
-                  <span
-                    className="status-badge"
-                    style={{
-                      background: "var(--color-status-info-bg)",
-                      color: "var(--color-status-info-text)",
-                      border: "1px solid var(--color-status-info-border)",
-                    }}
-                  >
-                    {row.status}
-                  </span>
+                  <span className={`status-badge status-badge--${getStatusTone(row.status)}`}>{row.status}</span>
                 ),
               },
             ]}
