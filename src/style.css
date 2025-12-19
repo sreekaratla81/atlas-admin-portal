@@ -69,6 +69,10 @@
   --badge-info-bg: var(--color-status-info-bg);
   --badge-info-border: var(--color-status-info-border);
   --badge-info-text: var(--color-status-info-text);
+
+  --page-padding: 24px;
+  --page-padding-mobile: 16px;
+  --section-gap: 16px;
 }
 
 body {
@@ -200,13 +204,31 @@ h2 {
   min-height: calc(var(--nav-height) + 6px);
 }
 
+.app-shell {
+  min-height: 100vh;
+  background: var(--shell-bg);
+  color: var(--color-text-primary);
+}
+
+.app-shell__main {
+  padding: var(--page-padding);
+}
+
+.app-shell__content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
 .admin-shell {
-  padding: calc(var(--shell-gap) * 1.5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--shell-gap);
 }
 
 .admin-shell .shell-content {
-  max-width: 1400px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--shell-gap);
@@ -346,6 +368,12 @@ h2 {
   }
 }
 
+@media (max-width: 768px) {
+  .app-shell__main {
+    padding: var(--page-padding-mobile);
+  }
+}
+
 .shell-card {
   background: var(--card-surface);
   border: 1px solid var(--card-border);
@@ -366,10 +394,10 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 6px;
-  padding: 6px 4px 10px;
-  border-bottom: 1px solid var(--shell-border);
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 4px 0 6px;
+  margin-bottom: 4px;
 }
 
 .shell-header__title {
@@ -378,6 +406,12 @@ h2 {
   line-height: 1.2;
   color: var(--color-text-strong);
   letter-spacing: -0.01em;
+}
+
+.shell-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .shell-tabs {

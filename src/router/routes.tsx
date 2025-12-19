@@ -13,40 +13,42 @@ import ReservationPage from "@/pages/Reservation"; // ✅ NEW IMPORT
 import DashboardPage from "@/pages/Dashboard";
 import UnifiedCalendarPage from "@/pages/Calendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
-import LegacyLayout from "@/components/layout/LegacyLayout";
+import AppLayout from "@/components/layout/AppLayout";
 
 export type AppRoute = {
-  path: string;
-  element: React.ReactNode;
+  path?: string;
+  element?: React.ReactNode;
   label?: string;
   icon?: React.ReactNode;
   children?: AppRoute[];
+  index?: boolean;
 };
 
-const withLegacy = (node: React.ReactNode, title?: string) => (
-  <LegacyLayout title={title}>
-    {node}
-  </LegacyLayout>
-);
-
 const baseRoutes: AppRoute[] = [
-  { path: "/", element: <Navigate to="/reservations" replace /> },
   { path: "/auth/callback", element: <CallbackPage /> },
-  { path: "/dashboard", element: <ProtectedRoute><DashboardPage /></ProtectedRoute>, label: "Dashboard" },
-  { path: "/calendar", element: <ProtectedRoute><UnifiedCalendarPage /></ProtectedRoute>, label: "Calendar" },
-  { path: "/channel-manager", element: <ProtectedRoute><ChannelManagerPage /></ProtectedRoute>, label: "Channel Manager" },
-  { path: "/bookings", element: <ProtectedRoute>{withLegacy(<BookingsPage />, "Bookings")}</ProtectedRoute>, label: "Bookings" },
-
-  // ✅ NEW RESERVATION ROUTE
-  { path: "/reservations", element: <ProtectedRoute>{withLegacy(<ReservationPage />, "Reservations")}</ProtectedRoute>, label: "Reservations" },
-  { path: "/reservation", element: <Navigate to="/reservations" replace /> },
-
-  { path: "/listings", element: <ProtectedRoute>{withLegacy(<Listings />, "Listings")}</ProtectedRoute>, label: "Listings" },
-  { path: "/guests", element: <ProtectedRoute>{withLegacy(<Guests />, "Guests")}</ProtectedRoute>, label: "Guests" },
-  { path: "/properties", element: <ProtectedRoute>{withLegacy(<Properties />, "Properties")}</ProtectedRoute>, label: "Properties" },
-  { path: "/reports", element: <ProtectedRoute>{withLegacy(<Reports />, "Reports")}</ProtectedRoute>, label: "Reports" },
-  { path: "/bank-accounts", element: <ProtectedRoute>{withLegacy(<BankAccountsPage />, "Bank Accounts")}</ProtectedRoute>, label: "Bank Accounts" },
-  { path: "*", element: <Navigate to="/reservations" replace /> }
+  {
+    path: "/",
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/reservations" replace /> },
+      { path: "dashboard", element: <DashboardPage />, label: "Dashboard" },
+      { path: "calendar", element: <UnifiedCalendarPage />, label: "Calendar" },
+      { path: "channel-manager", element: <ChannelManagerPage />, label: "Channel Manager" },
+      { path: "bookings", element: <BookingsPage />, label: "Bookings" },
+      { path: "reservations", element: <ReservationPage />, label: "Reservations" },
+      { path: "reservation", element: <Navigate to="/reservations" replace /> },
+      { path: "listings", element: <Listings />, label: "Listings" },
+      { path: "guests", element: <Guests />, label: "Guests" },
+      { path: "properties", element: <Properties />, label: "Properties" },
+      { path: "reports", element: <Reports />, label: "Reports" },
+      { path: "bank-accounts", element: <BankAccountsPage />, label: "Bank Accounts" },
+      { path: "*", element: <Navigate to="/reservations" replace /> },
+    ],
+  },
 ];
 
 if (import.meta.env.DEV) {
