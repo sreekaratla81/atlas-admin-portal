@@ -87,7 +87,7 @@ const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
                   })
                 }
               />
-              <Bar dataKey="amount" fill="#4caf50" />
+              <Bar dataKey="amount" fill="var(--status-success-strong)" />
             </BarChart>
           </ResponsiveContainer>
         </Box>
