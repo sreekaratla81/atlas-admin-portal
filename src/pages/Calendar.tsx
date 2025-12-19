@@ -1,129 +1,244 @@
-import React, { useMemo, useState } from "react";
-import AdminShellLayout from "@/components/layout/AdminShellLayout";
-import PropertySidebar from "@/components/admin/PropertySidebar";
-import Card from "@/components/ui/Card";
-import { useUnifiedCalendar } from "@/hooks/useUnifiedCalendar";
-import Button from "@/components/ui/Button";
+import React, { useMemo, useRef, useEffect, useState } from "react";
+import dayjs, { Dayjs } from "dayjs";
 
-function buildDateRange(days: number) {
-  const dates: string[] = [];
-  const start = new Date();
-  for (let i = 0; i < days; i += 1) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-  return dates;
-}
+const listings = [
+  "Atlas Homes 101",
+  "Atlas Homes 102",
+  "Atlas Homes 201",
+  "Atlas Homes 202",
+  "Atlas Homes 301",
+  "Atlas Homes 302",
+  "Penthouse",
+];
 
-export default function UnifiedCalendarPage() {
-  const { data, rangeDays } = useUnifiedCalendar();
-  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
-  const [drawerBooking, setDrawerBooking] = useState<string | null>(null);
-  const dates = useMemo(() => buildDateRange(rangeDays), [rangeDays]);
-  const bookings = useMemo(
-    () => data.bookings.filter((b) => !selectedProperty || b.propertyId === selectedProperty),
-    [data.bookings, selectedProperty]
+const CELL_WIDTH = 110;
+
+export default function YearCalendarGrid() {
+  const today = dayjs();
+  const todayRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [visibleMonth, setVisibleMonth] = useState(today.startOf("month"));
+
+  /* Build full year days */
+  const yearDays: Dayjs[] = useMemo(() => {
+    const start = today.startOf("year");
+    const end = today.endOf("year");
+    const days: Dayjs[] = [];
+    let d = start;
+
+    while (d.isBefore(end) || d.isSame(end, "day")) {
+      days.push(d);
+      d = d.add(1, "day");
+    }
+    return days;
+  }, [today]);
+
+  /* Month dropdown */
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        today.month(i).startOf("month")
+      ),
+    [today]
   );
 
-  const openBooking = bookings.find((b) => b.id === drawerBooking);
+  /* Filter listings */
+  const filteredListings = listings.filter(l =>
+    l.toLowerCase().includes(search.toLowerCase())
+  );
+
+  /* Scroll sync month */
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const index = Math.floor(scrollRef.current.scrollLeft / CELL_WIDTH);
+    const day = yearDays[index];
+    if (day) setVisibleMonth(day.startOf("month"));
+  };
+
+  /* Scroll to today */
+  useEffect(() => {
+    todayRef.current?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+    });
+  }, []);
+
+  /* Dropdown change */
+  const handleMonthChange = (value: string) => {
+    const month = dayjs(value);
+    const index = yearDays.findIndex(d => d.isSame(month, "month"));
+    if (index >= 0 && scrollRef.current) {
+      scrollRef.current.scrollTo({
+        left: index * CELL_WIDTH,
+        behavior: "smooth",
+      });
+    }
+  };
 
   return (
-    <AdminShellLayout
-      title="Unified Calendar"
-      rightSlot={<Button variant="secondary">Export</Button>}
-    >
-      <div className="ops-grid">
-        <PropertySidebar properties={data.properties} onSelect={setSelectedProperty} selectedId={selectedProperty} />
-        <Card className="table-card">
-          <div style={{ overflowX: "auto" }}>
-            <table className="shell-table calendar-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 160, textAlign: "left" }}>Property</th>
-                  {dates.map((date) => (
-                    <th key={date} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                      {date}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.properties
-                  .filter((p) => !selectedProperty || p.id === selectedProperty)
-                  .map((property) => (
-                    <tr key={property.id}>
-                      <td style={{ fontWeight: 700 }}>{property.name}</td>
-                      {dates.map((date) => {
-                        const cellBookings = bookings.filter(
-                          (b) => b.propertyId === property.id && date >= b.start && date <= b.end
-                        );
-                        return (
-                          <td key={`${property.id}-${date}`} style={{ minWidth: 80 }}>
-                            <div style={{ display: "grid", gap: 6 }}>
-                              {cellBookings.map((booking) => (
-                                <button
-                                  key={booking.id}
-                                  onClick={() => setDrawerBooking(booking.id)}
-                                  className="booking-chip"
-                                  style={{ fontSize: 12, lineHeight: 1.3 }}
-                                >
-                                  <div style={{ fontWeight: 700 }}>{booking.guest}</div>
-                                  {booking.source && (
-                                    <span className="booking-chip__source">{booking.source}</span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+    <div style={{ display: "flex", height: "100vh", fontFamily: "Inter, sans-serif" }}>
+      {/* LEFT PANEL */}
+      <div style={{ width: 280, borderRight: "1px solid #e5e7eb" }}>
+        <div style={{ position: "sticky", top: 0, background: "#fff", zIndex: 20 }}>
+          <h2 style={{ padding: 12 }}>{filteredListings.length} listings</h2>
+          <input
+            placeholder="Search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: "80%",
+              margin: "0 12px 12px",
+              padding: 10,
+              border: "1px solid #e5e7eb",
+              borderRadius: 6,
+            }}
+          />
+        </div>
+
+        <div style={{ overflowY: "auto", height: "calc(100vh - 120px)" }}>
+          {filteredListings.map((l, i) => (
+            <div
+              key={i}
+              style={{
+                height: 52,
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: 14,
+                borderBottom: "1px solid #e5e7eb",
+              }}
+            >
+              {l}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {openBooking && (
+      {/* RIGHT PANEL */}
+    <div style={{ flex: 1, overflow: "hidden", paddingTop: 16 }}>
+
+        {/* 🔹 SINGLE STICKY DROPDOWN BAR */}
         <div
-          role="dialog"
-          aria-modal
-          className="shell-card"
           style={{
-            position: "fixed",
-            right: 24,
-            top: 120,
-            width: 320,
-            zIndex: 60,
-            boxShadow: "var(--shadow-elevated)",
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ margin: 0 }}>Booking {openBooking.id}</h3>
-            <button className="shell-button secondary" onClick={() => setDrawerBooking(null)} style={{ padding: "6px 10px" }}>
-              Close
-            </button>
-          </div>
-          <dl style={{ display: "grid", gap: 8, marginTop: 12 }}>
-            <div>
-              <dt style={{ fontWeight: 600 }}>Guest</dt>
-              <dd style={{ margin: 0 }}>{openBooking.guest}</dd>
-            </div>
-            <div>
-              <dt style={{ fontWeight: 600 }}>Source</dt>
-              <dd style={{ margin: 0 }}>{openBooking.source ?? "Unspecified"}</dd>
-            </div>
-            <div>
-              <dt style={{ fontWeight: 600 }}>Dates</dt>
-              <dd style={{ margin: 0 }}>
-                {openBooking.start} – {openBooking.end}
-              </dd>
-            </div>
-          </dl>
+          <select
+            value={visibleMonth.format("YYYY-MM")}
+            onChange={e => handleMonthChange(e.target.value)}
+            style={{
+              padding: 8,
+              border: "1px solid #e5e7eb",
+              borderRadius: 6,
+              fontWeight: 600,
+            }}
+          >
+            {months.map(m => (
+              <option key={m.format("YYYY-MM")} value={m.format("YYYY-MM")}>
+                {m.format("MMMM YYYY")}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() =>
+              todayRef.current?.scrollIntoView({
+                behavior: "smooth",
+                inline: "center",
+              })
+            }
+            style={{
+              background: "#0284c7",
+              color: "#fff",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: 4,
+            }}
+          >
+            Today
+          </button>
         </div>
-      )}
-    </AdminShellLayout>
+
+        {/* SCROLL AREA */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          style={{
+            overflow: "auto",
+            height: "calc(100vh - 52px)",
+          }}
+        >
+          {/* WEEK + DATE (SCROLLABLE) */}
+          <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: `repeat(${yearDays.length}, ${CELL_WIDTH}px)`,
+    background: "#fff",
+    borderBottom: "1px solid #e5e7eb",
+    padding: 20,
+  }}
+>
+
+            {yearDays.map(d => {
+              const isToday = d.isSame(today, "day");
+              return (
+                <div
+                  key={d.toString()}
+                  ref={isToday ? todayRef : null}
+                  style={{
+                    height: 56,
+                    textAlign: "center",
+                    fontWeight: 600,
+                    background: isToday ? "#e0f2fe" : "#fff",
+                    borderRight: "1px solid #f1f5f9",
+                  }}
+                >
+                  <div>{d.format("ddd")}</div>
+                  <div>{d.format("D")}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* PRICE GRID (ROOMS × DATES — ORIGINAL BEHAVIOR) */}
+          {filteredListings.map((_, r) => (
+            <div
+              key={r}
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${yearDays.length}, ${CELL_WIDTH}px)`,
+              }}
+            >
+              {yearDays.map((d, c) => {
+                const isToday = d.isSame(today, "day");
+                return (
+                  <div
+                    key={c}
+                    style={{
+                      height: 44,
+                      borderBottom: "1px solid #f1f5f9",
+                      borderRight: "1px solid #f1f5f9",
+                      background: isToday ? "#bae6fd" : "#fffbe6",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ₹{2600 + r * 40}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
