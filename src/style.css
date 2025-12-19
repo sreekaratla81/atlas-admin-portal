@@ -218,9 +218,131 @@ h2 {
   gap: var(--shell-gap);
 }
 
+.ops-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--shell-gap);
+  align-items: flex-start;
+}
+
+.ops-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shell-gap);
+}
+
+.shell-aside {
+  position: sticky;
+  top: 112px;
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--shell-radius);
+  padding: 16px;
+  box-shadow: var(--card-shadow);
+}
+
+.shell-aside h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.01em;
+}
+
+.shell-aside__link {
+  margin-left: 8px;
+  font-size: 14px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  display: block;
+}
+
+.shell-aside__link.is-accent {
+  color: var(--color-accent-primary);
+  font-weight: 700;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--color-text-strong);
+}
+
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+}
+
+.booking-chip {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-soft);
+}
+
+.booking-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.booking-chip__source {
+  color: var(--color-accent-primary);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
+.calendar-table {
+  min-width: 100%;
+}
+
+.table-card {
+  background: var(--card-surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--shell-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.table-footer {
+  padding: 12px 16px;
+  background: var(--color-bg-subtle);
+  border-top: 1px solid var(--shell-border);
+}
+
 @media (max-width: 1100px) {
   .admin-shell .page-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ops-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-aside {
+    position: relative;
+    top: auto;
   }
 }
 

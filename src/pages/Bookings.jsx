@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import {
   Box, Button, CircularProgress, FormControl, InputLabel, MenuItem,
   Select, TextField, Typography, Table, TableHead, TableRow, TableCell,
-  TableBody, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
+  TableBody, TableContainer, Paper, Card, CardContent, TablePagination, Alert, Snackbar,
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
@@ -15,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import '../style.css';
 import { buildBookingPayload } from '../utils/buildBookingPayload';
 import GuestTypeahead from '../components/GuestTypeahead';
+import AdminShellLayout from '@/components/layout/AdminShellLayout';
 
 const Bookings = () => {
   const [listings, setListings] = useState([]);
@@ -434,14 +435,40 @@ const Bookings = () => {
     if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
     return 0;
   });
-    const paginatedBookings = sortedBookings.slice(
+  const paginatedBookings = sortedBookings.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
 
+  const getPaymentTone = (status) => {
+    const normalized = (status || '').toLowerCase();
+    if (normalized === 'paid' || normalized === 'completed') return 'success';
+    if (normalized === 'pending') return 'warning';
+    if (normalized === 'cancelled') return 'error';
+    return 'info';
+  };
+
   return (
-    <Box>
-      <Card sx={{ mx: 'auto', mt: 2, mb: 2, bgcolor: formMode === 'edit' ? '#fffbe6' : 'inherit' }}>
+    <AdminShellLayout
+      title="Bookings"
+      rightSlot={
+        <Typography color="text.secondary" fontSize={14}>
+          Calm controls for check-ins and payments
+        </Typography>
+      }
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Card
+        sx={{
+          mx: 'auto',
+          mt: 0,
+          mb: 1,
+          backgroundColor: formMode === 'edit' ? 'var(--color-bg-subtle)' : 'var(--card-surface)',
+          border: '1px solid var(--card-border)',
+          boxShadow: 'var(--card-shadow)',
+          borderRadius: 2
+        }}
+      >
         <CardContent>
           <Typography variant="h4" component="h2" gutterBottom>
             {formMode === 'edit' ? 'Edit Booking' : 'Create Booking'}
@@ -644,48 +671,51 @@ const Bookings = () => {
             </Box>
 
             <div style={{ marginTop: '1rem' }}>
-              <button
+              <Button
                 type="button"
-                className="text-sm text-blue-600 underline"
+                variant="text"
                 onClick={() => setShowExtras(!showExtras)}
+                sx={{ color: 'var(--color-accent-primary)', textTransform: 'none', fontWeight: 600 }}
               >
                 {showExtras ? 'Hide Extras' : 'Add Extra Guest Info (optional)'}
-              </button>
+              </Button>
 
               {showExtras && (
-                <div className="grid grid-cols-3 gap-4 mt-3 p-4 border rounded-md bg-gray-50">
-                  <div>
-                    <label>Guests Planned</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={guestsPlanned}
-                      onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label>Guests Actual</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={guestsActual}
-                      onChange={(e) => {
-                        const actual = parseInt(e.target.value);
-                        setGuestsActual(actual);
-                        setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label>Extra Guest Charge (₹)</label>
-                    <input
-                      type="number"
-                      className="form-input w-full"
-                      value={extraGuestCharge}
-                      onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
-                    />
-                  </div>
-                </div>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 2,
+                    mt: 2,
+                    p: 2,
+                    borderRadius: 2,
+                    border: '1px solid var(--color-border-subtle)',
+                    backgroundColor: 'var(--color-bg-subtle)'
+                  }}
+                >
+                  <TextField
+                    label="Guests Planned"
+                    type="number"
+                    value={guestsPlanned}
+                    onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
+                  />
+                  <TextField
+                    label="Guests Actual"
+                    type="number"
+                    value={guestsActual}
+                    onChange={(e) => {
+                      const actual = parseInt(e.target.value);
+                      setGuestsActual(actual);
+                      setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
+                    }}
+                  />
+                  <TextField
+                    label="Extra Guest Charge (₹)"
+                    type="number"
+                    value={extraGuestCharge}
+                    onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
+                  />
+                </Box>
               )}
             </div>
 
@@ -700,7 +730,12 @@ const Bookings = () => {
                 type="submit"
                 variant="contained"
                 disabled={loading}
-                sx={{ minWidth: 120 }}
+                sx={{
+                  minWidth: 120,
+                  backgroundColor: 'var(--button-primary-bg)',
+                  color: 'var(--button-primary-text)',
+                  '&:hover': { backgroundColor: 'var(--button-primary-strong)' }
+                }}
               >
                 {loading ? 'Saving...' : formMode === 'edit' ? 'Update Booking' : 'Create Booking'}
               </Button>
@@ -711,7 +746,11 @@ const Bookings = () => {
                   variant="outlined"
                   onClick={reset}
                   disabled={loading}
-                  sx={{ minWidth: 120 }}
+                  sx={{
+                    minWidth: 120,
+                    borderColor: 'var(--color-status-warning-border)',
+                    color: 'var(--color-status-warning-text)'
+                  }}
                 >
                   Cancel
                 </Button>
@@ -721,15 +760,7 @@ const Bookings = () => {
         </CardContent>
       </Card>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
-          alignItems: 'center',
-        }}
-      >
+      <Box className="filters-bar" sx={{ mb: 2, alignItems: 'center' }}>
         <TextField
           label="Filter by Listing"
           variant="outlined"
@@ -773,17 +804,27 @@ const Bookings = () => {
         </Button>
 
 
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('checkinDate');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            setSortField('checkinDate');
+            setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+          }}
+          sx={{ borderColor: 'var(--color-border-subtle)' }}
+        >
           Sort by Check-in {sortField === 'checkinDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
         </Button>
 
-        <Button variant="outlined" size="small" onClick={() => {
-          setSortField('amountReceived');
-          setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
-        }}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            setSortField('amountReceived');
+            setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+          }}
+          sx={{ borderColor: 'var(--color-border-subtle)' }}
+        >
           Sort by Amount {sortField === 'amountReceived' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
         </Button>
 
@@ -799,89 +840,96 @@ const Bookings = () => {
 
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: 'var(--color-accent-primary)' }} />
         </Box>
       ) : (
-        <Paper elevation={2}>
-          <Table className="booking-table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Listing</TableCell>
-              <TableCell>Guest</TableCell>
-              <TableCell>Check-in</TableCell>
-              <TableCell>Check-out</TableCell>
-              <TableCell>Payment</TableCell>
-              <TableCell>Guests</TableCell>
-              <TableCell>Extra Charge (₹)</TableCell>
-              <TableCell>Commission (₹)</TableCell>
-              <TableCell>Net (₹)</TableCell>
-              <TableCell>Bank Account</TableCell>
-              <TableCell>Source</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedBookings.map(row => (
-              <TableRow key={row.id}>
-                <TableCell>{row.listing}</TableCell>
-                <TableCell>{row.guest}</TableCell>
-                <TableCell>{new Date(row.checkinDate).toLocaleDateString()}</TableCell>
-                <TableCell>{new Date(row.checkoutDate).toLocaleDateString()}</TableCell>
-                <TableCell>₹{row.amountReceived.toLocaleString('en-IN')}</TableCell>
-                <TableCell>{row.guestsActual}</TableCell>
-                <TableCell>₹{row.extraGuestCharge.toLocaleString('en-IN')}</TableCell>
-                <TableCell>₹{row.commissionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                <TableCell>₹{(row.amountReceived - row.commissionAmount).toLocaleString('en-IN')}</TableCell>
-                <TableCell>{row.bankAccount}</TableCell>
-                <TableCell>{row.bookingSource}</TableCell>
-                <TableCell>{row.paymentStatus}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleEdit(row)}
-                      disabled={loading}
-                      sx={{ minWidth: 60 }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(row.id)}
-                      disabled={loading}
-                      startIcon={<DeleteIcon />}
-                      sx={{ minWidth: 80 }}
-                    >
-                      Delete
-                    </Button>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Box className="table-card">
+          <div className="section-header">
+            <h3>Booking ledger</h3>
+            <Typography color="text.secondary" fontSize={13}>
+              Stable tablet-friendly grid for arrivals and revenue
+            </Typography>
+          </div>
+          <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+            <Table className="shell-table">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Listing</TableCell>
+                  <TableCell>Guest</TableCell>
+                  <TableCell>Check-in</TableCell>
+                  <TableCell>Check-out</TableCell>
+                  <TableCell>Payment</TableCell>
+                  <TableCell>Guests</TableCell>
+                  <TableCell>Extra Charge (₹)</TableCell>
+                  <TableCell>Commission (₹)</TableCell>
+                  <TableCell>Net (₹)</TableCell>
+                  <TableCell>Bank Account</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedBookings.map(row => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>{row.listing}</TableCell>
+                    <TableCell>{row.guest}</TableCell>
+                    <TableCell>{new Date(row.checkinDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(row.checkoutDate).toLocaleDateString()}</TableCell>
+                    <TableCell>₹{row.amountReceived.toLocaleString('en-IN')}</TableCell>
+                    <TableCell>{row.guestsActual}</TableCell>
+                    <TableCell>₹{row.extraGuestCharge.toLocaleString('en-IN')}</TableCell>
+                    <TableCell>₹{row.commissionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>₹{(row.amountReceived - row.commissionAmount).toLocaleString('en-IN')}</TableCell>
+                    <TableCell>{row.bankAccount}</TableCell>
+                    <TableCell>{row.bookingSource}</TableCell>
+                    <TableCell>
+                      <span className={`status-badge status-badge--${getPaymentTone(row.paymentStatus)}`}>
+                        {row.paymentStatus || 'Pending'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleEdit(row)}
+                          disabled={loading}
+                          sx={{ minWidth: 60 }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(row.id)}
+                          disabled={loading}
+                          startIcon={<DeleteIcon />}
+                          sx={{ minWidth: 80 }}
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          component="div"
-          count={sortedBookings.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          sx={{
-            borderTop: '1px solid rgba(224, 224, 224, 1)',
-            '.MuiTablePagination-toolbar': {
-              paddingLeft: 2,
-              paddingRight: 2,
-            },
-          }}
-        />
-      </Paper>
+          <div className="table-footer">
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={sortedBookings.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+          </div>
+      </Box>
       )}
 
       <Snackbar
@@ -922,6 +970,7 @@ const Bookings = () => {
       </Dialog>
 
     </Box>
+    </AdminShellLayout>
   );
 };
 

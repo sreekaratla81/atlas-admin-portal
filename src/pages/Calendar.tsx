@@ -33,16 +33,16 @@ export default function UnifiedCalendarPage() {
       title="Unified Calendar"
       rightSlot={<Button variant="secondary">Export</Button>}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16 }}>
+      <div className="ops-grid">
         <PropertySidebar properties={data.properties} onSelect={setSelectedProperty} selectedId={selectedProperty} />
-        <Card>
+        <Card className="table-card">
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="shell-table calendar-table">
               <thead>
                 <tr>
-                  <th style={{ width: 160, textAlign: "left", padding: "8px 10px" }}>Property</th>
+                  <th style={{ width: 160, textAlign: "left" }}>Property</th>
                   {dates.map((date) => (
-                    <th key={date} style={{ padding: "8px 10px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
+                    <th key={date} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
                       {date}
                     </th>
                   ))}
@@ -53,31 +53,24 @@ export default function UnifiedCalendarPage() {
                   .filter((p) => !selectedProperty || p.id === selectedProperty)
                   .map((property) => (
                     <tr key={property.id}>
-                      <td style={{ padding: "8px 10px", fontWeight: 700 }}>{property.name}</td>
+                      <td style={{ fontWeight: 700 }}>{property.name}</td>
                       {dates.map((date) => {
                         const cellBookings = bookings.filter(
                           (b) => b.propertyId === property.id && date >= b.start && date <= b.end
                         );
                         return (
-                          <td key={`${property.id}-${date}`} style={{ padding: 4, minWidth: 80 }}>
+                          <td key={`${property.id}-${date}`} style={{ minWidth: 80 }}>
                             <div style={{ display: "grid", gap: 6 }}>
                               {cellBookings.map((booking) => (
                                 <button
                                   key={booking.id}
                                   onClick={() => setDrawerBooking(booking.id)}
-                                  className="shell-button secondary"
-                                  style={{
-                                    background: "#e0f2fe",
-                                    borderColor: "#bfdbfe",
-                                    color: "#0f172a",
-                                    fontSize: 12,
-                                    lineHeight: 1.3,
-                                    padding: "8px 10px",
-                                  }}
+                                  className="booking-chip"
+                                  style={{ fontSize: 12, lineHeight: 1.3 }}
                                 >
                                   <div style={{ fontWeight: 700 }}>{booking.guest}</div>
                                   {booking.source && (
-                                    <span style={{ color: "#2563eb", fontSize: 11 }}>{booking.source}</span>
+                                    <span className="booking-chip__source">{booking.source}</span>
                                   )}
                                 </button>
                               ))}
@@ -104,7 +97,7 @@ export default function UnifiedCalendarPage() {
             top: 120,
             width: 320,
             zIndex: 60,
-            boxShadow: "0 18px 40px rgba(0,0,0,0.2)",
+            boxShadow: "var(--shadow-elevated)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

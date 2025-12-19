@@ -27,13 +27,13 @@ import {
   ListItemText,
   IconButton,
   TablePagination,
-  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
 import { Search as SearchIcon } from "@mui/icons-material";
+import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import ManualBookingPopup from "./ManualBookingPopup";
 
 // ----------------------
@@ -233,27 +233,18 @@ const Reservation: React.FC = () => {
   // STATUS BADGE
   // ----------------------
   const getStatusBadge = (status: string) => {
-    const colors: Record<string, { bg: string; text: string }> = {
-      Upcoming: { bg: "#EAF3FF", text: "#3478F6" },
-      Ongoing: { bg: "#F1E8FF", text: "#A149FF" },
-      Completed: { bg: "#E6FFEA", text: "#2FA84F" },
-      Cancelled: { bg: "#FFECEC", text: "#FF3C3C" },
-      Pending: { bg: "#FFF3E0", text: "#FF9800" },
-    };
-    const s = colors[status] || colors["Upcoming"];
-    return (
-      <Chip
-        label={status}
-        sx={{
-          background: s.bg,
-          color: s.text,
-          fontWeight: 700,
-          borderRadius: "8px",
-          paddingX: 0.5,
-          height: 28,
-        }}
-      />
-    );
+    const normalized = status?.toLowerCase() ?? "";
+    const tone: "success" | "warning" | "error" | "info" =
+      normalized === "completed" || normalized === "paid"
+        ? "success"
+        : normalized === "ongoing"
+          ? "success"
+          : normalized === "pending"
+            ? "warning"
+            : normalized === "cancelled"
+              ? "error"
+              : "info";
+    return <span className={`status-badge status-badge--${tone}`}>{status}</span>;
   };
 
   // ----------------------
@@ -291,22 +282,18 @@ const Reservation: React.FC = () => {
   // LEFT MENU COMPONENT
   // ----------------------
   const LeftMenu: React.FC<{ title: string; active?: boolean; color?: string }> = ({ title, active, color }) => {
-    let clr = "#000";
-    if (color === "purple") clr = "#A149FF";
-    if (color === "blue") clr = "#3478F6";
-    if (color === "green") clr = "#2FA84F";
-    if (color === "red") clr = "#FF3C3C";
+    const toneMap: Record<string, string> = {
+      purple: "var(--color-status-info-text)",
+      blue: "var(--color-accent-primary)",
+      green: "var(--color-status-success-text)",
+      red: "var(--color-status-error-text)",
+    };
+    const clr = toneMap[color ?? ""] || "var(--color-text-primary)";
 
     return (
       <Typography
-        sx={{
-          ml: 2,
-          fontSize: 14,
-          padding: "4px 0",
-          cursor: "pointer",
-          fontWeight: active ? 700 : 400,
-          color: active ? "#e63e3e" : clr,
-        }}
+        className={`shell-aside__link ${active ? "is-accent" : ""}`}
+        sx={{ color: active ? "var(--color-accent-strong)" : clr }}
       >
         {title}
       </Typography>
@@ -317,50 +304,56 @@ const Reservation: React.FC = () => {
   // RENDER
   // ----------------------
   return (
-    <Box sx={{ padding: 3, background: "var(--shell-bg)" }}>
-      <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
-        {/* LEFT PANEL */}
-        <Box
+    <AdminShellLayout
+      title="Reservations"
+      rightSlot={
+        <Button
+          variant="contained"
           sx={{
-            width: 260,
-            background: "#fff",
-            borderRadius: "12px",
-            padding: "16px",
-            border: "1px solid #e8e8e8",
-            position: "sticky",
-            top: 100,
-            alignSelf: "flex-start",
+            backgroundColor: "var(--button-primary-bg)",
+            color: "var(--button-primary-text)",
+            borderRadius: 2,
+            paddingX: 2.5,
+            "&:hover": { backgroundColor: "var(--button-primary-strong)" },
           }}
+          onClick={() => setOpenManualBookingList(true)}
         >
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1, color: "#475569" }}>General</Typography>
+          Create manual booking
+        </Button>
+      }
+    >
+      <div className="ops-grid">
+        {/* LEFT PANEL */}
+        <aside className="shell-aside">
+          <Typography component="h4">General</Typography>
           <LeftMenu title={`All (${allCount})`} active />
           <LeftMenu title={`Arriving Soon (${arrivingSoonCount})`} />
           <LeftMenu title={`Pending Review (${pendingReviewCount})`} />
 
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Today</Typography>
+          <Typography component="h4" sx={{ mt: 3 }}>Today</Typography>
           <LeftMenu title={`Check-in (${checkinCount})`} />
           <LeftMenu title={`Check-out (${checkoutCount})`} />
 
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Others</Typography>
+          <Typography component="h4" sx={{ mt: 3 }}>Others</Typography>
           <LeftMenu title={`Offline Direct Booking (${offlineBookingCount})`} />
           <LeftMenu title={`Booking Leads (${bookingLeadsCount})`} />
 
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Status</Typography>
+          <Typography component="h4" sx={{ mt: 3 }}>Status</Typography>
           <LeftMenu title={`Ongoing (${ongoingCount})`} color="purple" />
           <LeftMenu title={`Upcoming (${upcomingCount})`} color="blue" />
           <LeftMenu title={`Completed (${completedCount})`} color="green" />
           <LeftMenu title={`Pending (${pendingCount})`} color="red" />
 
-          <Typography sx={{ fontWeight: 700, fontSize: 14, mt: 3, mb: 1 }}>Summary</Typography>
+          <Typography component="h4" sx={{ mt: 3 }}>Summary</Typography>
           <LeftMenu title={`📅 Last 7 Days (${last7DaysCount})`} />
           <LeftMenu title={`📅 Last 30 Days (${last30DaysCount})`} />
           <LeftMenu title={`📅 Last 12 Months (${last12MonthsCount})`} />
-        </Box>
+        </aside>
 
         {/* RIGHT PANEL */}
-        <Box sx={{ flexGrow: 1 }}>
+        <div className="ops-main">
           {/* Filters */}
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
+          <Box className="filters-bar">
             <TextField
               placeholder="Search Booking ID or Guest..."
               size="small"
@@ -405,21 +398,20 @@ const Reservation: React.FC = () => {
                 slotProps={{ textField: { size: "small", sx: { width: 150 } } }}
               />
             </LocalizationProvider>
-            <Button
-              variant="contained"
-              sx={{ ml: "auto", bgcolor: "#FF3C2F", width: 240, "&:hover": { bgcolor: "#d53024" } }}
-              onClick={() => setOpenManualBookingList(true)}
-            >
-              CREATE MANUAL BOOKING
-            </Button>
           </Box>
 
           {/* BOOKINGS TABLE */}
-          <Box sx={{ position: "relative", background: "#fff", borderRadius: 2, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <TableContainer component={Paper} sx={{ boxShadow: "none" }}>
-              <Table stickyHeader>
+          <Box className="table-card" sx={{ position: "relative" }}>
+            <div className="section-header">
+              <h3>Front office queue</h3>
+              <Typography color="text.secondary" fontSize={14}>
+                Status clarity for arrivals, stays, and follow-ups
+              </Typography>
+            </div>
+            <TableContainer component={Paper} sx={{ boxShadow: "none", maxHeight: 620 }}>
+              <Table stickyHeader className="shell-table">
                 <TableHead>
-                  <TableRow sx={{ background: "#f8fafc" }}>
+                  <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>Booking Id</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Source</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Trip Status</TableCell>
@@ -432,7 +424,7 @@ const Reservation: React.FC = () => {
                   {paginatedBookings.map((row) => (
                     <TableRow
                       key={row.bookingId}
-                      sx={{ "&:hover": { background: "#f8fafc" } }}
+                      hover
                     >
                       <TableCell>{row.bookingId}</TableCell>
                       <TableCell>{row.source}</TableCell>
@@ -457,8 +449,8 @@ const Reservation: React.FC = () => {
                   justifyContent: "space-between",
                   gap: 2,
                   p: 2,
-                  borderTop: "1px solid #e2e8f0",
-                  backgroundColor: "#fff4f4",
+                  borderTop: "1px solid var(--color-status-error-border)",
+                  backgroundColor: "var(--color-status-error-bg)",
                 }}
               >
                 <Box>
@@ -476,6 +468,7 @@ const Reservation: React.FC = () => {
                   size="small"
                   color="error"
                   onClick={fetchBookings}
+                  sx={{ borderColor: "var(--color-status-error-border)" }}
                 >
                   Retry now
                 </Button>
@@ -490,7 +483,8 @@ const Reservation: React.FC = () => {
                   left: 0,
                   width: "100%",
                   height: "100%",
-                  backgroundColor: "rgba(255,255,255,0.7)",
+                  backgroundColor: "var(--color-bg-muted)",
+                  opacity: 0.92,
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "center",
@@ -498,23 +492,24 @@ const Reservation: React.FC = () => {
                   zIndex: 10,
                 }}
               >
-                <CircularProgress size={50} sx={{ mb: 2, color: "#FF3C2F" }} />
+                <CircularProgress size={50} sx={{ mb: 2, color: "var(--color-accent-primary)" }} />
                 <Typography>{loadingError}</Typography>
               </Box>
             )}
+            <div className="table-footer">
+              <TablePagination
+                component="div"
+                count={filteredBookings.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
+            </div>
           </Box>
-
-          <TablePagination
-            component="div"
-            count={filteredBookings.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[10, 25, 50]}
-          />
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* MANUAL BOOKING POPUP */}
       <Dialog open={openManualBookingList} onClose={() => setOpenManualBookingList(false)}>
@@ -561,7 +556,7 @@ const Reservation: React.FC = () => {
           onClose={() => setOpenFullManualBooking(false)}
         />
       )}
-    </Box>
+    </AdminShellLayout>
   );
 };
 
