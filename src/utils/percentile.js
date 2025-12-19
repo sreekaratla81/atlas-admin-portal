@@ -21,10 +21,10 @@ export function computeThresholds(earnings) {
 
 export function getHighlightStyle(price, thresholds, isCurrentMonth = true) {
   if (price >= thresholds.top) {
-    return { color: 'blue' };
+    return { color: 'var(--accent-strong)' };
   }
   if (price <= thresholds.bottom && isCurrentMonth) {
-    return { color: 'red' };
+    return { color: 'var(--status-error-strong)' };
   }
   return {};
 }

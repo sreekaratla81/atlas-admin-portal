@@ -48,7 +48,14 @@ export default function ChannelManagerPage() {
 
           <Card title="Integration status" action={<Button variant="secondary">Refresh</Button>}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#f59e0b" }} />
+              <div
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "var(--status-warning-strong)",
+                }}
+              />
               <div>
                 <div style={{ fontWeight: 700 }}>Channex: Not connected</div>
                 <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Connect your PMS or OTA partner here.</div>

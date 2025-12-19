@@ -73,9 +73,9 @@ function EarningsReport() {
   return (
     <section
       style={{
-        background: '#fff',
+        background: 'var(--bg-surface)',
         borderRadius: '0.5rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        boxShadow: 'var(--shadow-level1)',
         padding: '1.5rem',
         marginBottom: '2rem',
         minHeight: '300px',
@@ -95,7 +95,7 @@ function EarningsReport() {
         <button
           style={{
             fontSize: '0.875rem',
-            color: '#2563eb',
+            color: 'var(--accent-primary)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -128,8 +128,8 @@ function EarningsReport() {
                   ]}
                 />
                 <Legend />
-                <Bar dataKey="totalNet" stackId="a" fill="#4caf50" name="Net Earnings" />
-                <Bar dataKey="totalFees" stackId="a" fill="#f44336" name="Commissions" />
+                <Bar dataKey="totalNet" stackId="a" fill="var(--status-success-strong)" name="Net Earnings" />
+                <Bar dataKey="totalFees" stackId="a" fill="var(--status-error-strong)" name="Commissions" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -137,7 +137,7 @@ function EarningsReport() {
           <div style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid #ddd', fontWeight: 600 }}>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600 }}>
                   <th style={{ padding: '0.5rem 1rem 0.5rem 0' }}>Month</th>
                   <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total</th>
                   <th style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>Total Fees</th>
@@ -153,7 +153,7 @@ function EarningsReport() {
                       <tr
                         key={row.month}
                         style={{
-                          backgroundColor: idx % 2 === 0 ? '#f9fafb' : 'transparent',
+                          backgroundColor: idx % 2 === 0 ? 'var(--bg-subtle)' : 'transparent',
                           opacity: total === 0 ? 0.5 : 1,
                         }}
                       >
