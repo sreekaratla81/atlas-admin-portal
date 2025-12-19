@@ -104,10 +104,17 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
         {property && (
           <Box display="flex" alignItems="center" mb={2}>
             <img
-              src={property.image}
-              alt={property.name}
-              style={{ marginRight: 10, borderRadius: 4 }}
-            />
+  src={property.image}
+  alt={property.name}
+  style={{
+    width: '105px',
+    height: '105px',
+    objectFit: 'cover',
+    marginRight: 10,
+    borderRadius: 2,
+  }}
+/>
+
             <Box>
               <Typography variant="subtitle1">{property.name}</Typography>
               <Typography variant="body2" color="textSecondary">
