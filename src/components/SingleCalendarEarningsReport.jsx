@@ -16,14 +16,14 @@ import { computeThresholds, getHighlightStyle } from '../utils/percentile';
 import { safeFind } from '../utils/array';
 
 const SOURCE_COLORS = {
-  airbnb: '#00a1e0',
-  agoda: '#ffc107',
-  'walk-in': '#dc3545',
-  'booking.com': '#6f42c1',
-  booking: '#6f42c1',
-  makemytrip: '#ff5722',
-  'make my trip': '#ff5722',
-  mmt: '#ff5722',
+  airbnb: 'var(--accent-primary)',
+  agoda: 'var(--status-warning-strong)',
+  'walk-in': 'var(--status-error-strong)',
+  'booking.com': 'var(--accent-strong)',
+  booking: 'var(--accent-strong)',
+  makemytrip: 'var(--status-info-strong)',
+  'make my trip': 'var(--status-info-strong)',
+  mmt: 'var(--status-info-strong)',
 };
 
 function SingleCalendarEarningsReport() {
@@ -252,7 +252,7 @@ function SingleCalendarEarningsReport() {
             gridTemplateColumns: 'repeat(7, 1fr)',
             gridAutoRows: '1fr',
             gap: 1,
-            backgroundColor: '#e5e7eb',
+            backgroundColor: 'var(--bg-subtle)',
             height: '100%',
           }}
         >
@@ -279,9 +279,11 @@ function SingleCalendarEarningsReport() {
                 style={{
                   height: '82%',
                   padding: 8,
-                  border: isToday ? '2px solid #2563eb' : '1px solid #ddd',
+                  border: isToday
+                    ? `2px solid var(--accent-primary)`
+                    : `1px solid var(--border-subtle)`,
                   borderRadius: 4,
-                  backgroundColor: '#fff',
+                  backgroundColor: 'var(--bg-surface)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -294,7 +296,7 @@ function SingleCalendarEarningsReport() {
                     fontSize: 12,
                     fontWeight: 'bold',
                     textAlign: 'right',
-                    color: '#374151',
+                    color: 'var(--text-strong)',
                   }}
                 >
                   {format(date, 'd')}
@@ -306,7 +308,7 @@ function SingleCalendarEarningsReport() {
                     });
                     const color =
                       SOURCE_COLORS[String(e.source).toLowerCase()] ||
-                      '#6b7280';
+                      'var(--text-muted)';
                     const info = [
                       e.checkinDate
                         ? format(new Date(e.checkinDate), 'dd MMM')
@@ -338,7 +340,7 @@ function SingleCalendarEarningsReport() {
                           <div
                             style={{
                               fontSize: 10,
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -360,8 +362,8 @@ function SingleCalendarEarningsReport() {
                       marginTop: 4,
                       ...highlightStyle,
                       color: isLowRevenue
-                        ? '#dc3545'
-                        : highlightStyle.color || '#000',
+                        ? 'var(--status-error-strong)'
+                        : highlightStyle.color || 'var(--text-primary)',
                     }}
                   >
                     ₹
@@ -396,7 +398,7 @@ function SingleCalendarEarningsReport() {
           </Typography>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
                 <th style={{ padding: '8px' }}>Listing</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
                 <th style={{ padding: '8px', textAlign: 'right' }}>Airbnb</th>
@@ -410,7 +412,9 @@ function SingleCalendarEarningsReport() {
               {monthlyTotals.map((row, idx) => (
                 <tr
                   key={idx}
-                  style={{ backgroundColor: idx % 2 === 0 ? '#fafafa' : 'white' }}
+                  style={{
+                    backgroundColor: idx % 2 === 0 ? 'var(--bg-subtle)' : 'var(--bg-surface)',
+                  }}
                 >
                   <td style={{ padding: '8px' }}>{row.name}</td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
@@ -435,7 +439,7 @@ function SingleCalendarEarningsReport() {
               ))}
 
               {monthlyTotals.length > 0 && (
-                <tr style={{ borderTop: '2px solid #ccc', fontWeight: 'bold' }}>
+                <tr style={{ borderTop: '2px solid var(--border-strong)', fontWeight: 'bold' }}>
                   <td style={{ padding: '8px' }}>All Listings</td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹

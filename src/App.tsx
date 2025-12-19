@@ -5,7 +5,7 @@ import { getApiBase } from "@/utils/env";
 function ConfigGuard({ children }: React.PropsWithChildren) {
   if (import.meta.env.PROD && !getApiBase()) {
     return (
-      <div style={{ padding: 16, color: "var(--color-status-error-text)" }}>
+      <div style={{ padding: 16, color: "var(--status-error-strong)" }}>
         <h2>Configuration error</h2>
         <p>
           VITE_API_BASE is not set. Set it in Cloudflare Pages → Build → Variables and Secrets.

@@ -1,45 +1,38 @@
-# Admin design system and theming rules
+# Atlas Admin Design System
 
-This guide documents the semantic tokens, how the admin components consume them, the rules for status colors, and how to layer seasonal themes without breaking operational clarity.
+## Theme intent
+The default admin theme pairs a warm linen canvas with a muted pastel blue accent to mirror the guest portal family while keeping the back-office experience calm, premium, and operationally clear for long working hours.
 
 ## Semantic tokens
-- **Defined in**: `src/styles/tokens.css` (semantic colors) and `src/style.css` (component-scoped tokens). Use these variables instead of raw hex values.
-- **Canvas & surfaces**: `--color-bg-canvas`, `--color-bg-surface`, `--color-bg-subtle`, `--color-bg-muted` set page, card, and inset backgrounds.
-- **Text**: `--color-text-primary`, `--color-text-strong`, `--color-text-muted`, `--color-text-inverse` handle body copy, headings, supportive text, and on-accent contrast.
-- **Accent**: `--color-accent-primary`, `--color-accent-strong`, `--color-accent-soft`, `--color-accent-contrast` drive interactive states (primary buttons, active tabs, nav emphasis).
-- **Borders & elevation**: `--color-border-subtle`, `--color-border-strong`, `--shadow-soft`, `--shadow-elevated` keep edges readable without heavy outlines.
-- **Status palette (do not override)**: `--color-status-success-*`, `--color-status-warning-*`, `--color-status-error-*`, `--color-status-info-*` power badges, alerts, and table chips. These are year-round anchors and must remain stable across themes to preserve meaning.
-- **Focus**: `--color-focus-ring` guarantees visible keyboard focus that meets contrast on both light and accented surfaces.
+- **Backgrounds:** `--bg-primary`, `--bg-surface`, `--bg-subtle`, `--bg-muted`
+- **Text:** `--text-primary`, `--text-strong`, `--text-muted`, `--text-inverse`
+- **Accent:** `--accent-primary`, `--accent-strong`, `--accent-soft`, `--accent-contrast`
+- **CTAs:** `--cta-primary`, `--cta-primary-text`, `--cta-secondary`, `--cta-secondary-text`, `--cta-secondary-border`
+- **Status (stable across themes):** `--status-success-*`, `--status-warning-*`, `--status-error-*`, `--status-info-*`
+- **Structure:** `--border-subtle`, `--border-strong`, `--border-divider`, `--shadow-level1`, `--shadow-level2`, `--focus-ring`
 
-## Component usage rules
-- **Buttons & tabs**: use `--button-*` and `--tab-*` tokens (from `src/style.css`) backed by accent variables. Never swap to status tokens for primary/secondary actions.
-- **Cards, tables, nav**: consume `--card-*`, `--table-*`, `--nav-*` to keep radii, borders, and hover states consistent. Avoid per-component hex codes—extend the semantic layer instead.
-- **Badges & pills**: status chips must map to the status palette; neutral tags can use `--badge-*`. Mixed states (e.g., “info + success”) should pick the dominant meaning and stick to that token set.
-- **Spacing & radius**: preserve shared measurements (`--shell-radius`, `--shell-padding`, `--shell-gap`, `--nav-height`) to maintain operational density and alignment between legacy and shell layouts.
-- **Readability**: ensure body text stays at least 14–16px with 1.4–1.6 line height; avoid lowering contrast below WCAG AA on tablet breakpoints. Use existing focus ring tokens for keyboard parity on touch-plus-keyboard devices.
+Tokens are defined in `src/styles/tokens.css` and should be consumed via CSS variables (e.g., `var(--accent-primary)`) instead of hardcoded hex values.
 
-## Status color guidance
-- Success → confirmations/completions; Warning → pending/needs attention; Error → blockers/retries; Info → neutral updates. Do not repurpose accent colors for status semantics.
-- Background-first: use `*-bg` for fills, `*-border` for outlines/dividers, and `*-text` for labels/icons. When stacking (e.g., badge inside alert), keep the inner element on the same status family.
-- Charts/legends: if a status appears in a legend, match the badge text token for strokes/fills to keep cues consistent across widgets and tables.
-- Never tint success/error tokens to match a seasonal palette; status colors remain stable even when accents change.
+## Usage rules
+- Use semantic tokens for every color, border, and shadow; avoid raw hex, rgb, and named colors in components.
+- Background hierarchy: `--bg-primary` (app shell), `--bg-surface` (cards/forms), `--bg-subtle` (stripes/headers), `--bg-muted` (hover or quiet emphasis).
+- Text hierarchy: primary for body, strong for headings/labels, muted for helper copy; never reduce contrast below WCAG AA on the linen canvas.
+- CTAs: primary actions use `--cta-primary`/`--cta-primary-text`; secondary actions use `--cta-secondary` with `--cta-secondary-border`.
+- Status colors are fixed across themes; never override or desaturate them for seasonal palettes.
+- Tables favor readability: clear borders (`--border-subtle`/`--border-strong`), zebra stripes with `--bg-subtle`, and minimal decoration.
+- Avoid decorative gradients or blush tones; if separators need a hint of warmth, use `--border-divider` only.
 
-## Seasonal override guidelines
-- Seasonal themes may override **only** accent and background groups (`--color-bg-*`, `--color-accent-*`) by applying a `data-theme` attribute and redefining those variables. Leave status and focus tokens untouched.
-- Keep operational density: avoid adding padding or border radii beyond the shared tokens; seasonal changes should be palette swaps, not layout shifts.
-- Contrast checks: verify that accent text still meets contrast with its background (`--color-accent-contrast` can be adjusted only if it preserves AA on buttons, tabs, and nav links).
-- Assets: do not introduce binary assets (PNG/JPEG) for themes. Prefer CSS variables, gradients, or inline SVG that reuse the token set.
+## Allowed vs. forbidden
+- **Allowed:** flat fills, light shadows from `--shadow-level*`, subtle accent chips, muted stripes for rows, focused outlines with `--focus-ring`.
+- **Forbidden:** gradients, high-saturation pink/romantic tones, low-contrast text, off-token hex values, and decorative backgrounds behind data tables.
 
-## Extending or overriding tokens safely
-- Add new semantics (e.g., `--color-accent-alt`) in `src/styles/tokens.css` and wire component-level aliases in `src/style.css` so consumers do not import raw values.
-- When adding component tokens, map them to existing semantic parents first; introduce new semantic primitives only when a new meaning is required (e.g., a tertiary surface).
-- If a seasonal override needs a darker accent, adjust `--color-accent-primary` and `--color-accent-strong` together and confirm that dependent component tokens (`--button-primary-*`, `--tab-active-*`, nav active states) remain legible.
-- Keep status tokens immutable. New status types should extend the status palette, not reuse accent colors.
+## Extending for future themes
+- Seasonal themes should be applied by setting `data-theme="<name>"` on the `<body>` and overriding only the background and accent token group (`--bg-*`, `--accent-*`, `--cta-*`).
+- Do **not** change status tokens or text contrast when introducing new palettes.
+- Keep tokens centralized in `tokens.css`; component code should read from tokens so theme swaps do not require component changes.
 
-## Do / Don’t examples
-- **Do**: create `--table-row-highlight` that points to `--color-accent-soft` for hover consistency.
-- **Do**: add a `data-theme="winter"` that redefines `--color-bg-canvas` and `--color-accent-primary` while leaving status tokens unchanged.
-- **Do**: keep table row height and padding unchanged in seasonal modes to retain high information density.
-- **Don’t**: hardcode `#ff8800` inside a component; add a semantic token and reuse it.
-- **Don’t**: recolor success badges to match a holiday palette; status semantics are invariant.
-- **Don’t**: ship background illustrations as PNGs; prefer tokenized gradients or inline SVG with token-driven fills.
+## Implementation checklist
+- Add or update styles using semantic tokens only.
+- Validate contrast for headings, form labels, and table headers on both `--bg-primary` and `--bg-surface`.
+- Use `--bg-muted`/`--accent-soft` for hover states instead of new color values.
+- For charts, map series colors to accent or status tokens (e.g., success for earnings, warning/error for risk).

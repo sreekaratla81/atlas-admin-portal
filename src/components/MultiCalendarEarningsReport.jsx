@@ -92,7 +92,12 @@ function MultiCalendarEarningsReport() {
         {days.map((day) => (
           <Box
             key={day}
-            sx={{ width: 100, textAlign: 'center', fontWeight: 'bold', borderBottom: '1px solid #ccc' }}
+            sx={{
+              width: 100,
+              textAlign: 'center',
+              fontWeight: 'bold',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}
           >
             {dayjs(day).format('MMM D')}
           </Box>
@@ -103,7 +108,14 @@ function MultiCalendarEarningsReport() {
       {listings.map((listing, idx) => (
         <Box key={idx} sx={{ display: 'flex', alignItems: 'center' }}>
           {/* Listing name */}
-          <Box sx={{ width: 120, fontWeight: 'bold', borderRight: '1px solid #ccc' }}>
+          <Box
+            sx={{
+              width: 120,
+              fontWeight: 'bold',
+              borderRight: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-subtle)',
+            }}
+          >
             {listing.name}
           </Box>
 
@@ -119,8 +131,8 @@ function MultiCalendarEarningsReport() {
                     height: 50,
                     textAlign: 'center',
                     lineHeight: '50px',
-                    border: '1px solid #e0e0e0',
-                    backgroundColor: booking ? '#d1e7dd' : 'white',
+                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: booking ? 'var(--status-success-bg)' : 'var(--bg-surface)',
                   }}
                 >
                   {booking ? (
