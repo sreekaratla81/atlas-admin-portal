@@ -17,16 +17,8 @@ export default function AdminShellLayout({ title, rightSlot, children }: AdminSh
       <NavBar />
       <div className="shell-content">
         {(title || rightSlot) && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              marginTop: 6,
-            }}
-          >
-            {title && <h1 style={{ margin: 0, fontSize: 26 }}>{title}</h1>}
+          <div className="shell-header">
+            {title && <h1 className="shell-header__title">{title}</h1>}
             {rightSlot}
           </div>
         )}
