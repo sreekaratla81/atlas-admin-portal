@@ -23,6 +23,7 @@ import {
   updateBankAccount,
   deleteBankAccount
 } from '../api/bankAccountsApi';
+import AdminShellLayout from '@/components/layout/AdminShellLayout';
 import BankAccountForm from '../components/BankAccountForm';
 import BankAccountEarningsReport from '../components/BankAccountEarningsReport';
 
@@ -82,8 +83,8 @@ const BankAccountsPage = () => {
         await createBankAccount(form);
         setSuccess('Bank account created');
       }
-      handleClose();
       fetchData();
+      handleClose();
     } catch (err) {
       setError('Failed to save bank account.');
     } finally {
@@ -102,69 +103,71 @@ const BankAccountsPage = () => {
     } catch (err) {
       setError('Failed to delete bank account.');
     } finally {
-      setDeleteItem(null);
       setLoading(false);
+      setDeleteItem(null);
     }
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+    <AdminShellLayout title="Bank Accounts">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {error && (
+          <Alert severity="error">
+            {error}
+          </Alert>
+        )}
 
-      <Button variant="contained" onClick={() => handleOpen()} sx={{ mb: 2 }}>
-        New Bank Account
-      </Button>
+        <Button variant="contained" onClick={() => handleOpen()} sx={{ alignSelf: 'flex-start' }}>
+          New Bank Account
+        </Button>
 
-      {loading && accounts.length === 0 ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Paper elevation={2}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Bank</TableCell>
-                <TableCell>Account Number</TableCell>
-                <TableCell>IFSC</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {accounts.map(acc => (
-                <TableRow key={acc.id} hover>
-                  <TableCell>{acc.bankName}</TableCell>
-                  <TableCell>{acc.accountNumber}</TableCell>
-                  <TableCell>{acc.ifsc}</TableCell>
-                  <TableCell>{acc.accountType}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button size="small" variant="outlined" onClick={() => handleOpen(acc)} disabled={loading}>Edit</Button>
-                      <Button size="small" color="error" variant="outlined" onClick={() => setDeleteItem(acc)} disabled={loading}>Delete</Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {accounts.length === 0 && !loading && (
+        {loading && accounts.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Paper elevation={2}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No bank accounts found.
-                    </Typography>
-                  </TableCell>
+                  <TableCell>Bank</TableCell>
+                  <TableCell>Account Number</TableCell>
+                  <TableCell>IFSC</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Paper>
-      )}
+              </TableHead>
+              <TableBody>
+                {accounts.map(acc => (
+                  <TableRow key={acc.id} hover>
+                    <TableCell>{acc.bankName}</TableCell>
+                    <TableCell>{acc.accountNumber}</TableCell>
+                    <TableCell>{acc.ifsc}</TableCell>
+                    <TableCell>{acc.accountType}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button size="small" variant="outlined" onClick={() => handleOpen(acc)} disabled={loading}>Edit</Button>
+                        <Button size="small" color="error" variant="outlined" onClick={() => setDeleteItem(acc)} disabled={loading}>Delete</Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {accounts.length === 0 && !loading && (
+                  <TableRow>
+                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No bank accounts found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
+        )}
 
-      <BankAccountEarningsReport accounts={accounts} />
+        <BankAccountEarningsReport accounts={accounts} />
+      </Box>
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Bank Account' : 'New Bank Account'}</DialogTitle>
@@ -172,23 +175,21 @@ const BankAccountsPage = () => {
           <BankAccountForm form={form} setForm={setForm} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose} disabled={loading}>Cancel</Button>
-          <Button onClick={submit} variant="contained" disabled={loading}>
-            {editId ? 'Update' : 'Create'}
-          </Button>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={submit} variant="contained" disabled={loading}>{editId ? 'Update' : 'Create'}</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={Boolean(deleteItem)} onClose={() => setDeleteItem(null)}>
         <DialogTitle>Delete Bank Account</DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to delete {deleteItem?.bankName}?
-          </Typography>
+          Are you sure you want to delete this bank account?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteItem(null)} disabled={loading}>Cancel</Button>
-          <Button color="error" onClick={confirmDelete} disabled={loading}>Delete</Button>
+          <Button onClick={() => setDeleteItem(null)}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" disabled={loading}>
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -202,7 +203,7 @@ const BankAccountsPage = () => {
           {success}
         </Alert>
       </Snackbar>
-    </Box>
+    </AdminShellLayout>
   );
 };
 

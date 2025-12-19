@@ -7,11 +7,11 @@ import SingleCalendarEarningsReport from '../components/SingleCalendarEarningsRe
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import MultiCalendarEarningsReport from '../components/MultiCalendarEarningsReport';
+import AdminShellLayout from '@/components/layout/AdminShellLayout';
 
 const Reports = () => {
     return (
-        <div>
-            <h1>Reports Page</h1>
+        <AdminShellLayout title="Reports">
             <section style={{ marginBottom: '2rem' }}>
                 <SingleCalendarEarningsReport />
             </section>
@@ -35,7 +35,7 @@ const Reports = () => {
                 </LocalizationProvider>
                 */
             }
-        </div>
+        </AdminShellLayout>
     );
 };
 

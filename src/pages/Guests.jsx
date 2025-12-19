@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api, asArray } from '@/lib/api';
 import { hydrateGuests } from '@/services/guests.local';
+import AdminShellLayout from '@/components/layout/AdminShellLayout';
 import {
   Box,
   Button,
@@ -36,10 +37,10 @@ const Guests = () => {
   const fetchGuests = async () => {
     setLoading(true);
     setError('');
-      try {
-        const { data } = await api.get(`/guests`);
-        setGuests(asArray(data, 'guests'));
-      } catch (err) {
+    try {
+      const { data } = await api.get(`/guests`);
+      setGuests(asArray(data, 'guests'));
+    } catch (err) {
       setError('Failed to fetch guests.');
     } finally {
       setLoading(false);
@@ -81,13 +82,11 @@ const Guests = () => {
     setLoading(true);
     setError('');
     try {
-        if (editId) {
-          await api.put(`/guests/${editId}`, form);
-        } else {
-          await api.post(`/guests`, form);
-        }
-      // Ensure the bookings page sees the latest guests by refreshing the
-      // cached list used for typeahead search.
+      if (editId) {
+        await api.put(`/guests/${editId}`, form);
+      } else {
+        await api.post(`/guests`, form);
+      }
       await hydrateGuests(true);
       handleClose();
       fetchGuests();
@@ -102,7 +101,7 @@ const Guests = () => {
     setLoading(true);
     setError('');
     try {
-        await api.delete(`/guests/${id}`);
+      await api.delete(`/guests/${id}`);
       await hydrateGuests(true);
       fetchGuests();
     } catch (err) {
@@ -138,108 +137,107 @@ const Guests = () => {
   }, [search, guests]);
 
   return (
-    <Box sx={{ p: 3 }}>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+    <AdminShellLayout title="Guests">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {error && <Alert severity="error">{error}</Alert>}
 
-      <Button variant="contained" onClick={() => handleOpen()} sx={{ mb: 2 }}>
-        New Guest
-      </Button>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <Button variant="contained" onClick={() => handleOpen()}>
+            New Guest
+          </Button>
 
-      <TextField
-        label="Search guests"
-        fullWidth
-        size="small"
-        variant="outlined"
-        placeholder="Search by name, phone, or email"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        sx={{ mb: 2 }}
-      />
-
-      {loading && guests.length === 0 ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
+          <TextField
+            label="Search guests"
+            fullWidth
+            size="small"
+            variant="outlined"
+            placeholder="Search by name, phone, or email"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </Box>
-      ) : (
-        <Paper elevation={2}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>ID Proof URL</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredGuests.map(g => (
-                <TableRow
-                  key={g.id}
-                  hover
-                  onClick={() => handleOpen(g)}
-                  sx={{ cursor: 'pointer' }}
-                >
-                  <TableCell>{g.name}</TableCell>
-                  <TableCell>{g.phone}</TableCell>
-                  <TableCell>{g.email || '—'}</TableCell>
-                  <TableCell>
-                    {g.idProofUrl ? (
-                      <a href={g.idProofUrl} target="_blank" rel="noopener noreferrer">Link</a>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpen(g);
-                        }}
-                        disabled={loading}
-                        startIcon={<EditIcon />}
-                        sx={{ minWidth: 80 }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(g);
-                        }}
-                        disabled={loading}
-                        startIcon={<DeleteIcon />}
-                        sx={{ minWidth: 80 }}
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredGuests.length === 0 && !loading && (
+
+        {loading && guests.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Paper elevation={2}>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No guests found.
-                    </Typography>
-                  </TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Phone</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>ID Proof URL</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Paper>
-      )}
+              </TableHead>
+              <TableBody>
+                {filteredGuests.map(g => (
+                  <TableRow
+                    key={g.id}
+                    hover
+                    onClick={() => handleOpen(g)}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    <TableCell>{g.name}</TableCell>
+                    <TableCell>{g.phone}</TableCell>
+                    <TableCell>{g.email || '—'}</TableCell>
+                    <TableCell>
+                      {g.idProofUrl ? (
+                        <a href={g.idProofUrl} target="_blank" rel="noopener noreferrer">Link</a>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpen(g);
+                          }}
+                          disabled={loading}
+                          startIcon={<EditIcon />}
+                          sx={{ minWidth: 80 }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(g);
+                          }}
+                          disabled={loading}
+                          startIcon={<DeleteIcon />}
+                          sx={{ minWidth: 80 }}
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredGuests.length === 0 && !loading && (
+                  <TableRow>
+                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No guests found.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
+        )}
+      </Box>
 
       <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
         <DialogTitle>{editId ? 'Edit Guest' : 'New Guest'}</DialogTitle>
@@ -290,7 +288,7 @@ const Guests = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </AdminShellLayout>
   );
 };
 

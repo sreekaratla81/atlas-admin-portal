@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import NavBar from "@/components/NavBar";
 
 type AdminShellLayoutProps = {
   title?: string;
@@ -13,25 +12,16 @@ export default function AdminShellLayout({ title, rightSlot, children }: AdminSh
   const kioskMode = useMemo(() => params.get("kiosk") === "1", [params]);
 
   return (
-    <div className={["admin-shell", kioskMode ? "kiosk-mode" : ""].join(" ")}>
-      <NavBar />
+    <section className={["admin-shell", kioskMode ? "kiosk-mode" : ""].join(" ")}>
       <div className="shell-content">
         {(title || rightSlot) && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              marginTop: 6,
-            }}
-          >
-            {title && <h1 style={{ margin: 0, fontSize: 26 }}>{title}</h1>}
-            {rightSlot}
+          <div className="shell-header">
+            {title && <h1 className="shell-header__title">{title}</h1>}
+            {rightSlot ? <div className="shell-header__actions">{rightSlot}</div> : null}
           </div>
         )}
         {children}
       </div>
-    </div>
+    </section>
   );
 }
