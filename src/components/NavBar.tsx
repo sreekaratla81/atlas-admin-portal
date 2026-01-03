@@ -12,7 +12,7 @@ const navItems: NavItem[] = [
   { path: "/guests", label: "Guests" },
   { path: "/listings", label: "Listings" },
   { path: "/properties", label: "Properties" },
-  { path: "/calendar", label: "Calendar" },
+  { path: "/calendar/availability", label: "Calendar" },
   { path: "/channel-manager", label: "Channel Manager" },
   { path: "/reports", label: "Reports" },
   { path: "/bank-accounts", label: "Bank Accounts" },
