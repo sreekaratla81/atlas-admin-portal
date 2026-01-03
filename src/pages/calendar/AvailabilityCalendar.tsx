@@ -4,11 +4,16 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Skeleton,
+  Snackbar,
   Stack,
   TextField,
   ToggleButton,
@@ -20,6 +25,9 @@ import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
   buildDateArray,
+  buildBulkBlockPayload,
+  buildBulkPricePayload,
+  BulkUpdateSelection,
   CalendarDay,
   CalendarListing,
   fetchCalendarData,
@@ -40,6 +48,12 @@ const OPEN_COLOR = "#dcfce7";
 const OPEN_WEEKEND_COLOR = "#bbf7d0";
 const BLOCKED_COLOR = "#fee2e2";
 const BLOCKED_WEEKEND_COLOR = "#fecaca";
+const BLOCK_TYPE_OPTIONS: BulkUpdateSelection["blockType"][] = [
+  "Maintenance",
+  "OwnerHold",
+  "OpsHold",
+];
+const PRICE_INPUT_HELPER = "Leave blank to keep existing rates.";
 
 type HeaderCellProps = {
   date: string;
@@ -247,6 +261,13 @@ export default function AvailabilityCalendar() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successNotice, setSuccessNotice] = useState("");
+  const [errorNotice, setErrorNotice] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [blockAction, setBlockAction] = useState<"none" | "block" | "unblock">("none");
+  const [blockType, setBlockType] = useState<BulkUpdateSelection["blockType"]>("Maintenance");
+  const [nightlyPrice, setNightlyPrice] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const toDate = useMemo(() => {
     const start = parseISO(fromDate);
@@ -293,13 +314,153 @@ export default function AvailabilityCalendar() {
   }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
+  const selectedListing = useMemo(() => {
+    if (!selection.listingId) {
+      return null;
+    }
+    return listings.find((listing) => listing.listingId === selection.listingId) ?? null;
+  }, [listings, selection.listingId]);
+
   const selectedDates = useMemo(() => {
-    if (filteredListings.length !== 1) {
+    if (!selection.listingId) {
       return [];
     }
 
-    return getSelectedDatesForListing(filteredListings[0].listingId);
-  }, [filteredListings, getSelectedDatesForListing]);
+    return getSelectedDatesForListing(selection.listingId);
+  }, [getSelectedDatesForListing, selection.listingId]);
+
+  const selectionSummary = useMemo(() => {
+    if (!selection.startDate || !selection.endDate || selectedDates.length === 0) {
+      return "No dates selected";
+    }
+
+    const start = format(parseISO(selection.startDate), "MMM d, yyyy");
+    const end = format(parseISO(selection.endDate), "MMM d, yyyy");
+    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
+  }, [selection.endDate, selection.startDate, selectedDates.length]);
+
+  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
+  const parsedNightlyPrice = nightlyPrice.trim() === "" ? null : Number(nightlyPrice);
+  const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
+  const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
+
+  const openBulkModal = (action: "block" | "unblock" | "price") => {
+    if (!hasSelection) {
+      return;
+    }
+    setBlockAction(action === "price" ? "none" : action);
+    setBlockType("Maintenance");
+    setNightlyPrice("");
+    setModalOpen(true);
+  };
+
+  const applyOptimisticUpdate = useCallback(
+    (
+      currentListings: CalendarListing[],
+      update: {
+        status?: "open" | "blocked";
+        blockType?: BulkUpdateSelection["blockType"];
+        price?: number;
+      }
+    ) => {
+      if (!selection.listingId || selectedDates.length === 0) {
+        return currentListings;
+      }
+
+      return currentListings.map((listing) => {
+        if (listing.listingId !== selection.listingId) {
+          return listing;
+        }
+
+        const updatedDays = { ...listing.days };
+        selectedDates.forEach((date) => {
+          const existing = updatedDays[date] ?? { date, status: "open" as const };
+          const next = { ...existing };
+
+          if (update.status) {
+            next.status = update.status;
+            if (update.status === "blocked") {
+              next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+            } else {
+              delete next.blockType;
+              delete next.reason;
+            }
+          }
+
+          if (update.price != null) {
+            next.price = update.price;
+          }
+
+          updatedDays[date] = next;
+        });
+
+        return {
+          ...listing,
+          days: updatedDays,
+        };
+      });
+    },
+    [selection.listingId, selectedDates]
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!hasSelection || !selectedListing) {
+      return;
+    }
+
+    const bulkSelection: BulkUpdateSelection = {
+      listingId: selectedListing.listingId,
+      dates: selectedDates,
+      blockType,
+      unblock: blockAction === "unblock",
+      nightlyPrice: normalizedNightlyPrice,
+    };
+
+    const requests: Promise<unknown>[] = [];
+    if (blockAction !== "none") {
+      requests.push(api.post("/availability/blocks/bulk", buildBulkBlockPayload(bulkSelection)));
+    }
+    if (normalizedNightlyPrice != null) {
+      requests.push(api.post("/pricing/daily/bulk", buildBulkPricePayload(bulkSelection)));
+    }
+
+    if (requests.length === 0) {
+      return;
+    }
+
+    const snapshot = listings;
+    setSaving(true);
+    setListings(
+      applyOptimisticUpdate(snapshot, {
+        status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
+        blockType: blockAction === "block" ? blockType : undefined,
+        price: normalizedNightlyPrice ?? undefined,
+      })
+    );
+
+    try {
+      await Promise.all(requests);
+      setSuccessNotice("Availability updated successfully.");
+      setErrorNotice("");
+      setModalOpen(false);
+      clearSelection();
+    } catch (err) {
+      setListings(snapshot);
+      setErrorNotice("Update failed. Changes have been reverted.");
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    applyOptimisticUpdate,
+    blockAction,
+    blockType,
+    clearSelection,
+    hasSelection,
+    listings,
+    normalizedNightlyPrice,
+    selectedDates,
+    selectedListing,
+  ]);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -395,17 +556,17 @@ export default function AvailabilityCalendar() {
                 sx={{ ml: "auto", flexWrap: "wrap" }}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {selectedDates.length > 0
-                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"}`
+                  {hasSelection
+                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
                     : "No dates selected"}
                 </Typography>
-                <Button size="small" variant="outlined">
+                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("block")}>
                   Block
                 </Button>
-                <Button size="small" variant="outlined">
+                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("unblock")}>
                   Unblock
                 </Button>
-                <Button size="small" variant="outlined">
+                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("price")}>
                   Set Price
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
@@ -501,6 +662,87 @@ export default function AvailabilityCalendar() {
           </Box>
         </Box>
       </Stack>
+
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Update availability</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
+          <Stack spacing={0.5}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {selectedListing?.listingName ?? "Selected listing"}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {selectionSummary}
+            </Typography>
+          </Stack>
+
+          <FormControl size="small">
+            <InputLabel>Block action</InputLabel>
+            <Select
+              value={blockAction}
+              label="Block action"
+              onChange={(event) => setBlockAction(event.target.value as "none" | "block" | "unblock")}
+            >
+              <MenuItem value="none">No block change</MenuItem>
+              <MenuItem value="block">Block dates</MenuItem>
+              <MenuItem value="unblock">Unblock dates</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" disabled={blockAction !== "block"}>
+            <InputLabel>Block type</InputLabel>
+            <Select
+              value={blockType}
+              label="Block type"
+              onChange={(event) => setBlockType(event.target.value as BulkUpdateSelection["blockType"])}
+            >
+              {BLOCK_TYPE_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            size="small"
+            label="Nightly price"
+            type="number"
+            value={nightlyPrice}
+            onChange={(event) => setNightlyPrice(event.target.value)}
+            inputProps={{ min: 0 }}
+            helperText={PRICE_INPUT_HELPER}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} variant="contained" disabled={!canSave || saving}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(successNotice)}
+        autoHideDuration={3000}
+        onClose={() => setSuccessNotice("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setSuccessNotice("")} severity="success" sx={{ width: "100%" }}>
+          {successNotice}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={Boolean(errorNotice)}
+        autoHideDuration={4000}
+        onClose={() => setErrorNotice("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setErrorNotice("")} severity="error" sx={{ width: "100%" }}>
+          {errorNotice}
+        </Alert>
+      </Snackbar>
     </AdminShellLayout>
   );
 }

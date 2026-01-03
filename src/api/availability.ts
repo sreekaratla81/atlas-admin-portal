@@ -15,6 +15,14 @@ export type CalendarListing = {
   days: Record<string, CalendarDay>;
 };
 
+export type BulkUpdateSelection = {
+  listingId: number;
+  dates: string[];
+  blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
+  unblock?: boolean;
+  nightlyPrice?: number | null;
+};
+
 type CalendarApiListing = {
   listingId?: number;
   listingName?: string;
@@ -39,6 +47,19 @@ export const formatCurrencyINR = (value: number) =>
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
+
+export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
+  listingId: selection.listingId,
+  dates: selection.dates,
+  status: selection.unblock ? "open" : "blocked",
+  blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
+});
+
+export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
+  listingId: selection.listingId,
+  dates: selection.dates,
+  price: selection.nightlyPrice,
+});
 
 const normalizeDays = (
   days: CalendarApiListing["days"]
