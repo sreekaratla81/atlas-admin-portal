@@ -276,6 +276,7 @@ export default function AvailabilityCalendar() {
 
   const dayRange = useMemo(() => buildDateArray(fromDate, toDate), [fromDate, toDate]);
   const {
+    selection,
     clearSelection,
     handleMouseDown,
     handleMouseEnter,
