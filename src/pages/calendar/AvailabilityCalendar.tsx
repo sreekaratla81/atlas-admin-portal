@@ -25,6 +25,7 @@ import {
   fetchCalendarData,
   formatCurrencyINR,
 } from "@/api/availability";
+import useCalendarSelection from "@/hooks/useCalendarSelection";
 
 type Property = {
   id: number;
@@ -95,9 +96,23 @@ type DataCellProps = {
   date: string;
   availability?: CalendarDay;
   today: Date;
+  isSelected: boolean;
+  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseEnter: () => void;
+  onMouseUp: () => void;
 };
 
-const DataCell = React.memo(({ listingId, date, availability, today }: DataCellProps) => {
+const DataCell = React.memo(
+  ({
+    listingId,
+    date,
+    availability,
+    today,
+    isSelected,
+    onMouseDown,
+    onMouseEnter,
+    onMouseUp,
+  }: DataCellProps) => {
   const dateObj = parseISO(date);
   const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
   const isToday = isSameDay(dateObj, today);
@@ -132,7 +147,14 @@ const DataCell = React.memo(({ listingId, date, availability, today }: DataCellP
           fontWeight: 600,
           position: "relative",
           color: "text.primary",
+          cursor: "pointer",
+          userSelect: "none",
+          boxShadow: isSelected ? "inset 0 0 0 2px #2563eb" : "none",
+          transition: "box-shadow 120ms ease",
         }}
+        onMouseDown={onMouseDown}
+        onMouseEnter={onMouseEnter}
+        onMouseUp={onMouseUp}
       >
         <Typography variant="body2">
           {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
@@ -159,50 +181,60 @@ type ListingRowProps = {
   listing: CalendarListing;
   dates: string[];
   today: Date;
+  onCellMouseDown: (listingId: number, date: string, shiftKey: boolean) => void;
+  onCellMouseEnter: (listingId: number, date: string) => void;
+  onCellMouseUp: () => void;
+  isDateSelected: (listingId: number, date: string) => boolean;
 };
 
-const ListingRow = React.memo(({ listing, dates, today }: ListingRowProps) => (
-  <Box
-    sx={{
-      display: "grid",
-      gridTemplateColumns: `${NAME_COL_WIDTH}px repeat(${dates.length}, ${CELL_WIDTH}px)`,
-    }}
-  >
+const ListingRow = React.memo(
+  ({ listing, dates, today, onCellMouseDown, onCellMouseEnter, onCellMouseUp, isDateSelected }: ListingRowProps) => (
     <Box
       sx={{
-        position: "sticky",
-        left: 0,
-        zIndex: 2,
-        borderRight: "1px solid",
-        borderColor: "divider",
-        borderBottom: "1px solid",
-        borderBottomColor: "divider",
-        backgroundColor: "background.paper",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        px: 2,
-        height: 56,
+        display: "grid",
+        gridTemplateColumns: `${NAME_COL_WIDTH}px repeat(${dates.length}, ${CELL_WIDTH}px)`,
       }}
     >
-      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-        {listing.listingName}
-      </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        Listing
-      </Typography>
+      <Box
+        sx={{
+          position: "sticky",
+          left: 0,
+          zIndex: 2,
+          borderRight: "1px solid",
+          borderColor: "divider",
+          borderBottom: "1px solid",
+          borderBottomColor: "divider",
+          backgroundColor: "background.paper",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          px: 2,
+          height: 56,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {listing.listingName}
+        </Typography>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Listing
+        </Typography>
+      </Box>
+      {dates.map((date) => (
+        <DataCell
+          key={`${listing.listingId}-${date}`}
+          listingId={listing.listingId}
+          date={date}
+          availability={listing.days[date]}
+          today={today}
+          isSelected={isDateSelected(listing.listingId, date)}
+          onMouseDown={(event) => onCellMouseDown(listing.listingId, date, event.shiftKey)}
+          onMouseEnter={() => onCellMouseEnter(listing.listingId, date)}
+          onMouseUp={onCellMouseUp}
+        />
+      ))}
     </Box>
-    {dates.map((date) => (
-      <DataCell
-        key={`${listing.listingId}-${date}`}
-        listingId={listing.listingId}
-        date={date}
-        availability={listing.days[date]}
-        today={today}
-      />
-    ))}
-  </Box>
-));
+  )
+);
 
 ListingRow.displayName = "ListingRow";
 
@@ -222,6 +254,14 @@ export default function AvailabilityCalendar() {
   }, [fromDate, rangeDays]);
 
   const dayRange = useMemo(() => buildDateArray(fromDate, toDate), [fromDate, toDate]);
+  const {
+    clearSelection,
+    handleMouseDown,
+    handleMouseEnter,
+    handleMouseUp,
+    isDateSelected,
+    getSelectedDatesForListing,
+  } = useCalendarSelection(dayRange);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -242,6 +282,9 @@ export default function AvailabilityCalendar() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, fromDate, rangeDays, selectedProperty]);
 
   const filteredListings = useMemo(() => {
     return listings.filter((listing) =>
@@ -250,6 +293,13 @@ export default function AvailabilityCalendar() {
   }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
+  const selectedDates = useMemo(() => {
+    if (filteredListings.length !== 1) {
+      return [];
+    }
+
+    return getSelectedDatesForListing(filteredListings[0].listingId);
+  }, [filteredListings, getSelectedDatesForListing]);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -344,6 +394,11 @@ export default function AvailabilityCalendar() {
                 alignItems="center"
                 sx={{ ml: "auto", flexWrap: "wrap" }}
               >
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  {selectedDates.length > 0
+                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"}`
+                    : "No dates selected"}
+                </Typography>
                 <Button size="small" variant="outlined">
                   Block
                 </Button>
@@ -435,6 +490,10 @@ export default function AvailabilityCalendar() {
                     listing={listing}
                     dates={dayRange}
                     today={today}
+                    onCellMouseDown={handleMouseDown}
+                    onCellMouseEnter={handleMouseEnter}
+                    onCellMouseUp={handleMouseUp}
+                    isDateSelected={isDateSelected}
                   />
                 ))}
               </Box>
