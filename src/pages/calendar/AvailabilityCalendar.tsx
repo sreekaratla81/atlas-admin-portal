@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import dayjs, { Dayjs } from "dayjs";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { addDays, format, getDay, isSameDay, parseISO } from "date-fns";
 import {
   Alert,
   Box,
@@ -18,26 +18,17 @@ import {
 } from "@mui/material";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
+import {
+  buildDateArray,
+  CalendarDay,
+  CalendarListing,
+  fetchCalendarData,
+  formatCurrencyINR,
+} from "@/api/availability";
 
 type Property = {
   id: number;
   name: string;
-};
-
-type Listing = {
-  id: number;
-  name: string;
-  type?: string;
-  propertyId?: number;
-};
-
-type AvailabilityStatus = "open" | "blocked";
-
-type AvailabilityCell = {
-  status: AvailabilityStatus;
-  price: number;
-  blockType?: string;
-  reason?: string;
 };
 
 const RANGE_OPTIONS = [30, 60, 90] as const;
@@ -49,119 +40,102 @@ const OPEN_WEEKEND_COLOR = "#bbf7d0";
 const BLOCKED_COLOR = "#fee2e2";
 const BLOCKED_WEEKEND_COLOR = "#fecaca";
 
-const blockReasons = [
-  "Owner stay",
-  "Maintenance",
-  "Regulatory hold",
-  "Deep cleaning",
-];
-
-const blockTypes = ["Hold", "Manual block", "System block"];
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
-
-const buildAvailability = (listingId: number, dayIndex: number): AvailabilityCell => {
-  const blocked = (listingId + dayIndex) % 7 === 0 || (listingId + dayIndex) % 11 === 0;
-  const price = 2800 + (listingId % 5) * 200 + dayIndex * 12;
-
-  if (!blocked) {
-    return { status: "open", price };
-  }
-
-  const reason = blockReasons[(listingId + dayIndex) % blockReasons.length];
-  const blockType = blockTypes[(listingId + dayIndex) % blockTypes.length];
-
-  return {
-    status: "blocked",
-    price,
-    reason,
-    blockType,
-  };
+type HeaderCellProps = {
+  date: string;
+  today: Date;
 };
 
-export default function AvailabilityCalendar() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [selectedProperty, setSelectedProperty] = useState("");
-  const [rangeDays, setRangeDays] = useState<typeof RANGE_OPTIONS[number]>(30);
-  const [fromDate, setFromDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const HeaderCell = React.memo(({ date, today }: HeaderCellProps) => {
+  const dateObj = parseISO(date);
+  const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
+  const isToday = isSameDay(dateObj, today);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [propertiesResponse, listingsResponse] = await Promise.all([
-        api.get("/properties"),
-        api.get("/listings"),
-      ]);
+  return (
+    <Box
+      sx={{
+        width: CELL_WIDTH,
+        height: 64,
+        borderRight: "1px solid",
+        borderColor: "divider",
+        borderBottom: "1px solid",
+        borderBottomColor: "divider",
+        backgroundColor: isWeekend ? "rgba(148, 163, 184, 0.15)" : "background.paper",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+      }}
+    >
+      <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary" }}>
+        {format(dateObj, "EEE")}
+      </Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+        {format(dateObj, "d")}
+      </Typography>
+      {isToday && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 4,
+            border: `2px solid ${TODAY_OUTLINE}`,
+            borderRadius: 1,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+    </Box>
+  );
+});
 
-      setProperties(asArray<Property>(propertiesResponse.data, "properties"));
-      setListings(asArray<Listing>(listingsResponse.data, "listings"));
-    } catch (err) {
-      setError("We couldn't load availability data. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+HeaderCell.displayName = "HeaderCell";
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+type DataCellProps = {
+  listingId: number;
+  date: string;
+  availability?: CalendarDay;
+  today: Date;
+};
 
-  const dayRange = useMemo(() => {
-    const start = dayjs(fromDate);
-    return Array.from({ length: rangeDays }, (_, index) => start.add(index, "day"));
-  }, [fromDate, rangeDays]);
+const DataCell = React.memo(({ listingId, date, availability, today }: DataCellProps) => {
+  const dateObj = parseISO(date);
+  const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
+  const isToday = isSameDay(dateObj, today);
+  const status = availability?.status ?? "open";
 
-  const filteredListings = useMemo(() => {
-    return listings.filter((listing) => {
-      const matchesProperty = selectedProperty
-        ? String(listing.propertyId) === selectedProperty
-        : true;
-      const matchesSearch = listing.name
-        .toLowerCase()
-        .includes(search.trim().toLowerCase());
-      return matchesProperty && matchesSearch;
-    });
-  }, [listings, search, selectedProperty]);
+  const backgroundColor = status === "blocked"
+    ? isWeekend
+      ? BLOCKED_WEEKEND_COLOR
+      : BLOCKED_COLOR
+    : isWeekend
+      ? OPEN_WEEKEND_COLOR
+      : OPEN_COLOR;
 
-  const today = useMemo(() => dayjs(), []);
+  const tooltipText = status === "blocked"
+    ? `${availability?.blockType ?? "Blocked"}${availability?.reason ? ` • ${availability.reason}` : ""}`
+    : "Available";
 
-  const renderHeaderCell = (day: Dayjs) => {
-    const isWeekend = day.day() === 0 || day.day() === 6;
-    const isToday = day.isSame(today, "day");
-
-    return (
+  return (
+    <Tooltip key={`${listingId}-${date}`} title={tooltipText} arrow>
       <Box
-        key={day.toString()}
         sx={{
           width: CELL_WIDTH,
-          height: 64,
+          height: 56,
           borderRight: "1px solid",
           borderColor: "divider",
           borderBottom: "1px solid",
           borderBottomColor: "divider",
-          backgroundColor: isWeekend ? "rgba(148, 163, 184, 0.15)" : "background.paper",
+          backgroundColor,
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          fontWeight: 600,
           position: "relative",
+          color: "text.primary",
         }}
       >
-        <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary" }}>
-          {day.format("ddd")}
-        </Typography>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-          {day.format("D")}
+        <Typography variant="body2">
+          {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
         </Typography>
         {isToday && (
           <Box
@@ -175,60 +149,107 @@ export default function AvailabilityCalendar() {
           />
         )}
       </Box>
+    </Tooltip>
+  );
+});
+
+DataCell.displayName = "DataCell";
+
+type ListingRowProps = {
+  listing: CalendarListing;
+  dates: string[];
+  today: Date;
+};
+
+const ListingRow = React.memo(({ listing, dates, today }: ListingRowProps) => (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: `${NAME_COL_WIDTH}px repeat(${dates.length}, ${CELL_WIDTH}px)`,
+    }}
+  >
+    <Box
+      sx={{
+        position: "sticky",
+        left: 0,
+        zIndex: 2,
+        borderRight: "1px solid",
+        borderColor: "divider",
+        borderBottom: "1px solid",
+        borderBottomColor: "divider",
+        backgroundColor: "background.paper",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        px: 2,
+        height: 56,
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        {listing.listingName}
+      </Typography>
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+        Listing
+      </Typography>
+    </Box>
+    {dates.map((date) => (
+      <DataCell
+        key={`${listing.listingId}-${date}`}
+        listingId={listing.listingId}
+        date={date}
+        availability={listing.days[date]}
+        today={today}
+      />
+    ))}
+  </Box>
+));
+
+ListingRow.displayName = "ListingRow";
+
+export default function AvailabilityCalendar() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [listings, setListings] = useState<CalendarListing[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  const [rangeDays, setRangeDays] = useState<typeof RANGE_OPTIONS[number]>(30);
+  const [fromDate, setFromDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const toDate = useMemo(() => {
+    const start = parseISO(fromDate);
+    return format(addDays(start, rangeDays - 1), "yyyy-MM-dd");
+  }, [fromDate, rangeDays]);
+
+  const dayRange = useMemo(() => buildDateArray(fromDate, toDate), [fromDate, toDate]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const propertiesResponse = await api.get("/properties");
+      setProperties(asArray<Property>(propertiesResponse.data, "properties"));
+
+      const calendarListings = await fetchCalendarData(selectedProperty || undefined, fromDate, toDate);
+      setListings(calendarListings);
+    } catch (err) {
+      setError("We couldn't load availability data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [fromDate, selectedProperty, toDate]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const filteredListings = useMemo(() => {
+    return listings.filter((listing) =>
+      listing.listingName.toLowerCase().includes(search.trim().toLowerCase())
     );
-  };
+  }, [listings, search]);
 
-  const renderDataCell = (listingId: number, day: Dayjs, dayIndex: number) => {
-    const availability = buildAvailability(listingId, dayIndex);
-    const isWeekend = day.day() === 0 || day.day() === 6;
-    const isToday = day.isSame(today, "day");
-    const backgroundColor = availability.status === "blocked"
-      ? isWeekend
-        ? BLOCKED_WEEKEND_COLOR
-        : BLOCKED_COLOR
-      : isWeekend
-        ? OPEN_WEEKEND_COLOR
-        : OPEN_COLOR;
-
-    const tooltipText = availability.status === "blocked"
-      ? `${availability.blockType} • ${availability.reason}`
-      : "Available";
-
-    return (
-      <Tooltip key={`${listingId}-${day.toString()}`} title={tooltipText} arrow>
-        <Box
-          sx={{
-            width: CELL_WIDTH,
-            height: 56,
-            borderRight: "1px solid",
-            borderColor: "divider",
-            borderBottom: "1px solid",
-            borderBottomColor: "divider",
-            backgroundColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 600,
-            position: "relative",
-            color: availability.status === "blocked" ? "text.primary" : "text.primary",
-          }}
-        >
-          <Typography variant="body2">{formatCurrency(availability.price)}</Typography>
-          {isToday && (
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 4,
-                border: `2px solid ${TODAY_OUTLINE}`,
-                borderRadius: 1,
-                pointerEvents: "none",
-              }}
-            />
-          )}
-        </Box>
-      </Tooltip>
-    );
-  };
+  const today = useMemo(() => new Date(), []);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -403,45 +424,18 @@ export default function AvailabilityCalendar() {
                       Name & type
                     </Typography>
                   </Box>
-                  {dayRange.map(renderHeaderCell)}
+                  {dayRange.map((date) => (
+                    <HeaderCell key={date} date={date} today={today} />
+                  ))}
                 </Box>
 
-                {filteredListings.map((listing, rowIndex) => (
-                  <Box
-                    key={listing.id ?? rowIndex}
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: `${NAME_COL_WIDTH}px repeat(${dayRange.length}, ${CELL_WIDTH}px)`,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        position: "sticky",
-                        left: 0,
-                        zIndex: 2,
-                        borderRight: "1px solid",
-                        borderColor: "divider",
-                        borderBottom: "1px solid",
-                        borderBottomColor: "divider",
-                        backgroundColor: "background.paper",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        px: 2,
-                        height: 56,
-                      }}
-                    >
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        {listing.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                        {listing.type ?? "Listing"}
-                      </Typography>
-                    </Box>
-                    {dayRange.map((day, dayIndex) =>
-                      renderDataCell(listing.id ?? rowIndex, day, dayIndex)
-                    )}
-                  </Box>
+                {filteredListings.map((listing) => (
+                  <ListingRow
+                    key={listing.listingId}
+                    listing={listing}
+                    dates={dayRange}
+                    today={today}
+                  />
                 ))}
               </Box>
             )}
