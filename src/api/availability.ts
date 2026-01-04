@@ -1,5 +1,11 @@
 import { addDays, format, isAfter, parseISO } from "date-fns";
 import { api, asArray } from "@/lib/api";
+import {
+  fetchMockAvailability,
+  shouldUseMockAvailability,
+  updateMockRangeAvailability,
+  updateMockSingleAvailability,
+} from "@/services/mockAvailabilityRates";
 
 export type CalendarDay = {
   date: string;
@@ -14,7 +20,7 @@ export type CalendarListing = {
   listingId: number;
   listingName: string;
   days: Record<string, CalendarDay>;
-  ratePlans: CalendarRatePlan[];
+  ratePlans?: CalendarRatePlan[];
 };
 
 export type CalendarRatePlan = {
@@ -25,7 +31,6 @@ export type CalendarRatePlan = {
 
 export type BulkUpdateSelection = {
   listingId: number;
-  ratePlanId?: number;
   dates: string[];
   blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
   unblock?: boolean;
@@ -79,7 +84,6 @@ export const formatCurrencyINR = (value: number) =>
 
 export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
   listingId: selection.listingId,
-  ratePlanId: selection.ratePlanId,
   dates: selection.dates,
   status: selection.unblock ? "open" : "blocked",
   blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
@@ -87,36 +91,48 @@ export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
 
 export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
   listingId: selection.listingId,
-  ratePlanId: selection.ratePlanId,
   dates: selection.dates,
   price: selection.nightlyPrice,
 });
 
-export const updateInventoryForDate = (params: {
+export const patchAvailabilityCell = async (params: {
   listingId: number;
-  ratePlanId?: number;
-  date: string;
-  inventory: number | null;
-}) => api.post("/availability/inventory", params);
-
-export const patchAvailabilityCell = (params: {
-  listingId: number;
-  ratePlanId: number;
   date: string;
   price?: number | null;
   inventory?: number | null;
-}) => api.patch("/admin/calendar/availability/cell", params);
+  status?: "open" | "blocked";
+  blockType?: string;
+}) => {
+  if (shouldUseMockAvailability()) {
+    return updateMockSingleAvailability(params);
+  }
 
-export const patchAvailabilityBulk = (params: {
+  return api.patch("/admin/calendar/availability/cell", params);
+};
+
+export const patchAvailabilityBulk = async (params: {
   listingIds: number[];
-  ratePlanIds: number[];
   startDate: string;
   endDate: string;
   price?: number | null;
   inventory?: number | null;
   status?: "open" | "blocked";
   blockType?: string;
-}) => api.patch("/admin/calendar/availability/bulk", params);
+}) => {
+  if (shouldUseMockAvailability()) {
+    const selection: BulkUpdateSelection = {
+      listingId: params.listingIds[0],
+      dates: buildDateArray(params.startDate, params.endDate),
+      nightlyPrice: params.price ?? undefined,
+      blockType: params.blockType as BulkUpdateSelection["blockType"],
+      unblock: params.status === "open",
+    };
+
+    return updateMockRangeAvailability(selection);
+  }
+
+  return api.patch("/admin/calendar/availability/bulk", params);
+};
 
 const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
   date: day.date,
@@ -168,6 +184,18 @@ export const fetchCalendarData = async (
   from: string,
   to: string
 ): Promise<CalendarListing[]> => {
+  if (shouldUseMockAvailability()) {
+    const listingsResponse = await api.get("/listings", {
+      params: propertyId ? { propertyId } : undefined,
+    });
+    const listingResults = asArray<{ id?: number; name?: string }>(
+      listingsResponse.data,
+      "listings"
+    );
+
+    return fetchMockAvailability(listingResults, from, to);
+  }
+
   const response = await api.get("/admin/calendar/availability", {
     params: {
       propertyId: propertyId || undefined,
@@ -182,11 +210,18 @@ export const fetchCalendarData = async (
   );
 
   return listings
-    .filter((listing) => listing.listingId && listing.listingName)
-    .map((listing) => ({
-      listingId: listing.listingId as number,
-      listingName: listing.listingName as string,
-      days: normalizeDays(listing.days),
-      ratePlans: normalizeRatePlans(listing.ratePlans),
-    }));
+    .filter((listing) => (listing.listingId || listing.listingId === 0) && listing.listingName)
+    .map((listing) => {
+      const normalizedRatePlans = normalizeRatePlans(listing.ratePlans);
+      const normalizedDays = normalizeDays(
+        listing.days ?? listing.ratePlans?.[0]?.daily ?? listing.ratePlans?.[0]?.days
+      );
+
+      return {
+        listingId: listing.listingId as number,
+        listingName: listing.listingName as string,
+        days: normalizedDays,
+        ratePlans: normalizedRatePlans,
+      };
+    });
 };
