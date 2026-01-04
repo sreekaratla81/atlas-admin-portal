@@ -11,7 +11,7 @@ import ProtectedRoute from "@/auth/ProtectedRoute";
 import DevConfig from "@/pages/DevConfig";
 import ReservationPage from "@/pages/Reservation"; // ✅ NEW IMPORT
 import DashboardPage from "@/pages/Dashboard";
-import UnifiedCalendarPage from "@/pages/Calendar";
+import AvailabilityCalendarPage from "@/pages/calendar/AvailabilityCalendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
 import AppLayout from "@/components/layout/AppLayout";
 
@@ -36,7 +36,8 @@ const baseRoutes: AppRoute[] = [
     children: [
       { index: true, element: <Navigate to="/reservations" replace /> },
       { path: "dashboard", element: <DashboardPage />, label: "Dashboard" },
-      { path: "calendar", element: <UnifiedCalendarPage />, label: "Calendar" },
+      { path: "calendar", element: <Navigate to="/calendar/availability" replace /> },
+      { path: "calendar/availability", element: <AvailabilityCalendarPage />, label: "Calendar" },
       { path: "channel-manager", element: <ChannelManagerPage />, label: "Channel Manager" },
       { path: "bookings", element: <BookingsPage />, label: "Bookings" },
       { path: "reservations", element: <ReservationPage />, label: "Reservations" },

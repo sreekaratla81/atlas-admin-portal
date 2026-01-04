@@ -18,7 +18,6 @@
   --nav-link-border: var(--border-strong);
   --nav-link-active-border: var(--accent-primary);
   --nav-bg: var(--bg-surface);
-  --text-muted: var(--text-muted);
 
   /* Component primitives */
   --card-surface: var(--bg-surface);

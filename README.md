@@ -49,6 +49,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
 - `src/config/env.ts` – normalizes Vite env vars (Auth0, email allow-list). 【F:src/config/env.ts†L1-L35】
 - `scripts/no-localhost.js` – CI guard against shipping hard-coded `http://localhost` URLs. 【F:scripts/no-localhost.js†L1-L24】
 - `docs/admin-design-system.md` – semantic token catalog, status color rules, and seasonal theming guidance for the admin UI.
+- `docs/admin-calendar.md` – operator guide to the availability calendar, selection behavior, and bulk actions.
 
 ## Common Tasks
 
