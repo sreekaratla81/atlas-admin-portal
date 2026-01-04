@@ -44,10 +44,12 @@ const RANGE_OPTIONS = [30, 60, 90] as const;
 const CELL_WIDTH = 110;
 const NAME_COL_WIDTH = 280;
 const TODAY_OUTLINE = "#0284c7";
-const OPEN_COLOR = "#dcfce7";
-const OPEN_WEEKEND_COLOR = "#bbf7d0";
-const BLOCKED_COLOR = "#fee2e2";
-const BLOCKED_WEEKEND_COLOR = "#fecaca";
+const OPEN_COLOR = "#f0fdf4";
+const OPEN_WEEKEND_COLOR = "#ecfccb";
+const BLOCKED_COLOR = "#fef2f2";
+const BLOCKED_WEEKEND_COLOR = "#fee2e2";
+const EMPTY_COLOR = "#f3f4f6";
+const EMPTY_WEEKEND_COLOR = "#e5e7eb";
 const BLOCK_TYPE_OPTIONS: BulkUpdateSelection["blockType"][] = [
   "Maintenance",
   "OwnerHold",
@@ -157,18 +159,32 @@ const DataCell = React.memo(
   const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
   const isToday = isSameDay(dateObj, today);
   const status = availability?.status ?? "open";
+  const isMissingData =
+    !availability || availability.price == null || availability.inventory == null;
 
-  const backgroundColor = status === "blocked"
+  const backgroundColor = isMissingData
     ? isWeekend
-      ? BLOCKED_WEEKEND_COLOR
-      : BLOCKED_COLOR
-    : isWeekend
-      ? OPEN_WEEKEND_COLOR
-      : OPEN_COLOR;
+      ? EMPTY_WEEKEND_COLOR
+      : EMPTY_COLOR
+    : status === "blocked"
+      ? isWeekend
+        ? BLOCKED_WEEKEND_COLOR
+        : BLOCKED_COLOR
+      : isWeekend
+        ? OPEN_WEEKEND_COLOR
+        : OPEN_COLOR;
 
-  const tooltipText = status === "blocked"
-    ? `${availability?.blockType ?? "Blocked"}${availability?.reason ? ` • ${availability.reason}` : ""}`
-    : "Available";
+  const badgeColors = status === "blocked"
+    ? { background: "#fecdd3", color: "#7f1d1d" }
+    : isMissingData
+      ? { background: "#e5e7eb", color: "#374151" }
+      : { background: "#d9f99d", color: "#365314" };
+
+  const tooltipText = isMissingData
+    ? "Price or inventory missing"
+    : `${availability?.inventory ?? 0} of ${availability?.inventory ?? 0} rooms ${
+        status === "blocked" ? "blocked" : "open"
+      }`;
 
   const commitChange = (field: "price" | "inventory") => {
     const draft = field === "price" ? priceDraft : inventoryDraft;
@@ -192,6 +208,25 @@ const DataCell = React.memo(
     }
 
     setEditingField(null);
+  };
+
+  const focusNextInput = (current: HTMLInputElement, backwards = false) => {
+    const inputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-calendar-input="true"]')
+    );
+    const currentIndex = inputs.findIndex((input) => input === current);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const nextIndex = backwards ? currentIndex - 1 : currentIndex + 1;
+    const nextInput = inputs[nextIndex];
+
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select?.();
+    }
   };
 
   return (
@@ -220,79 +255,110 @@ const DataCell = React.memo(
           onMouseEnter={onMouseEnter}
           onMouseUp={onMouseUp}
         >
-        <Stack spacing={0.5} alignItems="center" sx={{ width: "100%" }}>
-          {editingField === "price" ? (
-            <TextField
-              size="small"
-              type="number"
-              value={priceDraft}
-              autoFocus
-              onChange={(event) => setPriceDraft(event.target.value)}
-              onBlur={() => commitChange("price")}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  commitChange("price");
-                }
-                if (event.key === "Escape") {
-                  setPriceDraft(availability?.price != null ? String(availability.price) : "");
-                  setEditingField(null);
-                }
-              }}
-              inputProps={{ min: 0, style: { padding: "4px 8px", textAlign: "center" } }}
-              sx={{ width: "90%" }}
-              onMouseDown={(event) => event.stopPropagation()}
-              onMouseUp={(event) => event.stopPropagation()}
-            />
-          ) : (
-            <Typography
-              variant="body2"
-              sx={{ cursor: "text" }}
-              onClick={(event) => {
-                event.stopPropagation();
-                setEditingField("price");
-              }}
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
-            </Typography>
-          )}
-          {editingField === "inventory" ? (
-            <TextField
-              size="small"
-              type="number"
-              value={inventoryDraft}
-              autoFocus
-              onChange={(event) => setInventoryDraft(event.target.value)}
-              onBlur={() => commitChange("inventory")}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  commitChange("inventory");
-                }
-                if (event.key === "Escape") {
-                  setInventoryDraft(
-                    availability?.inventory != null ? String(availability.inventory) : ""
-                  );
-                  setEditingField(null);
-                }
-              }}
-              inputProps={{ min: 0, style: { padding: "4px 8px", textAlign: "center" } }}
-              sx={{ width: "90%" }}
-              onMouseDown={(event) => event.stopPropagation()}
-              onMouseUp={(event) => event.stopPropagation()}
-            />
-          ) : (
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", cursor: "text" }}
-              onClick={(event) => {
-                event.stopPropagation();
-                setEditingField("inventory");
-              }}
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              Inv: {availability?.inventory != null ? availability.inventory : "—"}
-            </Typography>
-          )}
+        <Stack spacing={0.5} alignItems="center" sx={{ width: "100%", px: 0.5 }}>
+          <TextField
+            size="small"
+            type="number"
+            value={priceDraft}
+            onFocus={() => setEditingField("price")}
+            onChange={(event) => setPriceDraft(event.target.value)}
+            onBlur={() => commitChange("price")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitChange("price");
+                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+              }
+              if (event.key === "Escape") {
+                setPriceDraft(availability?.price != null ? String(availability.price) : "");
+                setEditingField(null);
+              }
+              if (event.key === "Tab") {
+                commitChange("price");
+              }
+            }}
+            placeholder="Price"
+            inputProps={{
+              min: 0,
+              style: { padding: "4px 8px", textAlign: "center" },
+              "data-calendar-input": "true",
+            }}
+            sx={{
+              width: "100%",
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "rgba(255,255,255,0.65)",
+                borderRadius: 1,
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                height: 26,
+                py: 0.25,
+              },
+              "& .MuiOutlinedInput-input": {
+                textAlign: "center",
+              },
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+          />
+          <TextField
+            size="small"
+            type="number"
+            value={inventoryDraft}
+            onFocus={() => setEditingField("inventory")}
+            onChange={(event) => setInventoryDraft(event.target.value)}
+            onBlur={() => commitChange("inventory")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitChange("inventory");
+                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+              }
+              if (event.key === "Escape") {
+                setInventoryDraft(
+                  availability?.inventory != null ? String(availability.inventory) : ""
+                );
+                setEditingField(null);
+              }
+              if (event.key === "Tab") {
+                commitChange("inventory");
+              }
+            }}
+            placeholder="Rooms"
+            inputProps={{
+              min: 0,
+              style: { padding: "4px 8px", textAlign: "center" },
+              "data-calendar-input": "true",
+            }}
+            sx={{
+              width: "100%",
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: badgeColors.background,
+                color: badgeColors.color,
+                borderRadius: 9999,
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                height: 26,
+                py: 0.25,
+                "& fieldset": {
+                  borderColor: "transparent",
+                },
+              },
+              "& .MuiOutlinedInput-input": {
+                textAlign: "center",
+                paddingRight: 0,
+                paddingLeft: 0,
+              },
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+            InputProps={{
+              endAdornment: (
+                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                  rooms
+                </Typography>
+              ),
+            }}
+          />
         </Stack>
         {isToday && (
           <Box
