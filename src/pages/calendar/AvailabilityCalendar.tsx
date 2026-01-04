@@ -30,6 +30,7 @@ import {
   BulkUpdateSelection,
   CalendarDay,
   CalendarListing,
+  CalendarRatePlan,
   fetchCalendarData,
   formatCurrencyINR,
   updateInventoryForDate,
@@ -108,6 +109,7 @@ HeaderCell.displayName = "HeaderCell";
 
 type DataCellProps = {
   listingId: number;
+  ratePlanId: number;
   date: string;
   availability?: CalendarDay;
   today: Date;
@@ -115,12 +117,18 @@ type DataCellProps = {
   onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onMouseEnter: () => void;
   onMouseUp: () => void;
-  onInventoryChange: (listingId: number, date: string, inventory: number | null) => void;
+  onInventoryChange: (
+    listingId: number,
+    ratePlanId: number,
+    date: string,
+    inventory: number | null
+  ) => void;
 };
 
 const DataCell = React.memo(
   ({
     listingId,
+    ratePlanId,
     date,
     availability,
     today,
@@ -169,7 +177,7 @@ const DataCell = React.memo(
     }
 
     if (value !== availability?.inventory) {
-      onInventoryChange(listingId, date, value);
+      onInventoryChange(listingId, ratePlanId, date, value);
     }
 
     setEditingInventory(false);
@@ -259,18 +267,36 @@ const DataCell = React.memo(
 DataCell.displayName = "DataCell";
 
 type ListingRowProps = {
-  listing: CalendarListing;
+  listingId: number;
+  ratePlan: CalendarRatePlan;
+  listingName: string;
   dates: string[];
   today: Date;
-  onCellMouseDown: (listingId: number, date: string, shiftKey: boolean) => void;
-  onCellMouseEnter: (listingId: number, date: string) => void;
+  onCellMouseDown: (listingId: number, ratePlanId: number, date: string, shiftKey: boolean) => void;
+  onCellMouseEnter: (listingId: number, ratePlanId: number, date: string) => void;
   onCellMouseUp: () => void;
-  isDateSelected: (listingId: number, date: string) => boolean;
-  onInventoryChange: (listingId: number, date: string, inventory: number | null) => void;
+  isDateSelected: (listingId: number, ratePlanId: number, date: string) => boolean;
+  onInventoryChange: (
+    listingId: number,
+    ratePlanId: number,
+    date: string,
+    inventory: number | null
+  ) => void;
 };
 
 const ListingRow = React.memo(
-  ({ listing, dates, today, onCellMouseDown, onCellMouseEnter, onCellMouseUp, isDateSelected, onInventoryChange }: ListingRowProps) => (
+  ({
+    listingId,
+    listingName,
+    ratePlan,
+    dates,
+    today,
+    onCellMouseDown,
+    onCellMouseEnter,
+    onCellMouseUp,
+    isDateSelected,
+    onInventoryChange,
+  }: ListingRowProps) => (
     <Box
       sx={{
         display: "grid",
@@ -295,22 +321,23 @@ const ListingRow = React.memo(
         }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          {listing.listingName}
+          {ratePlan.name}
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Listing
+          Rate plan · {listingName}
         </Typography>
       </Box>
       {dates.map((date) => (
         <DataCell
-          key={`${listing.listingId}-${date}`}
-          listingId={listing.listingId}
+          key={`${listingId}-${ratePlan.ratePlanId}-${date}`}
+          listingId={listingId}
+          ratePlanId={ratePlan.ratePlanId}
           date={date}
-          availability={listing.days[date]}
+          availability={ratePlan.days[date]}
           today={today}
-          isSelected={isDateSelected(listing.listingId, date)}
-          onMouseDown={(event) => onCellMouseDown(listing.listingId, date, event.shiftKey)}
-          onMouseEnter={() => onCellMouseEnter(listing.listingId, date)}
+          isSelected={isDateSelected(listingId, ratePlan.ratePlanId, date)}
+          onMouseDown={(event) => onCellMouseDown(listingId, ratePlan.ratePlanId, date, event.shiftKey)}
+          onMouseEnter={() => onCellMouseEnter(listingId, ratePlan.ratePlanId, date)}
           onMouseUp={onCellMouseUp}
           onInventoryChange={onInventoryChange}
         />
@@ -391,25 +418,39 @@ export default function AvailabilityCalendar() {
     return listings.find((listing) => listing.listingId === selection.listingId) ?? null;
   }, [listings, selection.listingId]);
 
+  const selectedRatePlan = useMemo(() => {
+    if (!selection.listingId || !selection.ratePlanId) {
+      return null;
+    }
+
+    const listing = listings.find((item) => item.listingId === selection.listingId);
+    return listing?.ratePlans.find((plan) => plan.ratePlanId === selection.ratePlanId) ?? null;
+  }, [listings, selection.listingId, selection.ratePlanId]);
+
   const selectedDates = useMemo(() => {
-    if (!selection.listingId) {
+    if (!selection.listingId || !selection.ratePlanId) {
       return [];
     }
 
-    return getSelectedDatesForListing(selection.listingId);
-  }, [getSelectedDatesForListing, selection.listingId]);
+    return getSelectedDatesForListing(selection.listingId, selection.ratePlanId);
+  }, [getSelectedDatesForListing, selection.listingId, selection.ratePlanId]);
 
   const selectionSummary = useMemo(() => {
-    if (!selection.startDate || !selection.endDate || selectedDates.length === 0) {
+    if (
+      !selection.startDate ||
+      !selection.endDate ||
+      selectedDates.length === 0 ||
+      !selectedRatePlan
+    ) {
       return "No dates selected";
     }
 
     const start = format(parseISO(selection.startDate), "MMM d, yyyy");
     const end = format(parseISO(selection.endDate), "MMM d, yyyy");
-    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
-  }, [selection.endDate, selection.startDate, selectedDates.length]);
+    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"} · ${selectedRatePlan.name}`;
+  }, [selectedDates.length, selectedRatePlan, selection.endDate, selection.startDate]);
 
-  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
+  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing) && Boolean(selectedRatePlan);
   const parsedNightlyPrice = nightlyPrice.trim() === "" ? null : Number(nightlyPrice);
   const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
   const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
@@ -434,7 +475,7 @@ export default function AvailabilityCalendar() {
         inventory?: number | null;
       }
     ) => {
-      if (!selection.listingId || selectedDates.length === 0) {
+      if (!selection.listingId || !selection.ratePlanId || selectedDates.length === 0) {
         return currentListings;
       }
 
@@ -443,45 +484,76 @@ export default function AvailabilityCalendar() {
           return listing;
         }
 
-        const updatedDays = { ...listing.days };
-        selectedDates.forEach((date) => {
-          const existing = updatedDays[date] ?? { date, status: "open" as const };
-          const next = { ...existing };
-
-          if (update.status) {
-            next.status = update.status;
-            if (update.status === "blocked") {
-              next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
-            } else {
-              delete next.blockType;
-              delete next.reason;
-            }
-          }
-
-          if (update.price != null) {
-            next.price = update.price;
-          }
-
-          if (update.inventory !== undefined) {
-            next.inventory = update.inventory;
-          }
-
-          updatedDays[date] = next;
-        });
-
         return {
           ...listing,
-          days: updatedDays,
+          days: selectedDates.reduce<Record<string, CalendarDay>>((acc, date) => {
+            const existing = listing.days[date] ?? { date, status: "open" as const };
+            const next = { ...existing };
+
+            if (update.status) {
+              next.status = update.status;
+              if (update.status === "blocked") {
+                next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+              } else {
+                delete next.blockType;
+                delete next.reason;
+              }
+            }
+
+            if (update.inventory !== undefined) {
+              next.inventory = update.inventory;
+            }
+
+            acc[date] = next;
+            return acc;
+          }, { ...listing.days }),
+          ratePlans: listing.ratePlans.map((plan) => {
+            if (plan.ratePlanId !== selection.ratePlanId) {
+              return plan;
+            }
+
+            const updatedPlanDays = { ...plan.days };
+            selectedDates.forEach((date) => {
+              const existing = updatedPlanDays[date] ?? { date, status: "open" as const };
+              const next = { ...existing };
+
+              if (update.status) {
+                next.status = update.status;
+                if (update.status === "blocked") {
+                  next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+                } else {
+                  delete next.blockType;
+                  delete next.reason;
+                }
+              }
+
+              if (update.price != null) {
+                next.price = update.price;
+              }
+
+              if (update.inventory !== undefined) {
+                next.inventory = update.inventory;
+              }
+
+              updatedPlanDays[date] = next;
+            });
+
+            return {
+              ...plan,
+              days: updatedPlanDays,
+            };
+          }),
         };
       });
     },
-    [selection.listingId, selectedDates]
+    [selectedDates, selection.listingId, selection.ratePlanId]
   );
 
   const applyInventoryUpdateForDate = useCallback(
     (
       currentListings: CalendarListing[],
       listingId: number,
+      ratePlanId: number,
       date: string,
       inventory: number | null
     ) => {
@@ -490,16 +562,31 @@ export default function AvailabilityCalendar() {
           return listing;
         }
 
-        const existing = listing.days[date] ?? { date, status: "open" as const };
         return {
           ...listing,
           days: {
             ...listing.days,
             [date]: {
-              ...existing,
+              ...(listing.days[date] ?? { date, status: "open" as const }),
               inventory,
             },
           },
+          ratePlans: listing.ratePlans.map((plan) => {
+            if (plan.ratePlanId !== ratePlanId) {
+              return plan;
+            }
+
+            return {
+              ...plan,
+              days: {
+                ...plan.days,
+                [date]: {
+                  ...(plan.days[date] ?? { date, status: "open" as const }),
+                  inventory,
+                },
+              },
+            };
+          }),
         };
       });
     },
@@ -507,12 +594,13 @@ export default function AvailabilityCalendar() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!hasSelection || !selectedListing) {
+    if (!hasSelection || !selectedListing || !selectedRatePlan) {
       return;
     }
 
     const bulkSelection: BulkUpdateSelection = {
       listingId: selectedListing.listingId,
+      ratePlanId: selectedRatePlan.ratePlanId,
       dates: selectedDates,
       blockType,
       unblock: blockAction === "unblock",
@@ -563,16 +651,17 @@ export default function AvailabilityCalendar() {
     normalizedNightlyPrice,
     selectedDates,
     selectedListing,
+    selectedRatePlan,
   ]);
 
   const handleInventoryChange = useCallback(
-    async (listingId: number, date: string, inventory: number | null) => {
+    async (listingId: number, ratePlanId: number, date: string, inventory: number | null) => {
       const snapshot = listings;
 
-      setListings((current) => applyInventoryUpdateForDate(current, listingId, date, inventory));
+      setListings((current) => applyInventoryUpdateForDate(current, listingId, ratePlanId, date, inventory));
 
       try {
-        await updateInventoryForDate({ listingId, date, inventory });
+        await updateInventoryForDate({ listingId, ratePlanId, date, inventory });
         setSuccessNotice("Inventory updated successfully.");
         setErrorNotice("");
       } catch (err) {
@@ -678,7 +767,7 @@ export default function AvailabilityCalendar() {
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {hasSelection
-                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
+                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}${selectedRatePlan ? ` • ${selectedRatePlan.name}` : ""}`
                     : "No dates selected"}
                 </Typography>
                 <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("block")}>
@@ -758,7 +847,7 @@ export default function AvailabilityCalendar() {
                       Listing
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      Name & type
+                      Name & rate plans
                     </Typography>
                   </Box>
                   {dayRange.map((date) => (
@@ -767,17 +856,69 @@ export default function AvailabilityCalendar() {
                 </Box>
 
                 {filteredListings.map((listing) => (
-                  <ListingRow
-                    key={listing.listingId}
-                    listing={listing}
-                    dates={dayRange}
-                    today={today}
-                    onCellMouseDown={handleMouseDown}
-                    onCellMouseEnter={handleMouseEnter}
-                    onCellMouseUp={handleMouseUp}
-                    isDateSelected={isDateSelected}
-                    onInventoryChange={handleInventoryChange}
-                  />
+                  <Box key={listing.listingId}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: `${NAME_COL_WIDTH}px repeat(${dayRange.length}, ${CELL_WIDTH}px)`,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: "sticky",
+                          left: 0,
+                          zIndex: 2,
+                          borderRight: "1px solid",
+                          borderColor: "divider",
+                          borderBottom: "1px solid",
+                          borderBottomColor: "divider",
+                          backgroundColor: "grey.50",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          px: 2,
+                          height: 48,
+                        }}
+                      >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {listing.listingName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                          {listing.ratePlans.length} rate plan{listing.ratePlans.length === 1 ? "" : "s"}
+                        </Typography>
+                      </Box>
+                      {dayRange.map((date) => (
+                        <Box
+                          key={`${listing.listingId}-header-${date}`}
+                          sx={{
+                            width: CELL_WIDTH,
+                            height: 48,
+                            borderRight: "1px solid",
+                            borderColor: "divider",
+                            borderBottom: "1px solid",
+                            borderBottomColor: "divider",
+                            backgroundColor: "grey.50",
+                          }}
+                        />
+                      ))}
+                    </Box>
+
+                    {listing.ratePlans.map((ratePlan) => (
+                      <ListingRow
+                        key={`${listing.listingId}-${ratePlan.ratePlanId}`}
+                        listingId={listing.listingId}
+                        listingName={listing.listingName}
+                        ratePlan={ratePlan}
+                        dates={dayRange}
+                        today={today}
+                        onCellMouseDown={handleMouseDown}
+                        onCellMouseEnter={handleMouseEnter}
+                        onCellMouseUp={handleMouseUp}
+                        isDateSelected={isDateSelected}
+                        onInventoryChange={handleInventoryChange}
+                      />
+                    ))}
+                  </Box>
                 ))}
               </Box>
             )}
@@ -790,7 +931,7 @@ export default function AvailabilityCalendar() {
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {selectedListing?.listingName ?? "Selected listing"}
+              {`${selectedListing?.listingName ?? "Selected listing"}${selectedRatePlan ? ` • ${selectedRatePlan.name}` : ""}`}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               {selectionSummary}
