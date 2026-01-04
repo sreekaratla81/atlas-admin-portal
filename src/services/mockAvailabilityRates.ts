@@ -170,7 +170,8 @@ const applyOverrideUpdate = (
 };
 
 export const updateMockRangeAvailability = (selection: BulkUpdateSelection) => {
-  if (!selection.listingId || selection.dates.length === 0) return;
+  const targetListingId = selection.listingId ?? selection.listingIds?.[0];
+  if (!targetListingId || selection.dates.length === 0) return;
 
   const update: Partial<CalendarDay> = {};
   if (selection.unblock) {
@@ -187,7 +188,7 @@ export const updateMockRangeAvailability = (selection: BulkUpdateSelection) => {
     update.price = selection.nightlyPrice;
   }
 
-  applyOverrideUpdate(selection.listingId, selection.dates, update);
+  applyOverrideUpdate(targetListingId, selection.dates, update);
 };
 
 export const updateMockSingleAvailability = (params: {

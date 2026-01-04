@@ -398,6 +398,7 @@ type ListingRowProps = {
   onCellMouseEnter: (listingId: number, date: string) => void;
   onCellMouseUp: () => void;
   isDateSelected: (listingId: number, date: string) => boolean;
+  isRowSelected: boolean;
   onCellChange: (
     listingId: number,
     date: string,
@@ -414,6 +415,7 @@ const ListingRow = React.memo(
     onCellMouseEnter,
     onCellMouseUp,
     isDateSelected,
+    isRowSelected,
     onCellChange,
   }: ListingRowProps) => (
     <Box
@@ -431,7 +433,7 @@ const ListingRow = React.memo(
           borderColor: "divider",
           borderBottom: "1px solid",
           borderBottomColor: "divider",
-          backgroundColor: "background.paper",
+          backgroundColor: isRowSelected ? "action.hover" : "background.paper",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -536,68 +538,81 @@ export default function AvailabilityCalendar() {
   }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
-  const selectedListing = useMemo(() => {
-    if (!selection.listingId) {
-      return null;
-    }
-    return listings.find((listing) => listing.listingId === selection.listingId) ?? null;
-  }, [listings, selection.listingId]);
+  const selectedEntries = useMemo(
+    () =>
+      Object.entries(selection)
+        .map(([listingId]) => {
+          const id = Number(listingId);
+          const listing = listings.find((item) => item.listingId === id);
+          const dates = getSelectedDatesForListing(id);
 
-  const selectedDates = useMemo(() => {
-    if (!selection.listingId) {
-      return [];
-    }
+          if (!listing || dates.length === 0) {
+            return null;
+          }
 
-    return getSelectedDatesForListing(selection.listingId);
-  }, [getSelectedDatesForListing, selection.listingId]);
+          return { listingId: id, listing, dates };
+        })
+        .filter(Boolean) as { listingId: number; listing: CalendarListing; dates: string[] }[],
+    [getSelectedDatesForListing, listings, selection]
+  );
+
+  const totalSelectedDates = useMemo(
+    () => selectedEntries.reduce((sum, entry) => sum + entry.dates.length, 0),
+    [selectedEntries]
+  );
 
   const selectionSummary = useMemo(() => {
-    if (!selection.startDate || !selection.endDate || selectedDates.length === 0) {
+    if (totalSelectedDates === 0) {
       return "No dates selected";
     }
 
-    const start = format(parseISO(selection.startDate), "MMM d, yyyy");
-    const end = format(parseISO(selection.endDate), "MMM d, yyyy");
-    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
-  }, [selectedDates.length, selection.endDate, selection.startDate]);
+    const listingCount = selectedEntries.length;
+    return `${totalSelectedDates} date${totalSelectedDates === 1 ? "" : "s"} across ${listingCount} listing${listingCount === 1 ? "" : "s"}`;
+  }, [selectedEntries.length, totalSelectedDates]);
 
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
-  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
+  const hasSelection = totalSelectedDates > 0;
   const parsedPriceInput = priceInput.trim() === "" ? null : Number(priceInput);
   const normalizedPriceInput = Number.isNaN(parsedPriceInput) ? null : parsedPriceInput;
   const parsedInventoryInput = inventoryInput.trim() === "" ? null : Number(inventoryInput);
   const normalizedInventoryInput = Number.isNaN(parsedInventoryInput) ? null : parsedInventoryInput;
 
-  const targetDates = useMemo(() => {
-    if (!selectedListing) {
-      return [];
-    }
+  const targetSelections = useMemo(
+    () =>
+      selectedEntries.map((entry) => {
+        const filteredDates = entry.dates.filter((date) => {
+          const day = entry.listing.days[date];
 
-    return selectedDates.filter((date) => {
-      const day = selectedListing.days[date];
+          if (onlyOpenDates && day?.status === "blocked") {
+            return false;
+          }
 
-      if (onlyOpenDates && day?.status === "blocked") {
-        return false;
-      }
+          if (
+            skipMissingPrices &&
+            priceMode !== "none" &&
+            priceMode !== "fixed" &&
+            (day?.price == null)
+          ) {
+            return false;
+          }
 
-      if (
-        skipMissingPrices &&
-        priceMode !== "none" &&
-        priceMode !== "fixed" &&
-        (day?.price == null)
-      ) {
-        return false;
-      }
+          return true;
+        });
 
-      return true;
-    });
-  }, [onlyOpenDates, priceMode, selectedDates, selectedListing, skipMissingPrices]);
+        return { ...entry, filteredDates };
+      }),
+    [onlyOpenDates, priceMode, selectedEntries, skipMissingPrices]
+  );
 
   const filteredOutCount = useMemo(
-    () => Math.max(0, selectedDates.length - targetDates.length),
-    [selectedDates.length, targetDates.length]
+    () =>
+      targetSelections.reduce(
+        (sum, entry) => sum + Math.max(0, entry.dates.length - entry.filteredDates.length),
+        0
+      ),
+    [targetSelections]
   );
 
   const priceIsDelta = priceMode === "delta-amount" || priceMode === "delta-percent";
@@ -607,7 +622,7 @@ export default function AvailabilityCalendar() {
   const canSave =
     hasSelection &&
     (hasPriceAction || hasInventoryAction || hasStatusAction) &&
-    targetDates.length > 0;
+    targetSelections.some((entry) => entry.filteredDates.length > 0);
 
   useEffect(() => {
     if (hasSelection) {
@@ -631,56 +646,63 @@ export default function AvailabilityCalendar() {
   const applyOptimisticUpdate = useCallback(
     (
       currentListings: CalendarListing[],
-      update: {
-        status?: "open" | "blocked";
-        blockType?: BulkUpdateSelection["blockType"];
-        price?: number;
-        inventory?: number | null;
-      },
-      dates?: string[]
+      updates: {
+        listingId: number;
+        dates: string[];
+        update: {
+          status?: "open" | "blocked";
+          blockType?: BulkUpdateSelection["blockType"];
+          price?: number;
+          inventory?: number | null;
+        };
+      }[]
     ) => {
-      if (!selection.listingId || (dates ?? selectedDates).length === 0) {
+      if (updates.length === 0) {
         return currentListings;
       }
 
-      const target = dates ?? selectedDates;
-
-      return currentListings.map((listing) => {
-        if (listing.listingId !== selection.listingId) {
-          return listing;
+      return updates.reduce((nextListings, { listingId, dates, update }) => {
+        if (dates.length === 0) {
+          return nextListings;
         }
 
-        return {
-          ...listing,
-          days: target.reduce<Record<string, CalendarDay>>((acc, date) => {
-            const existing = listing.days[date] ?? { date, status: "open" as const };
-            const next = { ...existing };
+        return nextListings.map((listing) => {
+          if (listing.listingId !== listingId) {
+            return listing;
+          }
 
-            if (update.status) {
-              next.status = update.status;
-              if (update.status === "blocked") {
-                next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
-              } else {
-                delete next.blockType;
-                delete next.reason;
+          return {
+            ...listing,
+            days: dates.reduce<Record<string, CalendarDay>>((acc, date) => {
+              const existing = listing.days[date] ?? { date, status: "open" as const };
+              const next = { ...existing };
+
+              if (update.status) {
+                next.status = update.status;
+                if (update.status === "blocked") {
+                  next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+                } else {
+                  delete next.blockType;
+                  delete next.reason;
+                }
               }
-            }
 
-            if (update.price != null) {
-              next.price = update.price;
-            }
+              if (update.price != null) {
+                next.price = update.price;
+              }
 
-            if (update.inventory !== undefined) {
-              next.inventory = update.inventory;
-            }
+              if (update.inventory !== undefined) {
+                next.inventory = update.inventory;
+              }
 
-            acc[date] = next;
-            return acc;
-          }, { ...listing.days }),
-        };
-      });
+              acc[date] = next;
+              return acc;
+            }, { ...listing.days }),
+          };
+        });
+      }, currentListings);
     },
-    [selectedDates, selection.listingId]
+    []
   );
 
   const applyCellUpdateForDate = useCallback(
@@ -723,11 +745,11 @@ export default function AvailabilityCalendar() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!hasSelection || !selectedListing || !selection.startDate || !selection.endDate) {
+    if (!hasSelection) {
       return;
     }
 
-    if (targetDates.length === 0) {
+    if (!targetSelections.some((entry) => entry.filteredDates.length > 0)) {
       setErrorNotice("No dates match the current filters.");
       return;
     }
@@ -763,41 +785,59 @@ export default function AvailabilityCalendar() {
       return Math.max(0, Number(next.toFixed(2)));
     };
 
-    const bulkPayload = {
-      listingIds: [selectedListing.listingId],
-      startDate: selection.startDate,
-      endDate: selection.endDate,
-      status: statusValue,
-      blockType: blockTypeValue,
-      price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
-      inventory: inventoryValue ?? undefined,
-    };
-
     const canUseBulk =
       !priceIsDelta &&
-      targetDates.length === selectedDates.length &&
       !onlyOpenDates &&
-      !skipMissingPrices;
+      !skipMissingPrices &&
+      targetSelections.every((entry) => entry.filteredDates.length === entry.dates.length);
 
     const snapshot = listings;
     setSaving(true);
 
     if (canUseBulk) {
-      setListings(
-        applyOptimisticUpdate(
-          snapshot,
-          {
+      const optimisticUpdates = targetSelections
+        .map((entry) => ({
+          listingId: entry.listingId,
+          dates: entry.filteredDates,
+          update: {
             status: statusValue,
             blockType: blockTypeValue,
-            price: bulkPayload.price,
-            inventory: bulkPayload.inventory ?? undefined,
+            price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
+            inventory: inventoryValue ?? undefined,
           },
-          targetDates
-        )
-      );
+        }))
+        .filter((entry) => entry.dates.length > 0);
+
+      setListings(applyOptimisticUpdate(snapshot, optimisticUpdates));
+
+      const groupedPayloads = optimisticUpdates.reduce<
+        Record<string, { listingIds: number[]; startDate: string; endDate: string }>
+      >((acc, entry) => {
+        const sortedDates = [...entry.dates].sort();
+        const startDate = sortedDates[0];
+        const endDate = sortedDates[sortedDates.length - 1];
+        const key = `${startDate}-${endDate}`;
+
+        if (!acc[key]) {
+          acc[key] = { listingIds: [], startDate, endDate };
+        }
+
+        acc[key].listingIds.push(entry.listingId);
+        return acc;
+      }, {});
 
       try {
-        await patchAvailabilityBulk(bulkPayload);
+        await Promise.all(
+          Object.values(groupedPayloads).map((payload) =>
+            patchAvailabilityBulk({
+              ...payload,
+              status: statusValue,
+              blockType: blockTypeValue,
+              price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
+              inventory: inventoryValue ?? undefined,
+            })
+          )
+        );
         setSuccessNotice("Availability updated successfully.");
         setErrorNotice("");
         clearSelection();
@@ -811,39 +851,41 @@ export default function AvailabilityCalendar() {
       return;
     }
 
-    const perDateUpdates = targetDates
-      .map((date) => {
-        const priceForDay = getPriceForDay(selectedListing.days[date]);
-        const updatePayload: {
-          listingId: number;
-          date: string;
-          price?: number | null;
-          inventory?: number | null;
-          status?: "open" | "blocked";
-          blockType?: string;
-        } = {
-          listingId: selectedListing.listingId,
-          date,
-        };
+    const perDateUpdates = targetSelections.flatMap((entry) =>
+      entry.filteredDates
+        .map((date) => {
+          const priceForDay = getPriceForDay(entry.listing.days[date]);
+          const updatePayload: {
+            listingId: number;
+            date: string;
+            price?: number | null;
+            inventory?: number | null;
+            status?: "open" | "blocked";
+            blockType?: string;
+          } = {
+            listingId: entry.listing.listingId,
+            date,
+          };
 
-        if (priceForDay !== undefined) {
-          updatePayload.price = priceForDay;
-        }
-
-        if (inventoryValue != null) {
-          updatePayload.inventory = inventoryValue;
-        }
-
-        if (statusValue) {
-          updatePayload.status = statusValue;
-          if (statusValue === "blocked") {
-            updatePayload.blockType = blockTypeValue;
+          if (priceForDay !== undefined) {
+            updatePayload.price = priceForDay;
           }
-        }
 
-        return updatePayload;
-      })
-      .filter((update) => update.price !== undefined || update.inventory !== undefined || update.status);
+          if (inventoryValue != null) {
+            updatePayload.inventory = inventoryValue;
+          }
+
+          if (statusValue) {
+            updatePayload.status = statusValue;
+            if (statusValue === "blocked") {
+              updatePayload.blockType = blockTypeValue;
+            }
+          }
+
+          return updatePayload;
+        })
+        .filter((update) => update.price !== undefined || update.inventory !== undefined || update.status)
+    );
 
     if (perDateUpdates.length === 0) {
       setSaving(false);
@@ -882,19 +924,15 @@ export default function AvailabilityCalendar() {
     clearSelection,
     hasPriceAction,
     hasSelection,
+    listings,
     normalizedInventoryInput,
     normalizedPriceInput,
     onlyOpenDates,
     priceDirection,
     priceMode,
-    selectedDates,
-    selectedListing,
-    selection.endDate,
-    selection.startDate,
     skipMissingPrices,
     statusAction,
-    targetDates,
-    listings,
+    targetSelections,
   ]);
 
   const handleCellChange = useCallback(
@@ -1020,9 +1058,7 @@ export default function AvailabilityCalendar() {
                 rowGap={1}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {hasSelection
-                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
-                    : "No dates selected"}
+                  {hasSelection ? selectionSummary : "No dates selected"}
                 </Typography>
                 <Button
                   size="small"
@@ -1118,6 +1154,7 @@ export default function AvailabilityCalendar() {
                     onCellMouseEnter={handleMouseEnter}
                     onCellMouseUp={handleMouseUp}
                     isDateSelected={isDateSelected}
+                    isRowSelected={getSelectedDatesForListing(listing.listingId).length > 0}
                     onCellChange={handleCellChange}
                   />
                 ))}
@@ -1147,9 +1184,7 @@ export default function AvailabilityCalendar() {
                 Bulk availability actions
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                {hasSelection
-                  ? `${selectedListing?.listingName ?? "Selected listing"} • ${selectionSummary}`
-                  : "Select dates to enable bulk updates."}
+                {hasSelection ? selectionSummary : "Select dates to enable bulk updates."}
               </Typography>
               {filteredOutCount > 0 && (
                 <Typography variant="caption" sx={{ color: "warning.main", display: "block" }}>
