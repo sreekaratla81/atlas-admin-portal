@@ -2,25 +2,37 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, getDay, isSameDay, parseISO } from "date-fns";
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Chip,
+  Collapse,
+  Divider,
+  Drawer,
   FormControl,
+  FormControlLabel,
+  IconButton,
   InputLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Skeleton,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
@@ -462,10 +474,20 @@ export default function AvailabilityCalendar() {
   const [error, setError] = useState("");
   const [successNotice, setSuccessNotice] = useState("");
   const [errorNotice, setErrorNotice] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [blockAction, setBlockAction] = useState<"none" | "block" | "unblock">("none");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [statusAction, setStatusAction] = useState<
+    "none" | "block" | "unblock" | "close-channels"
+  >("none");
   const [blockType, setBlockType] = useState<BulkUpdateSelection["blockType"]>("Maintenance");
-  const [nightlyPrice, setNightlyPrice] = useState("");
+  const [priceMode, setPriceMode] = useState<"none" | "fixed" | "delta-amount" | "delta-percent">(
+    "none"
+  );
+  const [priceDirection, setPriceDirection] = useState<"increase" | "decrease">("increase");
+  const [priceInput, setPriceInput] = useState("");
+  const [inventoryInput, setInventoryInput] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [onlyOpenDates, setOnlyOpenDates] = useState(false);
+  const [skipMissingPrices, setSkipMissingPrices] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const toDate = useMemo(() => {
@@ -539,20 +561,72 @@ export default function AvailabilityCalendar() {
     return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
   }, [selectedDates.length, selection.endDate, selection.startDate]);
 
-  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
-  const parsedNightlyPrice = nightlyPrice.trim() === "" ? null : Number(nightlyPrice);
-  const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
-  const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
-  const openBulkModal = () => {
-    if (!hasSelection) {
-      return;
+  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
+  const parsedPriceInput = priceInput.trim() === "" ? null : Number(priceInput);
+  const normalizedPriceInput = Number.isNaN(parsedPriceInput) ? null : parsedPriceInput;
+  const parsedInventoryInput = inventoryInput.trim() === "" ? null : Number(inventoryInput);
+  const normalizedInventoryInput = Number.isNaN(parsedInventoryInput) ? null : parsedInventoryInput;
+
+  const targetDates = useMemo(() => {
+    if (!selectedListing) {
+      return [];
     }
-    setBlockAction("none");
-    setBlockType("Maintenance");
-    setNightlyPrice("");
-    setModalOpen(true);
-  };
+
+    return selectedDates.filter((date) => {
+      const day = selectedListing.days[date];
+
+      if (onlyOpenDates && day?.status === "blocked") {
+        return false;
+      }
+
+      if (
+        skipMissingPrices &&
+        priceMode !== "none" &&
+        priceMode !== "fixed" &&
+        (day?.price == null)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [onlyOpenDates, priceMode, selectedDates, selectedListing, skipMissingPrices]);
+
+  const filteredOutCount = useMemo(
+    () => Math.max(0, selectedDates.length - targetDates.length),
+    [selectedDates.length, targetDates.length]
+  );
+
+  const priceIsDelta = priceMode === "delta-amount" || priceMode === "delta-percent";
+  const hasPriceAction = priceMode !== "none" && normalizedPriceInput != null;
+  const hasInventoryAction = normalizedInventoryInput != null || statusAction === "close-channels";
+  const hasStatusAction = statusAction !== "none";
+  const canSave =
+    hasSelection &&
+    (hasPriceAction || hasInventoryAction || hasStatusAction) &&
+    targetDates.length > 0;
+
+  useEffect(() => {
+    if (hasSelection) {
+      setDrawerOpen(true);
+    } else {
+      setDrawerOpen(false);
+    }
+  }, [hasSelection]);
+
+  useEffect(() => {
+    if (!hasSelection) {
+      setPriceMode("none");
+      setPriceInput("");
+      setInventoryInput("");
+      setStatusAction("none");
+      setOnlyOpenDates(false);
+      setSkipMissingPrices(true);
+    }
+  }, [hasSelection]);
 
   const applyOptimisticUpdate = useCallback(
     (
@@ -562,11 +636,14 @@ export default function AvailabilityCalendar() {
         blockType?: BulkUpdateSelection["blockType"];
         price?: number;
         inventory?: number | null;
-      }
+      },
+      dates?: string[]
     ) => {
-      if (!selection.listingId || selectedDates.length === 0) {
+      if (!selection.listingId || (dates ?? selectedDates).length === 0) {
         return currentListings;
       }
+
+      const target = dates ?? selectedDates;
 
       return currentListings.map((listing) => {
         if (listing.listingId !== selection.listingId) {
@@ -575,7 +652,7 @@ export default function AvailabilityCalendar() {
 
         return {
           ...listing,
-          days: selectedDates.reduce<Record<string, CalendarDay>>((acc, date) => {
+          days: target.reduce<Record<string, CalendarDay>>((acc, date) => {
             const existing = listing.days[date] ?? { date, status: "open" as const };
             const next = { ...existing };
 
@@ -611,7 +688,12 @@ export default function AvailabilityCalendar() {
       currentListings: CalendarListing[],
       listingId: number,
       date: string,
-      update: { price?: number | null; inventory?: number | null }
+      update: {
+        price?: number | null;
+        inventory?: number | null;
+        status?: "open" | "blocked";
+        blockType?: BulkUpdateSelection["blockType"];
+      }
     ) => {
       return currentListings.map((listing) => {
         if (listing.listingId !== listingId) {
@@ -622,6 +704,11 @@ export default function AvailabilityCalendar() {
           ...(listing.days[date] ?? { date, status: "open" as const }),
           ...update,
         };
+
+        if (update.status === "open") {
+          delete nextListingDay.blockType;
+          delete nextListingDay.reason;
+        }
 
         return {
           ...listing,
@@ -636,34 +723,151 @@ export default function AvailabilityCalendar() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!hasSelection || !selectedListing) {
+    if (!hasSelection || !selectedListing || !selection.startDate || !selection.endDate) {
       return;
     }
 
-    const payload = {
-      listingIds: [selectedListing.listingId],
-      startDate: selection.startDate!,
-      endDate: selection.endDate!,
-      status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
-      blockType: blockAction === "block" ? blockType : undefined,
-      price: normalizedNightlyPrice ?? undefined,
+    if (targetDates.length === 0) {
+      setErrorNotice("No dates match the current filters.");
+      return;
+    }
+
+    const statusValue =
+      statusAction === "unblock"
+        ? "open"
+        : statusAction === "block" || statusAction === "close-channels"
+          ? "blocked"
+          : undefined;
+    const blockTypeValue = statusValue === "blocked" ? blockType : undefined;
+    const inventoryValue = statusAction === "close-channels" ? 0 : normalizedInventoryInput;
+    const priceIsDelta = priceMode === "delta-amount" || priceMode === "delta-percent";
+
+    const getPriceForDay = (day?: CalendarDay) => {
+      if (!hasPriceAction) return undefined;
+
+      if (priceMode === "fixed") {
+        return normalizedPriceInput ?? undefined;
+      }
+
+      if (!day?.price && day?.price !== 0) {
+        return undefined;
+      }
+
+      const basePrice = day.price ?? 0;
+      const changeValue =
+        priceMode === "delta-amount"
+          ? normalizedPriceInput ?? 0
+          : ((normalizedPriceInput ?? 0) / 100) * basePrice;
+      const delta = priceDirection === "increase" ? changeValue : -changeValue;
+      const next = basePrice + delta;
+      return Math.max(0, Number(next.toFixed(2)));
     };
+
+    const bulkPayload = {
+      listingIds: [selectedListing.listingId],
+      startDate: selection.startDate,
+      endDate: selection.endDate,
+      status: statusValue,
+      blockType: blockTypeValue,
+      price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
+      inventory: inventoryValue ?? undefined,
+    };
+
+    const canUseBulk =
+      !priceIsDelta &&
+      targetDates.length === selectedDates.length &&
+      !onlyOpenDates &&
+      !skipMissingPrices;
 
     const snapshot = listings;
     setSaving(true);
-    setListings(
-      applyOptimisticUpdate(snapshot, {
-        status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
-        blockType: blockAction === "block" ? blockType : undefined,
-        price: normalizedNightlyPrice ?? undefined,
+
+    if (canUseBulk) {
+      setListings(
+        applyOptimisticUpdate(
+          snapshot,
+          {
+            status: statusValue,
+            blockType: blockTypeValue,
+            price: bulkPayload.price,
+            inventory: bulkPayload.inventory ?? undefined,
+          },
+          targetDates
+        )
+      );
+
+      try {
+        await patchAvailabilityBulk(bulkPayload);
+        setSuccessNotice("Availability updated successfully.");
+        setErrorNotice("");
+        clearSelection();
+      } catch (err) {
+        setListings(snapshot);
+        setErrorNotice("Update failed. Changes have been reverted.");
+      } finally {
+        setSaving(false);
+      }
+
+      return;
+    }
+
+    const perDateUpdates = targetDates
+      .map((date) => {
+        const priceForDay = getPriceForDay(selectedListing.days[date]);
+        const updatePayload: {
+          listingId: number;
+          date: string;
+          price?: number | null;
+          inventory?: number | null;
+          status?: "open" | "blocked";
+          blockType?: string;
+        } = {
+          listingId: selectedListing.listingId,
+          date,
+        };
+
+        if (priceForDay !== undefined) {
+          updatePayload.price = priceForDay;
+        }
+
+        if (inventoryValue != null) {
+          updatePayload.inventory = inventoryValue;
+        }
+
+        if (statusValue) {
+          updatePayload.status = statusValue;
+          if (statusValue === "blocked") {
+            updatePayload.blockType = blockTypeValue;
+          }
+        }
+
+        return updatePayload;
       })
-    );
+      .filter((update) => update.price !== undefined || update.inventory !== undefined || update.status);
+
+    if (perDateUpdates.length === 0) {
+      setSaving(false);
+      setErrorNotice("Nothing to update for the selected dates.");
+      return;
+    }
+
+    setListings((current) => {
+      let next = current;
+      perDateUpdates.forEach((update) => {
+        next = applyCellUpdateForDate(next, update.listingId, update.date, {
+          price: update.price,
+          inventory: update.inventory,
+          status: update.status,
+          blockType: update.blockType as BulkUpdateSelection["blockType"] | undefined,
+        });
+      });
+      return next;
+    });
 
     try {
-      await patchAvailabilityBulk(payload);
+      await Promise.all(perDateUpdates.map((update) => patchAvailabilityCell(update)));
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
-      setModalOpen(false);
       clearSelection();
     } catch (err) {
       setListings(snapshot);
@@ -672,15 +876,25 @@ export default function AvailabilityCalendar() {
       setSaving(false);
     }
   }, [
+    applyCellUpdateForDate,
     applyOptimisticUpdate,
-    blockAction,
     blockType,
-      clearSelection,
-      hasSelection,
-      listings,
-      normalizedNightlyPrice,
-      selectedDates,
-      selectedListing,
+    clearSelection,
+    hasPriceAction,
+    hasSelection,
+    normalizedInventoryInput,
+    normalizedPriceInput,
+    onlyOpenDates,
+    priceDirection,
+    priceMode,
+    selectedDates,
+    selectedListing,
+    selection.endDate,
+    selection.startDate,
+    skipMissingPrices,
+    statusAction,
+    targetDates,
+    listings,
   ]);
 
   const handleCellChange = useCallback(
@@ -810,8 +1024,13 @@ export default function AvailabilityCalendar() {
                     ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
                     : "No dates selected"}
                 </Typography>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={openBulkModal}>
-                  Bulk edit
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!hasSelection}
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  Bulk actions
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
                   Refresh
@@ -908,65 +1127,232 @@ export default function AvailabilityCalendar() {
         </Box>
       </Stack>
 
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Update availability</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {selectedListing?.listingName ?? "Selected listing"}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {selectionSummary}
-            </Typography>
+      <Drawer
+        anchor={isMdUp ? "right" : "bottom"}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{ sx: { width: isMdUp ? 440 : "100%" } }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            pb: 3,
+            maxHeight: isMdUp ? "100vh" : "75vh",
+            overflowY: "auto",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Bulk availability actions
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {hasSelection
+                  ? `${selectedListing?.listingName ?? "Selected listing"} • ${selectionSummary}`
+                  : "Select dates to enable bulk updates."}
+              </Typography>
+              {filteredOutCount > 0 && (
+                <Typography variant="caption" sx={{ color: "warning.main", display: "block" }}>
+                  Skipping {filteredOutCount} date{filteredOutCount === 1 ? "" : "s"} based on advanced rules.
+                </Typography>
+              )}
+            </Box>
+            <IconButton size="small" onClick={() => setDrawerOpen(false)} aria-label="Close bulk actions">
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Stack>
 
-          <FormControl size="small">
-            <InputLabel>Block action</InputLabel>
-            <Select
-              value={blockAction}
-              label="Block action"
-              onChange={(event) => setBlockAction(event.target.value as "none" | "block" | "unblock")}
-            >
-              <MenuItem value="none">No block change</MenuItem>
-              <MenuItem value="block">Block dates</MenuItem>
-              <MenuItem value="unblock">Unblock dates</MenuItem>
-            </Select>
-          </FormControl>
+          <Divider sx={{ my: 2 }} />
 
-          <FormControl size="small" disabled={blockAction !== "block"}>
-            <InputLabel>Block type</InputLabel>
-            <Select
-              value={blockType}
-              label="Block type"
-              onChange={(event) => setBlockType(event.target.value as BulkUpdateSelection["blockType"])}
-            >
-              {BLOCK_TYPE_OPTIONS.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Stack spacing={3}>
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Price
+                </Typography>
+                {hasPriceAction && (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={
+                      priceMode === "fixed"
+                        ? `Set to ₹${normalizedPriceInput}`
+                        : `${priceDirection === "increase" ? "+" : "-"}${normalizedPriceInput}${priceMode === "delta-percent" ? "%" : "₹"}`
+                    }
+                  />
+                )}
+              </Stack>
 
-          <TextField
-            size="small"
-            label="Nightly price"
-            type="number"
-            value={nightlyPrice}
-            onChange={(event) => setNightlyPrice(event.target.value)}
-            inputProps={{ min: 0 }}
-            helperText={PRICE_INPUT_HELPER}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModalOpen(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} variant="contained" disabled={!canSave || saving}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={priceMode}
+                onChange={(_, value) => value && setPriceMode(value)}
+                aria-label="Price action"
+              >
+                <ToggleButton value="none">No change</ToggleButton>
+                <ToggleButton value="fixed">Set fixed price</ToggleButton>
+                <ToggleButton value="delta-amount">Apply ₹ delta</ToggleButton>
+                <ToggleButton value="delta-percent">Apply % delta</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Collapse in={priceMode !== "none"}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  sx={{ mt: 1 }}
+                >
+                  {priceMode !== "fixed" && (
+                    <ToggleButtonGroup
+                      size="small"
+                      exclusive
+                      value={priceDirection}
+                      onChange={(_, value) => value && setPriceDirection(value)}
+                      aria-label="Price direction"
+                    >
+                      <ToggleButton value="increase">Increase</ToggleButton>
+                      <ToggleButton value="decrease">Decrease</ToggleButton>
+                    </ToggleButtonGroup>
+                  )}
+                  <TextField
+                    size="small"
+                    type="number"
+                    label={priceMode === "delta-percent" ? "Percent" : "Amount"}
+                    value={priceInput}
+                    onChange={(event) => setPriceInput(event.target.value)}
+                    inputProps={{ min: 0 }}
+                    helperText={
+                      priceMode === "fixed"
+                        ? PRICE_INPUT_HELPER
+                        : "Applied relative to the current nightly price."
+                    }
+                  />
+                </Stack>
+                {priceIsDelta && skipMissingPrices && (
+                  <Typography variant="caption" sx={{ color: "text.secondary", mt: 0.5, display: "block" }}>
+                    Dates without a price are skipped to keep validation consistent with bulk updates.
+                  </Typography>
+                )}
+              </Collapse>
+            </Stack>
+
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Inventory
+              </Typography>
+              <TextField
+                size="small"
+                label="Inventory count"
+                type="number"
+                value={inventoryInput}
+                onChange={(event) => setInventoryInput(event.target.value)}
+                helperText="Set a room count for selected dates. Leave blank to skip."
+                inputProps={{ min: 0 }}
+              />
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Status and channels
+              </Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={statusAction}
+                onChange={(_, value) => value && setStatusAction(value)}
+                aria-label="Status action"
+              >
+                <ToggleButton value="none">No change</ToggleButton>
+                <ToggleButton value="block">Block</ToggleButton>
+                <ToggleButton value="unblock">Unblock</ToggleButton>
+                <ToggleButton value="close-channels">Close all channels</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Collapse in={statusAction === "block" || statusAction === "close-channels"}>
+                <Stack spacing={1} sx={{ mt: 1 }}>
+                  <FormControl size="small">
+                    <InputLabel>Block type</InputLabel>
+                    <Select
+                      value={blockType}
+                      label="Block type"
+                      onChange={(event) => setBlockType(event.target.value as BulkUpdateSelection["blockType"])}
+                    >
+                      {BLOCK_TYPE_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {statusAction === "close-channels" && (
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Closing channels blocks the dates and forces inventory to zero.
+                    </Typography>
+                  )}
+                </Stack>
+              </Collapse>
+            </Stack>
+
+            <Accordion
+              expanded={advancedOpen}
+              onChange={(_, expanded) => setAdvancedOpen(expanded)}
+              disableGutters
+              elevation={0}
+              sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Advanced rules
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={onlyOpenDates}
+                        onChange={(event) => setOnlyOpenDates(event.target.checked)}
+                      />
+                    }
+                    label="Only update dates that are currently open"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={skipMissingPrices}
+                        onChange={(event) => setSkipMissingPrices(event.target.checked)}
+                      />
+                    }
+                    label="Skip dates without a nightly price when applying deltas"
+                  />
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    Validation follows the bulk availability API: select a listing and dates, then choose at least one action
+                    (price, inventory, or status).
+                  </Typography>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="flex-end"
+            alignItems={{ xs: "stretch", sm: "center" }}
+          >
+            <Button onClick={clearSelection} disabled={!hasSelection || saving} variant="outlined">
+              Clear selection
+            </Button>
+            <Button onClick={handleSave} variant="contained" disabled={!canSave || saving}>
+              {saving ? "Applying" : "Apply changes"}
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
 
       <Snackbar
         open={Boolean(successNotice)}
