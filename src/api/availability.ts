@@ -5,6 +5,7 @@ export type CalendarDay = {
   date: string;
   status: "open" | "blocked";
   price?: number | null;
+  inventory?: number | null;
   blockType?: string;
   reason?: string;
 };
@@ -23,10 +24,22 @@ export type BulkUpdateSelection = {
   nightlyPrice?: number | null;
 };
 
+type CalendarApiDay = Omit<CalendarDay, "price" | "inventory"> & {
+  price?: number | string | null;
+  inventory?: number | string | null;
+};
+
 type CalendarApiListing = {
   listingId?: number;
   listingName?: string;
-  days?: CalendarDay[] | Record<string, CalendarDay>;
+  days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
+};
+
+const parseNullableNumber = (value: unknown) => {
+  if (value == null) return null;
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
 };
 
 export const buildDateArray = (from: string, to: string): string[] => {
@@ -61,15 +74,38 @@ export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
   price: selection.nightlyPrice,
 });
 
+export const updateInventoryForDate = (params: {
+  listingId: number;
+  date: string;
+  inventory: number | null;
+}) => api.post("/availability/inventory", params);
+
+const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
+  date: day.date,
+  status: day.status ?? "open",
+  price: parseNullableNumber(day.price),
+  inventory: parseNullableNumber(day.inventory),
+  blockType: day.blockType,
+  reason: day.reason,
+});
+
 const normalizeDays = (
   days: CalendarApiListing["days"]
 ): Record<string, CalendarDay> => {
   if (!days) return {};
-  if (!Array.isArray(days)) return days;
 
-  return days.reduce<Record<string, CalendarDay>>((acc, day) => {
-    if (day?.date) {
-      acc[day.date] = day;
+  if (Array.isArray(days)) {
+    return days.reduce<Record<string, CalendarDay>>((acc, day) => {
+      if (day?.date) {
+        acc[day.date] = normalizeDay(day);
+      }
+      return acc;
+    }, {});
+  }
+
+  return Object.entries(days).reduce<Record<string, CalendarDay>>((acc, [key, day]) => {
+    if (day?.date ?? key) {
+      acc[day.date ?? key] = normalizeDay({ ...day, date: day.date ?? key });
     }
     return acc;
   }, {});
