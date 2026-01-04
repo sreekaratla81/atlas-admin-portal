@@ -7,13 +7,23 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import AuthProvider from "./auth/AuthProvider";
 import "./style.css";
 import { getApiBase } from "@/utils/env";
+import { setupMocks } from "@/mocks";
+
+let teardownMocks: (() => void) | undefined;
 
 if (import.meta.env.DEV) {
   // eslint-disable-next-line no-console
   console.log('apiBase', getApiBase());
+  teardownMocks = setupMocks();
 } else if (import.meta.env.PROD && getApiBase().includes('localhost')) {
   // eslint-disable-next-line no-console
   console.warn('apiBase points to localhost in production');
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    teardownMocks?.();
+  });
 }
 
 const queryClient = new QueryClient();

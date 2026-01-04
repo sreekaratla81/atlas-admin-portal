@@ -2,36 +2,48 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, getDay, isSameDay, parseISO } from "date-fns";
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Chip,
+  Collapse,
+  Divider,
+  Drawer,
   FormControl,
+  FormControlLabel,
+  IconButton,
   InputLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Skeleton,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
   buildDateArray,
-  buildBulkBlockPayload,
-  buildBulkPricePayload,
   BulkUpdateSelection,
   CalendarDay,
   CalendarListing,
   fetchCalendarData,
   formatCurrencyINR,
+  patchAvailabilityCell,
+  patchAvailabilityBulk,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -44,10 +56,12 @@ const RANGE_OPTIONS = [30, 60, 90] as const;
 const CELL_WIDTH = 110;
 const NAME_COL_WIDTH = 280;
 const TODAY_OUTLINE = "#0284c7";
-const OPEN_COLOR = "#dcfce7";
-const OPEN_WEEKEND_COLOR = "#bbf7d0";
-const BLOCKED_COLOR = "#fee2e2";
-const BLOCKED_WEEKEND_COLOR = "#fecaca";
+const OPEN_COLOR = "#f0fdf4";
+const OPEN_WEEKEND_COLOR = "#ecfccb";
+const BLOCKED_COLOR = "#fef2f2";
+const BLOCKED_WEEKEND_COLOR = "#fee2e2";
+const EMPTY_COLOR = "#f3f4f6";
+const EMPTY_WEEKEND_COLOR = "#e5e7eb";
 const BLOCK_TYPE_OPTIONS: BulkUpdateSelection["blockType"][] = [
   "Maintenance",
   "OwnerHold",
@@ -114,6 +128,11 @@ type DataCellProps = {
   onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onMouseEnter: () => void;
   onMouseUp: () => void;
+  onCellChange: (
+    listingId: number,
+    date: string,
+    update: { price?: number | null; inventory?: number | null }
+  ) => void;
 };
 
 const DataCell = React.memo(
@@ -126,23 +145,101 @@ const DataCell = React.memo(
     onMouseDown,
     onMouseEnter,
     onMouseUp,
+    onCellChange,
   }: DataCellProps) => {
+  const [editingField, setEditingField] = useState<"price" | "inventory" | null>(null);
+  const [priceDraft, setPriceDraft] = useState<string>(
+    availability?.price != null ? String(availability.price) : ""
+  );
+  const [inventoryDraft, setInventoryDraft] = useState<string>(
+    availability?.inventory != null ? String(availability.inventory) : ""
+  );
+
+  useEffect(() => {
+    if (editingField !== "price") {
+      setPriceDraft(availability?.price != null ? String(availability.price) : "");
+    }
+  }, [availability?.price, editingField]);
+
+  useEffect(() => {
+    if (editingField !== "inventory") {
+      setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
+    }
+  }, [availability?.inventory, editingField]);
+
   const dateObj = parseISO(date);
   const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
   const isToday = isSameDay(dateObj, today);
   const status = availability?.status ?? "open";
+  const isMissingData =
+    !availability || availability.price == null || availability.inventory == null;
 
-  const backgroundColor = status === "blocked"
+  const backgroundColor = isMissingData
     ? isWeekend
-      ? BLOCKED_WEEKEND_COLOR
-      : BLOCKED_COLOR
-    : isWeekend
-      ? OPEN_WEEKEND_COLOR
-      : OPEN_COLOR;
+      ? EMPTY_WEEKEND_COLOR
+      : EMPTY_COLOR
+    : status === "blocked"
+      ? isWeekend
+        ? BLOCKED_WEEKEND_COLOR
+        : BLOCKED_COLOR
+      : isWeekend
+        ? OPEN_WEEKEND_COLOR
+        : OPEN_COLOR;
 
-  const tooltipText = status === "blocked"
-    ? `${availability?.blockType ?? "Blocked"}${availability?.reason ? ` • ${availability.reason}` : ""}`
-    : "Available";
+  const badgeColors = status === "blocked"
+    ? { background: "#fecdd3", color: "#7f1d1d" }
+    : isMissingData
+      ? { background: "#e5e7eb", color: "#374151" }
+      : { background: "#d9f99d", color: "#365314" };
+
+  const tooltipText = isMissingData
+    ? "Price or inventory missing"
+    : `${availability?.inventory ?? 0} of ${availability?.inventory ?? 0} rooms ${
+        status === "blocked" ? "blocked" : "open"
+      }`;
+
+  const commitChange = (field: "price" | "inventory") => {
+    const draft = field === "price" ? priceDraft : inventoryDraft;
+    const trimmed = draft.trim();
+    const value = trimmed === "" ? null : Number(trimmed);
+    const currentValue =
+      field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
+
+    if (Number.isNaN(value)) {
+      if (field === "price") {
+        setPriceDraft(availability?.price != null ? String(availability.price) : "");
+      } else {
+        setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
+      }
+      setEditingField(null);
+      return;
+    }
+
+    if (value !== currentValue) {
+      onCellChange(listingId, date, field === "price" ? { price: value } : { inventory: value });
+    }
+
+    setEditingField(null);
+  };
+
+  const focusNextInput = (current: HTMLInputElement, backwards = false) => {
+    const inputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-calendar-input="true"]')
+    );
+    const currentIndex = inputs.findIndex((input) => input === current);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const nextIndex = backwards ? currentIndex - 1 : currentIndex + 1;
+    const nextInput = inputs[nextIndex];
+
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select?.();
+    }
+  };
 
   return (
     <Tooltip key={`${listingId}-${date}`} title={tooltipText} arrow>
@@ -166,13 +263,115 @@ const DataCell = React.memo(
           boxShadow: isSelected ? "inset 0 0 0 2px #2563eb" : "none",
           transition: "box-shadow 120ms ease",
         }}
-        onMouseDown={onMouseDown}
-        onMouseEnter={onMouseEnter}
-        onMouseUp={onMouseUp}
-      >
-        <Typography variant="body2">
-          {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
-        </Typography>
+          onMouseDown={onMouseDown}
+          onMouseEnter={onMouseEnter}
+          onMouseUp={onMouseUp}
+        >
+        <Stack spacing={0.5} alignItems="center" sx={{ width: "100%", px: 0.5 }}>
+          <TextField
+            size="small"
+            type="number"
+            value={priceDraft}
+            onFocus={() => setEditingField("price")}
+            onChange={(event) => setPriceDraft(event.target.value)}
+            onBlur={() => commitChange("price")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitChange("price");
+                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+              }
+              if (event.key === "Escape") {
+                setPriceDraft(availability?.price != null ? String(availability.price) : "");
+                setEditingField(null);
+              }
+              if (event.key === "Tab") {
+                commitChange("price");
+              }
+            }}
+            placeholder="Price"
+            inputProps={{
+              min: 0,
+              style: { padding: "4px 8px", textAlign: "center" },
+              "data-calendar-input": "true",
+            }}
+            sx={{
+              width: "100%",
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "rgba(255,255,255,0.65)",
+                borderRadius: 1,
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                height: 26,
+                py: 0.25,
+              },
+              "& .MuiOutlinedInput-input": {
+                textAlign: "center",
+              },
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+          />
+          <TextField
+            size="small"
+            type="number"
+            value={inventoryDraft}
+            onFocus={() => setEditingField("inventory")}
+            onChange={(event) => setInventoryDraft(event.target.value)}
+            onBlur={() => commitChange("inventory")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitChange("inventory");
+                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+              }
+              if (event.key === "Escape") {
+                setInventoryDraft(
+                  availability?.inventory != null ? String(availability.inventory) : ""
+                );
+                setEditingField(null);
+              }
+              if (event.key === "Tab") {
+                commitChange("inventory");
+              }
+            }}
+            placeholder="Rooms"
+            inputProps={{
+              min: 0,
+              style: { padding: "4px 8px", textAlign: "center" },
+              "data-calendar-input": "true",
+            }}
+            sx={{
+              width: "100%",
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: badgeColors.background,
+                color: badgeColors.color,
+                borderRadius: 9999,
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                height: 26,
+                py: 0.25,
+                "& fieldset": {
+                  borderColor: "transparent",
+                },
+              },
+              "& .MuiOutlinedInput-input": {
+                textAlign: "center",
+                paddingRight: 0,
+                paddingLeft: 0,
+              },
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
+            InputProps={{
+              endAdornment: (
+                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                  rooms
+                </Typography>
+              ),
+            }}
+          />
+        </Stack>
         {isToday && (
           <Box
             sx={{
@@ -199,10 +398,26 @@ type ListingRowProps = {
   onCellMouseEnter: (listingId: number, date: string) => void;
   onCellMouseUp: () => void;
   isDateSelected: (listingId: number, date: string) => boolean;
+  isRowSelected: boolean;
+  onCellChange: (
+    listingId: number,
+    date: string,
+    update: { price?: number | null; inventory?: number | null }
+  ) => void;
 };
 
 const ListingRow = React.memo(
-  ({ listing, dates, today, onCellMouseDown, onCellMouseEnter, onCellMouseUp, isDateSelected }: ListingRowProps) => (
+  ({
+    listing,
+    dates,
+    today,
+    onCellMouseDown,
+    onCellMouseEnter,
+    onCellMouseUp,
+    isDateSelected,
+    isRowSelected,
+    onCellChange,
+  }: ListingRowProps) => (
     <Box
       sx={{
         display: "grid",
@@ -218,7 +433,7 @@ const ListingRow = React.memo(
           borderColor: "divider",
           borderBottom: "1px solid",
           borderBottomColor: "divider",
-          backgroundColor: "background.paper",
+          backgroundColor: isRowSelected ? "action.hover" : "background.paper",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -228,9 +443,6 @@ const ListingRow = React.memo(
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           {listing.listingName}
-        </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Listing
         </Typography>
       </Box>
       {dates.map((date) => (
@@ -244,6 +456,7 @@ const ListingRow = React.memo(
           onMouseDown={(event) => onCellMouseDown(listing.listingId, date, event.shiftKey)}
           onMouseEnter={() => onCellMouseEnter(listing.listingId, date)}
           onMouseUp={onCellMouseUp}
+          onCellChange={onCellChange}
         />
       ))}
     </Box>
@@ -263,10 +476,20 @@ export default function AvailabilityCalendar() {
   const [error, setError] = useState("");
   const [successNotice, setSuccessNotice] = useState("");
   const [errorNotice, setErrorNotice] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [blockAction, setBlockAction] = useState<"none" | "block" | "unblock">("none");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [statusAction, setStatusAction] = useState<
+    "none" | "block" | "unblock" | "close-channels"
+  >("none");
   const [blockType, setBlockType] = useState<BulkUpdateSelection["blockType"]>("Maintenance");
-  const [nightlyPrice, setNightlyPrice] = useState("");
+  const [priceMode, setPriceMode] = useState<"none" | "fixed" | "delta-amount" | "delta-percent">(
+    "none"
+  );
+  const [priceDirection, setPriceDirection] = useState<"increase" | "decrease">("increase");
+  const [priceInput, setPriceInput] = useState("");
+  const [inventoryInput, setInventoryInput] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [onlyOpenDates, setOnlyOpenDates] = useState(false);
+  const [skipMissingPrices, setSkipMissingPrices] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const toDate = useMemo(() => {
@@ -315,135 +538,378 @@ export default function AvailabilityCalendar() {
   }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
-  const selectedListing = useMemo(() => {
-    if (!selection.listingId) {
-      return null;
-    }
-    return listings.find((listing) => listing.listingId === selection.listingId) ?? null;
-  }, [listings, selection.listingId]);
+  const selectedEntries = useMemo(
+    () =>
+      Object.entries(selection)
+        .map(([listingId]) => {
+          const id = Number(listingId);
+          const listing = listings.find((item) => item.listingId === id);
+          const dates = getSelectedDatesForListing(id);
 
-  const selectedDates = useMemo(() => {
-    if (!selection.listingId) {
-      return [];
-    }
+          if (!listing || dates.length === 0) {
+            return null;
+          }
 
-    return getSelectedDatesForListing(selection.listingId);
-  }, [getSelectedDatesForListing, selection.listingId]);
+          return { listingId: id, listing, dates };
+        })
+        .filter(Boolean) as { listingId: number; listing: CalendarListing; dates: string[] }[],
+    [getSelectedDatesForListing, listings, selection]
+  );
+
+  const totalSelectedDates = useMemo(
+    () => selectedEntries.reduce((sum, entry) => sum + entry.dates.length, 0),
+    [selectedEntries]
+  );
 
   const selectionSummary = useMemo(() => {
-    if (!selection.startDate || !selection.endDate || selectedDates.length === 0) {
+    if (totalSelectedDates === 0) {
       return "No dates selected";
     }
 
-    const start = format(parseISO(selection.startDate), "MMM d, yyyy");
-    const end = format(parseISO(selection.endDate), "MMM d, yyyy");
-    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
-  }, [selection.endDate, selection.startDate, selectedDates.length]);
+    const listingCount = selectedEntries.length;
+    return `${totalSelectedDates} date${totalSelectedDates === 1 ? "" : "s"} across ${listingCount} listing${listingCount === 1 ? "" : "s"}`;
+  }, [selectedEntries.length, totalSelectedDates]);
 
-  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
-  const parsedNightlyPrice = nightlyPrice.trim() === "" ? null : Number(nightlyPrice);
-  const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
-  const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
-  const openBulkModal = (action: "block" | "unblock" | "price") => {
-    if (!hasSelection) {
-      return;
+  const hasSelection = totalSelectedDates > 0;
+  const parsedPriceInput = priceInput.trim() === "" ? null : Number(priceInput);
+  const normalizedPriceInput = Number.isNaN(parsedPriceInput) ? null : parsedPriceInput;
+  const parsedInventoryInput = inventoryInput.trim() === "" ? null : Number(inventoryInput);
+  const normalizedInventoryInput = Number.isNaN(parsedInventoryInput) ? null : parsedInventoryInput;
+
+  const targetSelections = useMemo(
+    () =>
+      selectedEntries.map((entry) => {
+        const filteredDates = entry.dates.filter((date) => {
+          const day = entry.listing.days[date];
+
+          if (onlyOpenDates && day?.status === "blocked") {
+            return false;
+          }
+
+          if (
+            skipMissingPrices &&
+            priceMode !== "none" &&
+            priceMode !== "fixed" &&
+            (day?.price == null)
+          ) {
+            return false;
+          }
+
+          return true;
+        });
+
+        return { ...entry, filteredDates };
+      }),
+    [onlyOpenDates, priceMode, selectedEntries, skipMissingPrices]
+  );
+
+  const filteredOutCount = useMemo(
+    () =>
+      targetSelections.reduce(
+        (sum, entry) => sum + Math.max(0, entry.dates.length - entry.filteredDates.length),
+        0
+      ),
+    [targetSelections]
+  );
+
+  const priceIsDelta = priceMode === "delta-amount" || priceMode === "delta-percent";
+  const hasPriceAction = priceMode !== "none" && normalizedPriceInput != null;
+  const hasInventoryAction = normalizedInventoryInput != null || statusAction === "close-channels";
+  const hasStatusAction = statusAction !== "none";
+  const canSave =
+    hasSelection &&
+    (hasPriceAction || hasInventoryAction || hasStatusAction) &&
+    targetSelections.some((entry) => entry.filteredDates.length > 0);
+
+  useEffect(() => {
+    if (hasSelection) {
+      setDrawerOpen(true);
+    } else {
+      setDrawerOpen(false);
     }
-    setBlockAction(action === "price" ? "none" : action);
-    setBlockType("Maintenance");
-    setNightlyPrice("");
-    setModalOpen(true);
-  };
+  }, [hasSelection]);
+
+  useEffect(() => {
+    if (!hasSelection) {
+      setPriceMode("none");
+      setPriceInput("");
+      setInventoryInput("");
+      setStatusAction("none");
+      setOnlyOpenDates(false);
+      setSkipMissingPrices(true);
+    }
+  }, [hasSelection]);
 
   const applyOptimisticUpdate = useCallback(
     (
       currentListings: CalendarListing[],
-      update: {
-        status?: "open" | "blocked";
-        blockType?: BulkUpdateSelection["blockType"];
-        price?: number;
-      }
+      updates: {
+        listingId: number;
+        dates: string[];
+        update: {
+          status?: "open" | "blocked";
+          blockType?: BulkUpdateSelection["blockType"];
+          price?: number;
+          inventory?: number | null;
+        };
+      }[]
     ) => {
-      if (!selection.listingId || selectedDates.length === 0) {
+      if (updates.length === 0) {
         return currentListings;
       }
 
+      return updates.reduce((nextListings, { listingId, dates, update }) => {
+        if (dates.length === 0) {
+          return nextListings;
+        }
+
+        return nextListings.map((listing) => {
+          if (listing.listingId !== listingId) {
+            return listing;
+          }
+
+          return {
+            ...listing,
+            days: dates.reduce<Record<string, CalendarDay>>((acc, date) => {
+              const existing = listing.days[date] ?? { date, status: "open" as const };
+              const next = { ...existing };
+
+              if (update.status) {
+                next.status = update.status;
+                if (update.status === "blocked") {
+                  next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+                } else {
+                  delete next.blockType;
+                  delete next.reason;
+                }
+              }
+
+              if (update.price != null) {
+                next.price = update.price;
+              }
+
+              if (update.inventory !== undefined) {
+                next.inventory = update.inventory;
+              }
+
+              acc[date] = next;
+              return acc;
+            }, { ...listing.days }),
+          };
+        });
+      }, currentListings);
+    },
+    []
+  );
+
+  const applyCellUpdateForDate = useCallback(
+    (
+      currentListings: CalendarListing[],
+      listingId: number,
+      date: string,
+      update: {
+        price?: number | null;
+        inventory?: number | null;
+        status?: "open" | "blocked";
+        blockType?: BulkUpdateSelection["blockType"];
+      }
+    ) => {
       return currentListings.map((listing) => {
-        if (listing.listingId !== selection.listingId) {
+        if (listing.listingId !== listingId) {
           return listing;
         }
 
-        const updatedDays = { ...listing.days };
-        selectedDates.forEach((date) => {
-          const existing = updatedDays[date] ?? { date, status: "open" as const };
-          const next = { ...existing };
+        const nextListingDay = {
+          ...(listing.days[date] ?? { date, status: "open" as const }),
+          ...update,
+        };
 
-          if (update.status) {
-            next.status = update.status;
-            if (update.status === "blocked") {
-              next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
-            } else {
-              delete next.blockType;
-              delete next.reason;
-            }
-          }
-
-          if (update.price != null) {
-            next.price = update.price;
-          }
-
-          updatedDays[date] = next;
-        });
+        if (update.status === "open") {
+          delete nextListingDay.blockType;
+          delete nextListingDay.reason;
+        }
 
         return {
           ...listing,
-          days: updatedDays,
+          days: {
+            ...listing.days,
+            [date]: nextListingDay,
+          },
         };
       });
     },
-    [selection.listingId, selectedDates]
+    []
   );
 
   const handleSave = useCallback(async () => {
-    if (!hasSelection || !selectedListing) {
+    if (!hasSelection) {
       return;
     }
 
-    const bulkSelection: BulkUpdateSelection = {
-      listingId: selectedListing.listingId,
-      dates: selectedDates,
-      blockType,
-      unblock: blockAction === "unblock",
-      nightlyPrice: normalizedNightlyPrice,
+    if (!targetSelections.some((entry) => entry.filteredDates.length > 0)) {
+      setErrorNotice("No dates match the current filters.");
+      return;
+    }
+
+    const statusValue =
+      statusAction === "unblock"
+        ? "open"
+        : statusAction === "block" || statusAction === "close-channels"
+          ? "blocked"
+          : undefined;
+    const blockTypeValue = statusValue === "blocked" ? blockType : undefined;
+    const inventoryValue = statusAction === "close-channels" ? 0 : normalizedInventoryInput;
+    const priceIsDelta = priceMode === "delta-amount" || priceMode === "delta-percent";
+
+    const getPriceForDay = (day?: CalendarDay) => {
+      if (!hasPriceAction) return undefined;
+
+      if (priceMode === "fixed") {
+        return normalizedPriceInput ?? undefined;
+      }
+
+      if (!day?.price && day?.price !== 0) {
+        return undefined;
+      }
+
+      const basePrice = day.price ?? 0;
+      const changeValue =
+        priceMode === "delta-amount"
+          ? normalizedPriceInput ?? 0
+          : ((normalizedPriceInput ?? 0) / 100) * basePrice;
+      const delta = priceDirection === "increase" ? changeValue : -changeValue;
+      const next = basePrice + delta;
+      return Math.max(0, Number(next.toFixed(2)));
     };
 
-    const requests: Promise<unknown>[] = [];
-    if (blockAction !== "none") {
-      requests.push(api.post("/availability/blocks/bulk", buildBulkBlockPayload(bulkSelection)));
-    }
-    if (normalizedNightlyPrice != null) {
-      requests.push(api.post("/pricing/daily/bulk", buildBulkPricePayload(bulkSelection)));
-    }
-
-    if (requests.length === 0) {
-      return;
-    }
+    const canUseBulk =
+      !priceIsDelta &&
+      !onlyOpenDates &&
+      !skipMissingPrices &&
+      targetSelections.every((entry) => entry.filteredDates.length === entry.dates.length);
 
     const snapshot = listings;
     setSaving(true);
-    setListings(
-      applyOptimisticUpdate(snapshot, {
-        status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
-        blockType: blockAction === "block" ? blockType : undefined,
-        price: normalizedNightlyPrice ?? undefined,
-      })
+
+    if (canUseBulk) {
+      const optimisticUpdates = targetSelections
+        .map((entry) => ({
+          listingId: entry.listingId,
+          dates: entry.filteredDates,
+          update: {
+            status: statusValue,
+            blockType: blockTypeValue,
+            price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
+            inventory: inventoryValue ?? undefined,
+          },
+        }))
+        .filter((entry) => entry.dates.length > 0);
+
+      setListings(applyOptimisticUpdate(snapshot, optimisticUpdates));
+
+      const groupedPayloads = optimisticUpdates.reduce<
+        Record<string, { listingIds: number[]; startDate: string; endDate: string }>
+      >((acc, entry) => {
+        const sortedDates = [...entry.dates].sort();
+        const startDate = sortedDates[0];
+        const endDate = sortedDates[sortedDates.length - 1];
+        const key = `${startDate}-${endDate}`;
+
+        if (!acc[key]) {
+          acc[key] = { listingIds: [], startDate, endDate };
+        }
+
+        acc[key].listingIds.push(entry.listingId);
+        return acc;
+      }, {});
+
+      try {
+        await Promise.all(
+          Object.values(groupedPayloads).map((payload) =>
+            patchAvailabilityBulk({
+              ...payload,
+              status: statusValue,
+              blockType: blockTypeValue,
+              price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
+              inventory: inventoryValue ?? undefined,
+            })
+          )
+        );
+        setSuccessNotice("Availability updated successfully.");
+        setErrorNotice("");
+        clearSelection();
+      } catch (err) {
+        setListings(snapshot);
+        setErrorNotice("Update failed. Changes have been reverted.");
+      } finally {
+        setSaving(false);
+      }
+
+      return;
+    }
+
+    const perDateUpdates = targetSelections.flatMap((entry) =>
+      entry.filteredDates
+        .map((date) => {
+          const priceForDay = getPriceForDay(entry.listing.days[date]);
+          const updatePayload: {
+            listingId: number;
+            date: string;
+            price?: number | null;
+            inventory?: number | null;
+            status?: "open" | "blocked";
+            blockType?: string;
+          } = {
+            listingId: entry.listing.listingId,
+            date,
+          };
+
+          if (priceForDay !== undefined) {
+            updatePayload.price = priceForDay;
+          }
+
+          if (inventoryValue != null) {
+            updatePayload.inventory = inventoryValue;
+          }
+
+          if (statusValue) {
+            updatePayload.status = statusValue;
+            if (statusValue === "blocked") {
+              updatePayload.blockType = blockTypeValue;
+            }
+          }
+
+          return updatePayload;
+        })
+        .filter((update) => update.price !== undefined || update.inventory !== undefined || update.status)
     );
 
+    if (perDateUpdates.length === 0) {
+      setSaving(false);
+      setErrorNotice("Nothing to update for the selected dates.");
+      return;
+    }
+
+    setListings((current) => {
+      let next = current;
+      perDateUpdates.forEach((update) => {
+        next = applyCellUpdateForDate(next, update.listingId, update.date, {
+          price: update.price,
+          inventory: update.inventory,
+          status: update.status,
+          blockType: update.blockType as BulkUpdateSelection["blockType"] | undefined,
+        });
+      });
+      return next;
+    });
+
     try {
-      await Promise.all(requests);
+      await Promise.all(perDateUpdates.map((update) => patchAvailabilityCell(update)));
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
-      setModalOpen(false);
       clearSelection();
     } catch (err) {
       setListings(snapshot);
@@ -452,20 +918,48 @@ export default function AvailabilityCalendar() {
       setSaving(false);
     }
   }, [
+    applyCellUpdateForDate,
     applyOptimisticUpdate,
-    blockAction,
     blockType,
     clearSelection,
+    hasPriceAction,
     hasSelection,
     listings,
-    normalizedNightlyPrice,
-    selectedDates,
-    selectedListing,
+    normalizedInventoryInput,
+    normalizedPriceInput,
+    onlyOpenDates,
+    priceDirection,
+    priceMode,
+    skipMissingPrices,
+    statusAction,
+    targetSelections,
   ]);
+
+  const handleCellChange = useCallback(
+    async (
+      listingId: number,
+      date: string,
+      update: { price?: number | null; inventory?: number | null }
+    ) => {
+      const snapshot = listings;
+
+      setListings((current) => applyCellUpdateForDate(current, listingId, date, update));
+
+      try {
+        await patchAvailabilityCell({ listingId, date, ...update });
+        setSuccessNotice("Availability updated successfully.");
+        setErrorNotice("");
+      } catch (err) {
+        setListings(snapshot);
+        setErrorNotice("Update failed. Changes have been reverted.");
+      }
+    },
+    [applyCellUpdateForDate, listings]
+  );
 
   return (
     <AdminShellLayout title="Availability Calendar">
-      <Stack spacing={3} sx={{ pb: 4 }}>
+      <Stack spacing={2} sx={{ pb: 2 }}>
         {error && (
           <Alert
             severity="error"
@@ -484,7 +978,7 @@ export default function AvailabilityCalendar() {
             borderRadius: 2,
             border: "1px solid",
             borderColor: "divider",
-            p: 2,
+            p: 1.5,
             backgroundColor: "background.paper",
           }}
         >
@@ -495,80 +989,84 @@ export default function AvailabilityCalendar() {
               <Skeleton variant="rectangular" width={180} height={40} />
               <Skeleton variant="rectangular" width={220} height={40} />
               <Box sx={{ flex: 1 }} />
-              <Skeleton variant="rectangular" width={360} height={40} />
+              <Skeleton variant="rectangular" width={320} height={40} />
             </Stack>
           ) : (
             <Stack
               direction={{ xs: "column", lg: "row" }}
               spacing={2}
               alignItems={{ xs: "stretch", lg: "center" }}
+              justifyContent="space-between"
+              flexWrap="wrap"
+              rowGap={1.5}
             >
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Property</InputLabel>
-                <Select
-                  value={selectedProperty}
-                  label="Property"
-                  onChange={(event) => setSelectedProperty(event.target.value)}
+              <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center" rowGap={1.5}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Property</InputLabel>
+                  <Select
+                    value={selectedProperty}
+                    label="Property"
+                    onChange={(event) => setSelectedProperty(event.target.value)}
+                  >
+                    <MenuItem value="">All properties</MenuItem>
+                    {properties.map((property) => (
+                      <MenuItem key={property.id} value={String(property.id)}>
+                        {property.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={rangeDays}
+                  onChange={(_, value) => value && setRangeDays(value)}
+                  aria-label="date range"
                 >
-                  <MenuItem value="">All properties</MenuItem>
-                  {properties.map((property) => (
-                    <MenuItem key={property.id} value={String(property.id)}>
-                      {property.name}
-                    </MenuItem>
+                  {RANGE_OPTIONS.map((option) => (
+                    <ToggleButton key={option} value={option} aria-label={`${option} days`}>
+                      {option}d
+                    </ToggleButton>
                   ))}
-                </Select>
-              </FormControl>
+                </ToggleButtonGroup>
 
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={rangeDays}
-                onChange={(_, value) => value && setRangeDays(value)}
-                aria-label="date range"
-              >
-                {RANGE_OPTIONS.map((option) => (
-                  <ToggleButton key={option} value={option} aria-label={`${option} days`}>
-                    {option}d
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="From"
+                  value={fromDate}
+                  onChange={(event) => setFromDate(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
 
-              <TextField
-                size="small"
-                type="date"
-                label="From"
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <TextField
-                size="small"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search listings"
-                label="Listing"
-              />
+                <TextField
+                  size="small"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search listings"
+                  label="Listing"
+                />
+              </Stack>
 
               <Stack
                 direction="row"
                 spacing={1}
                 alignItems="center"
-                sx={{ ml: "auto", flexWrap: "wrap" }}
+                justifyContent="flex-end"
+                flexWrap="wrap"
+                rowGap={1}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {hasSelection
-                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
-                    : "No dates selected"}
+                  {hasSelection ? selectionSummary : "No dates selected"}
                 </Typography>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("block")}>
-                  Block
-                </Button>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("unblock")}>
-                  Unblock
-                </Button>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("price")}>
-                  Set Price
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!hasSelection}
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  Bulk actions
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
                   Refresh
@@ -590,7 +1088,7 @@ export default function AvailabilityCalendar() {
           <Box
             sx={{
               overflow: "auto",
-              maxHeight: "70vh",
+              maxHeight: "85vh",
             }}
           >
             {loading ? (
@@ -638,7 +1136,7 @@ export default function AvailabilityCalendar() {
                       Listing
                     </Typography>
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      Name & type
+                      Name
                     </Typography>
                   </Box>
                   {dayRange.map((date) => (
@@ -656,6 +1154,8 @@ export default function AvailabilityCalendar() {
                     onCellMouseEnter={handleMouseEnter}
                     onCellMouseUp={handleMouseUp}
                     isDateSelected={isDateSelected}
+                    isRowSelected={getSelectedDatesForListing(listing.listingId).length > 0}
+                    onCellChange={handleCellChange}
                   />
                 ))}
               </Box>
@@ -664,65 +1164,230 @@ export default function AvailabilityCalendar() {
         </Box>
       </Stack>
 
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Update availability</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {selectedListing?.listingName ?? "Selected listing"}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {selectionSummary}
-            </Typography>
+      <Drawer
+        anchor={isMdUp ? "right" : "bottom"}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{ sx: { width: isMdUp ? 440 : "100%" } }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            pb: 3,
+            maxHeight: isMdUp ? "100vh" : "75vh",
+            overflowY: "auto",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Bulk availability actions
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {hasSelection ? selectionSummary : "Select dates to enable bulk updates."}
+              </Typography>
+              {filteredOutCount > 0 && (
+                <Typography variant="caption" sx={{ color: "warning.main", display: "block" }}>
+                  Skipping {filteredOutCount} date{filteredOutCount === 1 ? "" : "s"} based on advanced rules.
+                </Typography>
+              )}
+            </Box>
+            <IconButton size="small" onClick={() => setDrawerOpen(false)} aria-label="Close bulk actions">
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Stack>
 
-          <FormControl size="small">
-            <InputLabel>Block action</InputLabel>
-            <Select
-              value={blockAction}
-              label="Block action"
-              onChange={(event) => setBlockAction(event.target.value as "none" | "block" | "unblock")}
-            >
-              <MenuItem value="none">No block change</MenuItem>
-              <MenuItem value="block">Block dates</MenuItem>
-              <MenuItem value="unblock">Unblock dates</MenuItem>
-            </Select>
-          </FormControl>
+          <Divider sx={{ my: 2 }} />
 
-          <FormControl size="small" disabled={blockAction !== "block"}>
-            <InputLabel>Block type</InputLabel>
-            <Select
-              value={blockType}
-              label="Block type"
-              onChange={(event) => setBlockType(event.target.value as BulkUpdateSelection["blockType"])}
-            >
-              {BLOCK_TYPE_OPTIONS.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Stack spacing={3}>
+            <Stack spacing={1}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Price
+                </Typography>
+                {hasPriceAction && (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={
+                      priceMode === "fixed"
+                        ? `Set to ₹${normalizedPriceInput}`
+                        : `${priceDirection === "increase" ? "+" : "-"}${normalizedPriceInput}${priceMode === "delta-percent" ? "%" : "₹"}`
+                    }
+                  />
+                )}
+              </Stack>
 
-          <TextField
-            size="small"
-            label="Nightly price"
-            type="number"
-            value={nightlyPrice}
-            onChange={(event) => setNightlyPrice(event.target.value)}
-            inputProps={{ min: 0 }}
-            helperText={PRICE_INPUT_HELPER}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModalOpen(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} variant="contained" disabled={!canSave || saving}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={priceMode}
+                onChange={(_, value) => value && setPriceMode(value)}
+                aria-label="Price action"
+              >
+                <ToggleButton value="none">No change</ToggleButton>
+                <ToggleButton value="fixed">Set fixed price</ToggleButton>
+                <ToggleButton value="delta-amount">Apply ₹ delta</ToggleButton>
+                <ToggleButton value="delta-percent">Apply % delta</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Collapse in={priceMode !== "none"}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  sx={{ mt: 1 }}
+                >
+                  {priceMode !== "fixed" && (
+                    <ToggleButtonGroup
+                      size="small"
+                      exclusive
+                      value={priceDirection}
+                      onChange={(_, value) => value && setPriceDirection(value)}
+                      aria-label="Price direction"
+                    >
+                      <ToggleButton value="increase">Increase</ToggleButton>
+                      <ToggleButton value="decrease">Decrease</ToggleButton>
+                    </ToggleButtonGroup>
+                  )}
+                  <TextField
+                    size="small"
+                    type="number"
+                    label={priceMode === "delta-percent" ? "Percent" : "Amount"}
+                    value={priceInput}
+                    onChange={(event) => setPriceInput(event.target.value)}
+                    inputProps={{ min: 0 }}
+                    helperText={
+                      priceMode === "fixed"
+                        ? PRICE_INPUT_HELPER
+                        : "Applied relative to the current nightly price."
+                    }
+                  />
+                </Stack>
+                {priceIsDelta && skipMissingPrices && (
+                  <Typography variant="caption" sx={{ color: "text.secondary", mt: 0.5, display: "block" }}>
+                    Dates without a price are skipped to keep validation consistent with bulk updates.
+                  </Typography>
+                )}
+              </Collapse>
+            </Stack>
+
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Inventory
+              </Typography>
+              <TextField
+                size="small"
+                label="Inventory count"
+                type="number"
+                value={inventoryInput}
+                onChange={(event) => setInventoryInput(event.target.value)}
+                helperText="Set a room count for selected dates. Leave blank to skip."
+                inputProps={{ min: 0 }}
+              />
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Status and channels
+              </Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={statusAction}
+                onChange={(_, value) => value && setStatusAction(value)}
+                aria-label="Status action"
+              >
+                <ToggleButton value="none">No change</ToggleButton>
+                <ToggleButton value="block">Block</ToggleButton>
+                <ToggleButton value="unblock">Unblock</ToggleButton>
+                <ToggleButton value="close-channels">Close all channels</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Collapse in={statusAction === "block" || statusAction === "close-channels"}>
+                <Stack spacing={1} sx={{ mt: 1 }}>
+                  <FormControl size="small">
+                    <InputLabel>Block type</InputLabel>
+                    <Select
+                      value={blockType}
+                      label="Block type"
+                      onChange={(event) => setBlockType(event.target.value as BulkUpdateSelection["blockType"])}
+                    >
+                      {BLOCK_TYPE_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {statusAction === "close-channels" && (
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                      Closing channels blocks the dates and forces inventory to zero.
+                    </Typography>
+                  )}
+                </Stack>
+              </Collapse>
+            </Stack>
+
+            <Accordion
+              expanded={advancedOpen}
+              onChange={(_, expanded) => setAdvancedOpen(expanded)}
+              disableGutters
+              elevation={0}
+              sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Advanced rules
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={onlyOpenDates}
+                        onChange={(event) => setOnlyOpenDates(event.target.checked)}
+                      />
+                    }
+                    label="Only update dates that are currently open"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={skipMissingPrices}
+                        onChange={(event) => setSkipMissingPrices(event.target.checked)}
+                      />
+                    }
+                    label="Skip dates without a nightly price when applying deltas"
+                  />
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    Validation follows the bulk availability API: select a listing and dates, then choose at least one action
+                    (price, inventory, or status).
+                  </Typography>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="flex-end"
+            alignItems={{ xs: "stretch", sm: "center" }}
+          >
+            <Button onClick={clearSelection} disabled={!hasSelection || saving} variant="outlined">
+              Clear selection
+            </Button>
+            <Button onClick={handleSave} variant="contained" disabled={!canSave || saving}>
+              {saving ? "Applying" : "Apply changes"}
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
 
       <Snackbar
         open={Boolean(successNotice)}
