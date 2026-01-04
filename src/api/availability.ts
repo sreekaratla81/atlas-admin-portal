@@ -14,10 +14,18 @@ export type CalendarListing = {
   listingId: number;
   listingName: string;
   days: Record<string, CalendarDay>;
+  ratePlans: CalendarRatePlan[];
+};
+
+export type CalendarRatePlan = {
+  ratePlanId: number;
+  name: string;
+  days: Record<string, CalendarDay>;
 };
 
 export type BulkUpdateSelection = {
   listingId: number;
+  ratePlanId?: number;
   dates: string[];
   blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
   unblock?: boolean;
@@ -32,6 +40,14 @@ type CalendarApiDay = Omit<CalendarDay, "price" | "inventory"> & {
 type CalendarApiListing = {
   listingId?: number;
   listingName?: string;
+  days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
+  ratePlans?: CalendarApiRatePlan[];
+};
+
+type CalendarApiRatePlan = {
+  ratePlanId?: number;
+  name?: string;
+  daily?: CalendarApiDay[] | Record<string, CalendarApiDay>;
   days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
 };
 
@@ -63,6 +79,7 @@ export const formatCurrencyINR = (value: number) =>
 
 export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
   listingId: selection.listingId,
+  ratePlanId: selection.ratePlanId,
   dates: selection.dates,
   status: selection.unblock ? "open" : "blocked",
   blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
@@ -70,12 +87,14 @@ export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
 
 export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
   listingId: selection.listingId,
+  ratePlanId: selection.ratePlanId,
   dates: selection.dates,
   price: selection.nightlyPrice,
 });
 
 export const updateInventoryForDate = (params: {
   listingId: number;
+  ratePlanId?: number;
   date: string;
   inventory: number | null;
 }) => api.post("/availability/inventory", params);
@@ -111,6 +130,20 @@ const normalizeDays = (
   }, {});
 };
 
+const normalizeRatePlans = (
+  ratePlans: CalendarApiRatePlan[] | undefined
+): CalendarRatePlan[] => {
+  if (!ratePlans) return [];
+
+  return ratePlans
+    .filter((plan) => plan.ratePlanId && plan.name)
+    .map((plan) => ({
+      ratePlanId: plan.ratePlanId as number,
+      name: plan.name as string,
+      days: normalizeDays(plan.daily ?? plan.days),
+    }));
+};
+
 export const fetchCalendarData = async (
   propertyId: string | number | undefined,
   from: string,
@@ -135,5 +168,6 @@ export const fetchCalendarData = async (
       listingId: listing.listingId as number,
       listingName: listing.listingName as string,
       days: normalizeDays(listing.days),
+      ratePlans: normalizeRatePlans(listing.ratePlans),
     }));
 };
