@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { addDays, format, isAfter, parseISO } from "date-fns";
 import { CalendarDay } from "@/api/availability";
 
@@ -180,32 +180,28 @@ const handleBulkPatch = (config: AxiosRequestConfig): AxiosResponse => {
 
 export const setupAvailabilityMocks = (api: AxiosInstance) => {
   const enabled = import.meta.env.VITE_USE_MOCK_AVAILABILITY !== "false" && import.meta.env.DEV;
-  if (!enabled) return;
+  if (!enabled) return undefined;
 
-  const defaultAdapter = api.defaults.adapter ?? axios.defaults.adapter;
-  if (!defaultAdapter) return;
-
-  api.defaults.adapter = async (config) => {
+  const interceptorId = api.interceptors.request.use((config) => {
     const url = config.url ? new URL(config.url, api.defaults.baseURL || window.location.origin) : null;
+    if (!url) return config;
 
-    if (!url) return defaultAdapter(config);
+    const method = (config.method ?? "get").toLowerCase();
 
-    if (url.pathname === "/admin/calendar/availability" && config.method === "get") {
-      return handleAvailabilityGet(config, url);
+    if (url.pathname === "/admin/calendar/availability" && method === "get") {
+      config.adapter = async () => handleAvailabilityGet(config, url);
+    } else if (url.pathname === "/properties" && method === "get") {
+      config.adapter = async () => handlePropertiesGet(config);
+    } else if (url.pathname === "/admin/calendar/availability/cell" && method === "patch") {
+      config.adapter = async () => handleCellPatch(config);
+    } else if (url.pathname === "/admin/calendar/availability/bulk" && method === "patch") {
+      config.adapter = async () => handleBulkPatch(config);
     }
 
-    if (url.pathname === "/properties" && config.method === "get") {
-      return handlePropertiesGet(config);
-    }
+    return config;
+  });
 
-    if (url.pathname === "/admin/calendar/availability/cell" && config.method === "patch") {
-      return handleCellPatch(config);
-    }
-
-    if (url.pathname === "/admin/calendar/availability/bulk" && config.method === "patch") {
-      return handleBulkPatch(config);
-    }
-
-    return defaultAdapter(config);
+  return () => {
+    api.interceptors.request.eject(interceptorId);
   };
 };

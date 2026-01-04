@@ -56,6 +56,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
 - **Authenticate locally** – set `VITE_AUTH_BYPASS=true` and edit `public/auth-bypass.json` with a mock Auth0 profile. 【F:src/auth/AuthProvider.tsx†L5-L18】
 - **Update allowed users** – adjust `VITE_ALLOWED_EMAILS` (JSON array or CSV). 【F:src/config/env.ts†L24-L35】
 - **Refresh guest cache** – call `hydrateGuests(true)` in DevTools console to force a `/guests` sync. 【F:src/services/guests.local.ts†L13-L25】
+- **Use availability mocks** – the dev-only `setupMocks` hook registers an Axios request interceptor that assigns per-request adapters for calendar and property endpoints. Mocking should not overwrite Axios defaults globally. 【F:src/main.tsx†L10-L31】【F:src/mocks/index.ts†L1-L15】【F:src/mocks/availability.ts†L120-L152】
 - **Build for production**
   ```bash
   npm run build
