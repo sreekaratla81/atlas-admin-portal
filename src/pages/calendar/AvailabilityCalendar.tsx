@@ -478,11 +478,11 @@ export default function AvailabilityCalendar() {
   const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
   const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
 
-  const openBulkModal = (action: "block" | "unblock" | "price") => {
+  const openBulkModal = () => {
     if (!hasSelection) {
       return;
     }
-    setBlockAction(action === "price" ? "none" : action);
+    setBlockAction("none");
     setBlockType("Maintenance");
     setNightlyPrice("");
     setModalOpen(true);
@@ -641,7 +641,7 @@ export default function AvailabilityCalendar() {
 
   return (
     <AdminShellLayout title="Availability Calendar">
-      <Stack spacing={3} sx={{ pb: 4 }}>
+      <Stack spacing={2} sx={{ pb: 2 }}>
         {error && (
           <Alert
             severity="error"
@@ -660,7 +660,7 @@ export default function AvailabilityCalendar() {
             borderRadius: 2,
             border: "1px solid",
             borderColor: "divider",
-            p: 2,
+            p: 1.5,
             backgroundColor: "background.paper",
           }}
         >
@@ -671,80 +671,81 @@ export default function AvailabilityCalendar() {
               <Skeleton variant="rectangular" width={180} height={40} />
               <Skeleton variant="rectangular" width={220} height={40} />
               <Box sx={{ flex: 1 }} />
-              <Skeleton variant="rectangular" width={360} height={40} />
+              <Skeleton variant="rectangular" width={320} height={40} />
             </Stack>
           ) : (
             <Stack
               direction={{ xs: "column", lg: "row" }}
               spacing={2}
               alignItems={{ xs: "stretch", lg: "center" }}
+              justifyContent="space-between"
+              flexWrap="wrap"
+              rowGap={1.5}
             >
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Property</InputLabel>
-                <Select
-                  value={selectedProperty}
-                  label="Property"
-                  onChange={(event) => setSelectedProperty(event.target.value)}
+              <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center" rowGap={1.5}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Property</InputLabel>
+                  <Select
+                    value={selectedProperty}
+                    label="Property"
+                    onChange={(event) => setSelectedProperty(event.target.value)}
+                  >
+                    <MenuItem value="">All properties</MenuItem>
+                    {properties.map((property) => (
+                      <MenuItem key={property.id} value={String(property.id)}>
+                        {property.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={rangeDays}
+                  onChange={(_, value) => value && setRangeDays(value)}
+                  aria-label="date range"
                 >
-                  <MenuItem value="">All properties</MenuItem>
-                  {properties.map((property) => (
-                    <MenuItem key={property.id} value={String(property.id)}>
-                      {property.name}
-                    </MenuItem>
+                  {RANGE_OPTIONS.map((option) => (
+                    <ToggleButton key={option} value={option} aria-label={`${option} days`}>
+                      {option}d
+                    </ToggleButton>
                   ))}
-                </Select>
-              </FormControl>
+                </ToggleButtonGroup>
 
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={rangeDays}
-                onChange={(_, value) => value && setRangeDays(value)}
-                aria-label="date range"
-              >
-                {RANGE_OPTIONS.map((option) => (
-                  <ToggleButton key={option} value={option} aria-label={`${option} days`}>
-                    {option}d
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
+                <TextField
+                  size="small"
+                  type="date"
+                  label="From"
+                  value={fromDate}
+                  onChange={(event) => setFromDate(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
 
-              <TextField
-                size="small"
-                type="date"
-                label="From"
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <TextField
-                size="small"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search listings"
-                label="Listing"
-              />
+                <TextField
+                  size="small"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search listings"
+                  label="Listing"
+                />
+              </Stack>
 
               <Stack
                 direction="row"
                 spacing={1}
                 alignItems="center"
-                sx={{ ml: "auto", flexWrap: "wrap" }}
+                justifyContent="flex-end"
+                flexWrap="wrap"
+                rowGap={1}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {hasSelection
                     ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
                     : "No dates selected"}
                 </Typography>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("block")}>
-                  Block
-                </Button>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("unblock")}>
-                  Unblock
-                </Button>
-                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={() => openBulkModal("price")}>
-                  Set Price
+                <Button size="small" variant="outlined" disabled={!hasSelection} onClick={openBulkModal}>
+                  Bulk edit
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
                   Refresh
@@ -766,7 +767,7 @@ export default function AvailabilityCalendar() {
           <Box
             sx={{
               overflow: "auto",
-              maxHeight: "70vh",
+              maxHeight: "85vh",
             }}
           >
             {loading ? (
