@@ -25,6 +25,8 @@ import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
   buildDateArray,
+  buildBulkBlockPayload,
+  buildBulkPricePayload,
   BulkUpdateSelection,
   CalendarDay,
   CalendarListing,
@@ -475,13 +477,13 @@ export default function AvailabilityCalendar() {
 
   const dayRange = useMemo(() => buildDateArray(fromDate, toDate), [fromDate, toDate]);
   const {
-    selection,
     clearSelection,
     handleMouseDown,
     handleMouseEnter,
     handleMouseUp,
     isDateSelected,
     getSelectedDatesForListing,
+    getSelectedListings,
   } = useCalendarSelection(dayRange);
 
   const fetchData = useCallback(async () => {
@@ -514,32 +516,53 @@ export default function AvailabilityCalendar() {
   }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
-  const selectedListing = useMemo(() => {
-    if (!selection.listingId) {
-      return null;
-    }
-    return listings.find((listing) => listing.listingId === selection.listingId) ?? null;
-  }, [listings, selection.listingId]);
+  const selectedListingRanges = useMemo(() => getSelectedListings(), [getSelectedListings]);
 
-  const selectedDates = useMemo(() => {
-    if (!selection.listingId) {
-      return [];
-    }
+  const totalSelectedDates = useMemo(
+    () => selectedListingRanges.reduce((total, selection) => total + selection.dates.length, 0),
+    [selectedListingRanges]
+  );
 
-    return getSelectedDatesForListing(selection.listingId);
-  }, [getSelectedDatesForListing, selection.listingId]);
+  const selectedListingEntities = useMemo(
+    () =>
+      listings.filter((listing) =>
+        selectedListingRanges.some((selection) => selection.listingId === listing.listingId)
+      ),
+    [listings, selectedListingRanges]
+  );
 
   const selectionSummary = useMemo(() => {
-    if (!selection.startDate || !selection.endDate || selectedDates.length === 0) {
+    if (selectedListingRanges.length === 0) {
       return "No dates selected";
     }
 
-    const start = format(parseISO(selection.startDate), "MMM d, yyyy");
-    const end = format(parseISO(selection.endDate), "MMM d, yyyy");
-    return `${start} - ${end} · ${selectedDates.length} night${selectedDates.length === 1 ? "" : "s"}`;
-  }, [selectedDates.length, selection.endDate, selection.startDate]);
+    const listingLabel =
+      selectedListingEntities.length === 1
+        ? selectedListingEntities[0].listingName
+        : `${selectedListingEntities.length} listings`;
 
-  const hasSelection = selectedDates.length > 0 && Boolean(selectedListing);
+    const startDates = selectedListingRanges
+      .map((selection) => selection.startDate)
+      .filter(Boolean)
+      .sort();
+    const endDates = selectedListingRanges
+      .map((selection) => selection.endDate)
+      .filter(Boolean)
+      .sort();
+
+    const start = startDates[0] ? format(parseISO(startDates[0] as string), "MMM d, yyyy") : null;
+    const end = endDates[endDates.length - 1]
+      ? format(parseISO(endDates[endDates.length - 1] as string), "MMM d, yyyy")
+      : null;
+
+    if (!start || !end) {
+      return `Selected ${totalSelectedDates} day${totalSelectedDates === 1 ? "" : "s"} • ${listingLabel}`;
+    }
+
+    return `${start} - ${end} · ${totalSelectedDates} night${totalSelectedDates === 1 ? "" : "s"} • ${listingLabel}`;
+  }, [selectedListingEntities, selectedListingRanges, totalSelectedDates]);
+
+  const hasSelection = totalSelectedDates > 0 && selectedListingEntities.length > 0;
   const parsedNightlyPrice = nightlyPrice.trim() === "" ? null : Number(nightlyPrice);
   const normalizedNightlyPrice = Number.isNaN(parsedNightlyPrice) ? null : parsedNightlyPrice;
   const canSave = hasSelection && (blockAction !== "none" || normalizedNightlyPrice != null);
@@ -562,48 +585,55 @@ export default function AvailabilityCalendar() {
         blockType?: BulkUpdateSelection["blockType"];
         price?: number;
         inventory?: number | null;
-      }
+      },
+      selectedRanges: { listingId: number; dates: string[] }[]
     ) => {
-      if (!selection.listingId || selectedDates.length === 0) {
+      if (selectedRanges.length === 0) {
         return currentListings;
       }
 
-      return currentListings.map((listing) => {
-        if (listing.listingId !== selection.listingId) {
-          return listing;
+      return selectedRanges.reduce((listingsAcc, selection) => {
+        if (selection.dates.length === 0) {
+          return listingsAcc;
         }
 
-        return {
-          ...listing,
-          days: selectedDates.reduce<Record<string, CalendarDay>>((acc, date) => {
-            const existing = listing.days[date] ?? { date, status: "open" as const };
-            const next = { ...existing };
+        return listingsAcc.map((listing) => {
+          if (listing.listingId !== selection.listingId) {
+            return listing;
+          }
 
-            if (update.status) {
-              next.status = update.status;
-              if (update.status === "blocked") {
-                next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
-              } else {
-                delete next.blockType;
-                delete next.reason;
+          return {
+            ...listing,
+            days: selection.dates.reduce<Record<string, CalendarDay>>((acc, date) => {
+              const existing = listing.days[date] ?? { date, status: "open" as const };
+              const next = { ...existing };
+
+              if (update.status) {
+                next.status = update.status;
+                if (update.status === "blocked") {
+                  next.blockType = update.blockType ?? existing.blockType ?? "Maintenance";
+                } else {
+                  delete next.blockType;
+                  delete next.reason;
+                }
               }
-            }
 
-            if (update.price != null) {
-              next.price = update.price;
-            }
+              if (update.price != null) {
+                next.price = update.price;
+              }
 
-            if (update.inventory !== undefined) {
-              next.inventory = update.inventory;
-            }
+              if (update.inventory !== undefined) {
+                next.inventory = update.inventory;
+              }
 
-            acc[date] = next;
-            return acc;
-          }, { ...listing.days }),
-        };
-      });
+              acc[date] = next;
+              return acc;
+            }, { ...listing.days }),
+          };
+        });
+      }, currentListings);
     },
-    [selectedDates, selection.listingId]
+    []
   );
 
   const applyCellUpdateForDate = useCallback(
@@ -636,18 +666,24 @@ export default function AvailabilityCalendar() {
   );
 
   const handleSave = useCallback(async () => {
-    if (!hasSelection || !selectedListing) {
+    if (!hasSelection) {
       return;
     }
 
-    const payload = {
-      listingIds: [selectedListing.listingId],
-      startDate: selection.startDate!,
-      endDate: selection.endDate!,
-      status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
-      blockType: blockAction === "block" ? blockType : undefined,
-      price: normalizedNightlyPrice ?? undefined,
-    };
+    const selectionsForPayload: BulkUpdateSelection[] = selectedListingRanges.map((selection) => ({
+      listingId: selection.listingId,
+      dates: selection.dates,
+      blockType: blockType,
+      unblock: blockAction === "unblock",
+      nightlyPrice: normalizedNightlyPrice ?? undefined,
+    }));
+
+    const blockPayloads =
+      blockAction === "none" ? [] : buildBulkBlockPayload(selectionsForPayload.filter((selection) => selection.dates.length));
+    const pricePayloads =
+      normalizedNightlyPrice == null
+        ? []
+        : buildBulkPricePayload(selectionsForPayload.filter((selection) => selection.dates.length));
 
     const snapshot = listings;
     setSaving(true);
@@ -656,11 +692,15 @@ export default function AvailabilityCalendar() {
         status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
         blockType: blockAction === "block" ? blockType : undefined,
         price: normalizedNightlyPrice ?? undefined,
-      })
+      }, selectedListingRanges)
     );
 
     try {
-      await patchAvailabilityBulk(payload);
+      const payloads = [...blockPayloads, ...pricePayloads];
+      for (const payload of payloads) {
+        // eslint-disable-next-line no-await-in-loop
+        await patchAvailabilityBulk(payload);
+      }
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
       setModalOpen(false);
@@ -675,12 +715,11 @@ export default function AvailabilityCalendar() {
     applyOptimisticUpdate,
     blockAction,
     blockType,
-      clearSelection,
-      hasSelection,
-      listings,
-      normalizedNightlyPrice,
-      selectedDates,
-      selectedListing,
+    clearSelection,
+    hasSelection,
+    listings,
+    normalizedNightlyPrice,
+    selectedListingRanges,
   ]);
 
   const handleCellChange = useCallback(
@@ -806,9 +845,7 @@ export default function AvailabilityCalendar() {
                 rowGap={1}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {hasSelection
-                    ? `Selected ${selectedDates.length} day${selectedDates.length === 1 ? "" : "s"} • ${selectedListing?.listingName ?? "Listing"}`
-                    : "No dates selected"}
+                  {selectionSummary}
                 </Typography>
                 <Button size="small" variant="outlined" disabled={!hasSelection} onClick={openBulkModal}>
                   Bulk edit
@@ -913,7 +950,9 @@ export default function AvailabilityCalendar() {
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {selectedListing?.listingName ?? "Selected listing"}
+              {selectedListingEntities.length === 1
+                ? selectedListingEntities[0].listingName
+                : `${selectedListingEntities.length || "No"} listings selected`}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               {selectionSummary}

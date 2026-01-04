@@ -82,18 +82,63 @@ export const formatCurrencyINR = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
-  listingId: selection.listingId,
-  dates: selection.dates,
-  status: selection.unblock ? "open" : "blocked",
-  blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
-});
+const aggregateSelectionsByRange = (selections: BulkUpdateSelection[]) => {
+  return selections.reduce<
+    Record<
+      string,
+      {
+        startDate: string;
+        endDate: string;
+        listingIds: number[];
+        status?: "open" | "blocked";
+        blockType?: string;
+        price?: number | null;
+      }
+    >
+  >((acc, selection) => {
+    if (!selection.dates.length) {
+      return acc;
+    }
 
-export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
-  listingId: selection.listingId,
-  dates: selection.dates,
-  price: selection.nightlyPrice,
-});
+    const sortedDates = [...selection.dates].sort();
+    const startDate = sortedDates[0];
+    const endDate = sortedDates[sortedDates.length - 1];
+    const status = selection.unblock ? "open" : "blocked";
+    const blockType = selection.unblock ? undefined : selection.blockType ?? "Maintenance";
+    const price = selection.nightlyPrice;
+    const key = `${startDate}-${endDate}-${status}-${blockType ?? "none"}-${price ?? ""}`;
+
+    if (!acc[key]) {
+      acc[key] = { startDate, endDate, listingIds: [], status, blockType, price };
+    }
+
+    acc[key].listingIds.push(selection.listingId);
+    return acc;
+  }, {});
+};
+
+export const buildBulkBlockPayload = (selections: BulkUpdateSelection[]) => {
+  const aggregated = aggregateSelectionsByRange(selections);
+
+  return Object.values(aggregated).map((group) => ({
+    listingIds: group.listingIds,
+    startDate: group.startDate,
+    endDate: group.endDate,
+    status: group.status,
+    blockType: group.blockType,
+  }));
+};
+
+export const buildBulkPricePayload = (selections: BulkUpdateSelection[]) => {
+  const aggregated = aggregateSelectionsByRange(selections);
+
+  return Object.values(aggregated).map((group) => ({
+    listingIds: group.listingIds,
+    startDate: group.startDate,
+    endDate: group.endDate,
+    price: group.price,
+  }));
+};
 
 export const patchAvailabilityCell = async (params: {
   listingId: number;
