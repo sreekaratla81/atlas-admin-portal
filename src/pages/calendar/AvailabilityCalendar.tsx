@@ -33,7 +33,7 @@ import {
   CalendarRatePlan,
   fetchCalendarData,
   formatCurrencyINR,
-  updateInventoryForDate,
+  patchAvailabilityCell,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -117,11 +117,11 @@ type DataCellProps = {
   onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onMouseEnter: () => void;
   onMouseUp: () => void;
-  onInventoryChange: (
+  onCellChange: (
     listingId: number,
     ratePlanId: number,
     date: string,
-    inventory: number | null
+    update: { price?: number | null; inventory?: number | null }
   ) => void;
 };
 
@@ -136,18 +136,27 @@ const DataCell = React.memo(
     onMouseDown,
     onMouseEnter,
     onMouseUp,
-    onInventoryChange,
+    onCellChange,
   }: DataCellProps) => {
-  const [editingInventory, setEditingInventory] = useState(false);
+  const [editingField, setEditingField] = useState<"price" | "inventory" | null>(null);
+  const [priceDraft, setPriceDraft] = useState<string>(
+    availability?.price != null ? String(availability.price) : ""
+  );
   const [inventoryDraft, setInventoryDraft] = useState<string>(
     availability?.inventory != null ? String(availability.inventory) : ""
   );
 
   useEffect(() => {
-    if (!editingInventory) {
+    if (editingField !== "price") {
+      setPriceDraft(availability?.price != null ? String(availability.price) : "");
+    }
+  }, [availability?.price, editingField]);
+
+  useEffect(() => {
+    if (editingField !== "inventory") {
       setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
     }
-  }, [availability?.inventory, editingInventory]);
+  }, [availability?.inventory, editingField]);
 
   const dateObj = parseISO(date);
   const isWeekend = getDay(dateObj) === 0 || getDay(dateObj) === 6;
@@ -166,21 +175,33 @@ const DataCell = React.memo(
     ? `${availability?.blockType ?? "Blocked"}${availability?.reason ? ` • ${availability.reason}` : ""}`
     : "Available";
 
-  const commitInventoryChange = () => {
-    const trimmed = inventoryDraft.trim();
+  const commitChange = (field: "price" | "inventory") => {
+    const draft = field === "price" ? priceDraft : inventoryDraft;
+    const trimmed = draft.trim();
     const value = trimmed === "" ? null : Number(trimmed);
+    const currentValue =
+      field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
 
     if (Number.isNaN(value)) {
-      setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
-      setEditingInventory(false);
+      if (field === "price") {
+        setPriceDraft(availability?.price != null ? String(availability.price) : "");
+      } else {
+        setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
+      }
+      setEditingField(null);
       return;
     }
 
-    if (value !== availability?.inventory) {
-      onInventoryChange(listingId, ratePlanId, date, value);
+    if (value !== currentValue) {
+      onCellChange(
+        listingId,
+        ratePlanId,
+        date,
+        field === "price" ? { price: value } : { inventory: value }
+      );
     }
 
-    setEditingInventory(false);
+    setEditingField(null);
   };
 
   return (
@@ -210,23 +231,58 @@ const DataCell = React.memo(
           onMouseUp={onMouseUp}
         >
         <Stack spacing={0.5} alignItems="center" sx={{ width: "100%" }}>
-          <Typography variant="body2">
-            {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
-          </Typography>
-          {editingInventory ? (
+          {editingField === "price" ? (
+            <TextField
+              size="small"
+              type="number"
+              value={priceDraft}
+              autoFocus
+              onChange={(event) => setPriceDraft(event.target.value)}
+              onBlur={() => commitChange("price")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitChange("price");
+                }
+                if (event.key === "Escape") {
+                  setPriceDraft(availability?.price != null ? String(availability.price) : "");
+                  setEditingField(null);
+                }
+              }}
+              inputProps={{ min: 0, style: { padding: "4px 8px", textAlign: "center" } }}
+              sx={{ width: "90%" }}
+              onMouseDown={(event) => event.stopPropagation()}
+              onMouseUp={(event) => event.stopPropagation()}
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{ cursor: "text" }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditingField("price");
+              }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              {availability?.price != null ? formatCurrencyINR(availability.price) : "—"}
+            </Typography>
+          )}
+          {editingField === "inventory" ? (
             <TextField
               size="small"
               type="number"
               value={inventoryDraft}
+              autoFocus
               onChange={(event) => setInventoryDraft(event.target.value)}
-              onBlur={commitInventoryChange}
+              onBlur={() => commitChange("inventory")}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
-                  commitInventoryChange();
+                  commitChange("inventory");
                 }
                 if (event.key === "Escape") {
-                  setInventoryDraft(availability?.inventory != null ? String(availability.inventory) : "");
-                  setEditingInventory(false);
+                  setInventoryDraft(
+                    availability?.inventory != null ? String(availability.inventory) : ""
+                  );
+                  setEditingField(null);
                 }
               }}
               inputProps={{ min: 0, style: { padding: "4px 8px", textAlign: "center" } }}
@@ -240,7 +296,7 @@ const DataCell = React.memo(
               sx={{ color: "text.secondary", cursor: "text" }}
               onClick={(event) => {
                 event.stopPropagation();
-                setEditingInventory(true);
+                setEditingField("inventory");
               }}
               onMouseDown={(event) => event.stopPropagation()}
             >
@@ -276,11 +332,11 @@ type ListingRowProps = {
   onCellMouseEnter: (listingId: number, ratePlanId: number, date: string) => void;
   onCellMouseUp: () => void;
   isDateSelected: (listingId: number, ratePlanId: number, date: string) => boolean;
-  onInventoryChange: (
+  onCellChange: (
     listingId: number,
     ratePlanId: number,
     date: string,
-    inventory: number | null
+    update: { price?: number | null; inventory?: number | null }
   ) => void;
 };
 
@@ -295,7 +351,7 @@ const ListingRow = React.memo(
     onCellMouseEnter,
     onCellMouseUp,
     isDateSelected,
-    onInventoryChange,
+    onCellChange,
   }: ListingRowProps) => (
     <Box
       sx={{
@@ -339,7 +395,7 @@ const ListingRow = React.memo(
           onMouseDown={(event) => onCellMouseDown(listingId, ratePlan.ratePlanId, date, event.shiftKey)}
           onMouseEnter={() => onCellMouseEnter(listingId, ratePlan.ratePlanId, date)}
           onMouseUp={onCellMouseUp}
-          onInventoryChange={onInventoryChange}
+          onCellChange={onCellChange}
         />
       ))}
     </Box>
@@ -549,27 +605,29 @@ export default function AvailabilityCalendar() {
     [selectedDates, selection.listingId, selection.ratePlanId]
   );
 
-  const applyInventoryUpdateForDate = useCallback(
+  const applyCellUpdateForDate = useCallback(
     (
       currentListings: CalendarListing[],
       listingId: number,
       ratePlanId: number,
       date: string,
-      inventory: number | null
+      update: { price?: number | null; inventory?: number | null }
     ) => {
       return currentListings.map((listing) => {
         if (listing.listingId !== listingId) {
           return listing;
         }
 
+        const nextListingDay = {
+          ...(listing.days[date] ?? { date, status: "open" as const }),
+          ...update,
+        };
+
         return {
           ...listing,
           days: {
             ...listing.days,
-            [date]: {
-              ...(listing.days[date] ?? { date, status: "open" as const }),
-              inventory,
-            },
+            [date]: nextListingDay,
           },
           ratePlans: listing.ratePlans.map((plan) => {
             if (plan.ratePlanId !== ratePlanId) {
@@ -582,7 +640,7 @@ export default function AvailabilityCalendar() {
                 ...plan.days,
                 [date]: {
                   ...(plan.days[date] ?? { date, status: "open" as const }),
-                  inventory,
+                  ...update,
                 },
               },
             };
@@ -654,22 +712,27 @@ export default function AvailabilityCalendar() {
     selectedRatePlan,
   ]);
 
-  const handleInventoryChange = useCallback(
-    async (listingId: number, ratePlanId: number, date: string, inventory: number | null) => {
+  const handleCellChange = useCallback(
+    async (
+      listingId: number,
+      ratePlanId: number,
+      date: string,
+      update: { price?: number | null; inventory?: number | null }
+    ) => {
       const snapshot = listings;
 
-      setListings((current) => applyInventoryUpdateForDate(current, listingId, ratePlanId, date, inventory));
+      setListings((current) => applyCellUpdateForDate(current, listingId, ratePlanId, date, update));
 
       try {
-        await updateInventoryForDate({ listingId, ratePlanId, date, inventory });
-        setSuccessNotice("Inventory updated successfully.");
+        await patchAvailabilityCell({ listingId, ratePlanId, date, ...update });
+        setSuccessNotice("Availability updated successfully.");
         setErrorNotice("");
       } catch (err) {
         setListings(snapshot);
-        setErrorNotice("Inventory update failed. Changes have been reverted.");
+        setErrorNotice("Update failed. Changes have been reverted.");
       }
     },
-    [applyInventoryUpdateForDate, listings]
+    [applyCellUpdateForDate, listings]
   );
 
   return (
@@ -915,7 +978,7 @@ export default function AvailabilityCalendar() {
                         onCellMouseEnter={handleMouseEnter}
                         onCellMouseUp={handleMouseUp}
                         isDateSelected={isDateSelected}
-                        onInventoryChange={handleInventoryChange}
+                        onCellChange={handleCellChange}
                       />
                     ))}
                   </Box>

@@ -99,6 +99,14 @@ export const updateInventoryForDate = (params: {
   inventory: number | null;
 }) => api.post("/availability/inventory", params);
 
+export const patchAvailabilityCell = (params: {
+  listingId: number;
+  ratePlanId: number;
+  date: string;
+  price?: number | null;
+  inventory?: number | null;
+}) => api.patch("/admin/calendar/availability/cell", params);
+
 const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
   date: day.date,
   status: day.status ?? "open",
