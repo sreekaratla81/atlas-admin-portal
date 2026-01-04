@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type SelectionState = {
-  listingId: number | null;
+type ListingSelection = {
   anchorDate: string | null;
   startDate: string | null;
   endDate: string | null;
 };
 
-const emptySelection: SelectionState = {
-  listingId: null,
-  anchorDate: null,
-  startDate: null,
-  endDate: null,
-};
+type SelectionState = Record<number, ListingSelection>;
 
 const resolveRange = (
   datesIndex: Map<string, number>,
@@ -38,7 +32,7 @@ const resolveRange = (
 };
 
 export default function useCalendarSelection(dates: string[]) {
-  const [selection, setSelection] = useState<SelectionState>(emptySelection);
+  const [selection, setSelection] = useState<SelectionState>({});
   const [isDragging, setIsDragging] = useState(false);
 
   const datesIndex = useMemo(() => {
@@ -46,51 +40,70 @@ export default function useCalendarSelection(dates: string[]) {
   }, [dates]);
 
   const clearSelection = useCallback(() => {
-    setSelection(emptySelection);
+    setSelection({});
     setIsDragging(false);
   }, []);
 
   const setRange = useCallback(
     (listingId: number, anchorDate: string, endDate: string) => {
       const range = resolveRange(datesIndex, anchorDate, endDate);
-      setSelection({
-        listingId,
-        anchorDate,
-        startDate: range.startDate,
-        endDate: range.endDate,
-      });
+      setSelection((current) => ({
+        ...current,
+        [listingId]: {
+          anchorDate,
+          startDate: range.startDate,
+          endDate: range.endDate,
+        },
+      }));
     },
     [datesIndex]
   );
 
   const handleMouseDown = useCallback(
     (listingId: number, date: string, shiftKey: boolean) => {
-      if (shiftKey && selection.anchorDate && selection.listingId === listingId) {
-        setRange(listingId, selection.anchorDate, date);
+      const existingSelection = selection[listingId];
+
+      if (shiftKey && existingSelection?.anchorDate) {
+        setRange(listingId, existingSelection.anchorDate, date);
         setIsDragging(false);
         return;
       }
 
-      setSelection({
-        listingId,
-        anchorDate: date,
-        startDate: date,
-        endDate: date,
-      });
+      setSelection((current) => ({
+        ...current,
+        [listingId]: {
+          anchorDate: date,
+          startDate: date,
+          endDate: date,
+        },
+      }));
       setIsDragging(true);
     },
-    [selection.anchorDate, selection.listingId, setRange]
+    [selection, setRange]
   );
 
   const handleMouseEnter = useCallback(
     (listingId: number, date: string) => {
-      if (!isDragging || selection.listingId !== listingId || !selection.anchorDate) {
+      if (!isDragging) {
         return;
       }
 
-      setRange(listingId, selection.anchorDate, date);
+      setSelection((current) => {
+        const listingSelection = current[listingId];
+        const anchorDate = listingSelection?.anchorDate ?? date;
+        const range = resolveRange(datesIndex, anchorDate, date);
+
+        return {
+          ...current,
+          [listingId]: {
+            anchorDate,
+            startDate: range.startDate,
+            endDate: range.endDate,
+          },
+        };
+      });
     },
-    [isDragging, selection.anchorDate, selection.listingId, setRange]
+    [datesIndex, isDragging]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -99,12 +112,14 @@ export default function useCalendarSelection(dates: string[]) {
 
   const isDateSelected = useCallback(
     (listingId: number, date: string) => {
-      if (selection.listingId !== listingId || !selection.startDate || !selection.endDate) {
+      const listingSelection = selection[listingId];
+
+      if (!listingSelection?.startDate || !listingSelection?.endDate) {
         return false;
       }
 
-      const startIndex = datesIndex.get(selection.startDate);
-      const endIndex = datesIndex.get(selection.endDate);
+      const startIndex = datesIndex.get(listingSelection.startDate);
+      const endIndex = datesIndex.get(listingSelection.endDate);
       const dateIndex = datesIndex.get(date);
 
       if (startIndex == null || endIndex == null || dateIndex == null) {
@@ -113,17 +128,19 @@ export default function useCalendarSelection(dates: string[]) {
 
       return dateIndex >= startIndex && dateIndex <= endIndex;
     },
-    [datesIndex, selection.endDate, selection.listingId, selection.startDate]
+    [datesIndex, selection]
   );
 
   const getSelectedDatesForListing = useCallback(
     (listingId: number) => {
-      if (selection.listingId !== listingId || !selection.startDate || !selection.endDate) {
+      const listingSelection = selection[listingId];
+
+      if (!listingSelection?.startDate || !listingSelection?.endDate) {
         return [];
       }
 
-      const startIndex = datesIndex.get(selection.startDate);
-      const endIndex = datesIndex.get(selection.endDate);
+      const startIndex = datesIndex.get(listingSelection.startDate);
+      const endIndex = datesIndex.get(listingSelection.endDate);
 
       if (startIndex == null || endIndex == null) {
         return [];
@@ -131,7 +148,7 @@ export default function useCalendarSelection(dates: string[]) {
 
       return dates.slice(startIndex, endIndex + 1);
     },
-    [dates, datesIndex, selection.endDate, selection.listingId, selection.startDate]
+    [dates, datesIndex, selection]
   );
 
   useEffect(() => {

@@ -30,7 +30,8 @@ export type CalendarRatePlan = {
 };
 
 export type BulkUpdateSelection = {
-  listingId: number;
+  listingId?: number;
+  listingIds?: number[];
   dates: string[];
   blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
   unblock?: boolean;
@@ -82,18 +83,30 @@ export const formatCurrencyINR = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
-  listingId: selection.listingId,
-  dates: selection.dates,
-  status: selection.unblock ? "open" : "blocked",
-  blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
-});
+export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => {
+  const listingIds = selection.listingIds ?? (selection.listingId != null ? [selection.listingId] : []);
+  const sortedDates = [...selection.dates].sort();
 
-export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
-  listingId: selection.listingId,
-  dates: selection.dates,
-  price: selection.nightlyPrice,
-});
+  return {
+    listingIds,
+    startDate: sortedDates[0],
+    endDate: sortedDates[sortedDates.length - 1],
+    status: selection.unblock ? "open" : "blocked",
+    blockType: selection.unblock ? undefined : selection.blockType ?? "Maintenance",
+  };
+};
+
+export const buildBulkPricePayload = (selection: BulkUpdateSelection) => {
+  const listingIds = selection.listingIds ?? (selection.listingId != null ? [selection.listingId] : []);
+  const sortedDates = [...selection.dates].sort();
+
+  return {
+    listingIds,
+    startDate: sortedDates[0],
+    endDate: sortedDates[sortedDates.length - 1],
+    price: selection.nightlyPrice,
+  };
+};
 
 export const patchAvailabilityCell = async (params: {
   listingId: number;
@@ -122,6 +135,7 @@ export const patchAvailabilityBulk = async (params: {
   if (shouldUseMockAvailability()) {
     const selection: BulkUpdateSelection = {
       listingId: params.listingIds[0],
+      listingIds: params.listingIds,
       dates: buildDateArray(params.startDate, params.endDate),
       nightlyPrice: params.price ?? undefined,
       blockType: params.blockType as BulkUpdateSelection["blockType"],
