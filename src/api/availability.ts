@@ -107,6 +107,17 @@ export const patchAvailabilityCell = (params: {
   inventory?: number | null;
 }) => api.patch("/admin/calendar/availability/cell", params);
 
+export const patchAvailabilityBulk = (params: {
+  listingIds: number[];
+  ratePlanIds: number[];
+  startDate: string;
+  endDate: string;
+  price?: number | null;
+  inventory?: number | null;
+  status?: "open" | "blocked";
+  blockType?: string;
+}) => api.patch("/admin/calendar/availability/bulk", params);
+
 const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
   date: day.date,
   status: day.status ?? "open",
@@ -157,11 +168,11 @@ export const fetchCalendarData = async (
   from: string,
   to: string
 ): Promise<CalendarListing[]> => {
-  const response = await api.get("/availability/calendar", {
+  const response = await api.get("/admin/calendar/availability", {
     params: {
       propertyId: propertyId || undefined,
-      from,
-      to,
+      startDate: from,
+      endDate: to,
     },
   });
 

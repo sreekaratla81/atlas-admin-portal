@@ -25,8 +25,6 @@ import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
   buildDateArray,
-  buildBulkBlockPayload,
-  buildBulkPricePayload,
   BulkUpdateSelection,
   CalendarDay,
   CalendarListing,
@@ -34,6 +32,7 @@ import {
   fetchCalendarData,
   formatCurrencyINR,
   patchAvailabilityCell,
+  patchAvailabilityBulk,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -656,26 +655,15 @@ export default function AvailabilityCalendar() {
       return;
     }
 
-    const bulkSelection: BulkUpdateSelection = {
-      listingId: selectedListing.listingId,
-      ratePlanId: selectedRatePlan.ratePlanId,
-      dates: selectedDates,
-      blockType,
-      unblock: blockAction === "unblock",
-      nightlyPrice: normalizedNightlyPrice,
+    const payload = {
+      listingIds: [selectedListing.listingId],
+      ratePlanIds: [selectedRatePlan.ratePlanId],
+      startDate: selection.startDate!,
+      endDate: selection.endDate!,
+      status: blockAction === "none" ? undefined : blockAction === "unblock" ? "open" : "blocked",
+      blockType: blockAction === "block" ? blockType : undefined,
+      price: normalizedNightlyPrice ?? undefined,
     };
-
-    const requests: Promise<unknown>[] = [];
-    if (blockAction !== "none") {
-      requests.push(api.post("/availability/blocks/bulk", buildBulkBlockPayload(bulkSelection)));
-    }
-    if (normalizedNightlyPrice != null) {
-      requests.push(api.post("/pricing/daily/bulk", buildBulkPricePayload(bulkSelection)));
-    }
-
-    if (requests.length === 0) {
-      return;
-    }
 
     const snapshot = listings;
     setSaving(true);
@@ -688,7 +676,7 @@ export default function AvailabilityCalendar() {
     );
 
     try {
-      await Promise.all(requests);
+      await patchAvailabilityBulk(payload);
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
       setModalOpen(false);
