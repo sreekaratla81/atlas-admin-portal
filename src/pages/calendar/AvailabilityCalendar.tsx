@@ -33,8 +33,6 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
-import BedOutlinedIcon from "@mui/icons-material/BedOutlined";
-import PersonIcon from "@mui/icons-material/Person";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api, asArray } from "@/lib/api";
 import {
@@ -70,7 +68,6 @@ const BLOCK_TYPE_OPTIONS: BulkUpdateSelection["blockType"][] = [
   "OpsHold",
 ];
 const PRICE_INPUT_HELPER = "Leave blank to keep existing rates.";
-const CHANNEL_COLORS = ["#c084fc", "#60a5fa", "#f59e0b", "#34d399", "#f472b6"];
 
 type HeaderCellProps = {
   date: string;
@@ -128,8 +125,6 @@ type DataCellProps = {
   availability?: CalendarDay;
   today: Date;
   isSelected: boolean;
-  ratePlans?: CalendarRatePlan[];
-  showChannelPricing: boolean;
   onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onMouseEnter: () => void;
   onMouseUp: () => void;
@@ -147,8 +142,6 @@ const DataCell = React.memo(
     availability,
     today,
     isSelected,
-    ratePlans,
-    showChannelPricing,
     onMouseDown,
     onMouseEnter,
     onMouseUp,
@@ -205,33 +198,6 @@ const DataCell = React.memo(
         status === "blocked" ? "blocked" : "open"
       }`;
 
-  const channelEntries = useMemo(() => {
-    if (!showChannelPricing || !ratePlans?.length) {
-      return [];
-    }
-
-    return ratePlans
-      .map((plan, index) => {
-        const channelDay = plan.days[date];
-
-        if (!channelDay) {
-          return null;
-        }
-
-        return {
-          name: plan.name,
-          color: CHANNEL_COLORS[index % CHANNEL_COLORS.length],
-          day: channelDay,
-        };
-      })
-      .filter(Boolean) as { name: string; color: string; day: CalendarDay }[];
-  }, [date, ratePlans, showChannelPricing]);
-
-  const maxChannelPrice = useMemo(
-    () => Math.max(...channelEntries.map((entry) => entry.day.price ?? 0), 0),
-    [channelEntries]
-  );
-
   const commitChange = (field: "price" | "inventory") => {
     const draft = field === "price" ? priceDraft : inventoryDraft;
     const trimmed = draft.trim();
@@ -280,7 +246,7 @@ const DataCell = React.memo(
       <Box
         sx={{
           width: CELL_WIDTH,
-          height: channelEntries.length > 0 ? 76 : 56,
+          height: 56,
           borderRight: "1px solid",
           borderColor: "divider",
           borderBottom: "1px solid",
@@ -405,48 +371,6 @@ const DataCell = React.memo(
               ),
             }}
           />
-          {channelEntries.length > 0 && (
-            <Stack spacing={0.35} sx={{ width: "100%" }}>
-              {channelEntries.map((entry) => {
-                const channelPrice = entry.day.price;
-                const width =
-                  channelPrice != null && maxChannelPrice > 0
-                    ? Math.max((channelPrice / maxChannelPrice) * 100, 8)
-                    : 8;
-
-                return (
-                  <Tooltip
-                    key={`${listingId}-${date}-${entry.name}`}
-                    title={`${entry.name}: ${
-                      channelPrice != null ? formatCurrencyINR(channelPrice) : "N/A"
-                    }`}
-                    arrow
-                  >
-                    <Box
-                      sx={{
-                        height: 6,
-                        backgroundColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 9999,
-                        overflow: "hidden",
-                        position: "relative",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: `${width}%`,
-                          backgroundColor: entry.color,
-                        }}
-                      />
-                    </Box>
-                  </Tooltip>
-                );
-              })}
-            </Stack>
-          )}
         </Stack>
         {isToday && (
           <Box
@@ -480,7 +404,6 @@ type ListingRowProps = {
     date: string,
     update: { price?: number | null; inventory?: number | null }
   ) => void;
-  showChannelPricing: boolean;
 };
 
 const ListingRow = React.memo(
@@ -494,7 +417,6 @@ const ListingRow = React.memo(
     isDateSelected,
     isRowSelected,
     onCellChange,
-    showChannelPricing,
   }: ListingRowProps) => (
     <Box
       sx={{
@@ -516,39 +438,12 @@ const ListingRow = React.memo(
           flexDirection: "column",
           justifyContent: "center",
           px: 2,
-          minHeight: 56,
+          height: 56,
         }}
       >
-        <Stack spacing={0.5} alignItems="flex-start">
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ maxWidth: "100%" }}>
-            <BedOutlinedIcon fontSize="small" color="action" />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-                {listing.roomType ?? listing.listingName}
-              </Typography>
-              <Stack direction="row" spacing={0.5} alignItems="center">
-                {Array.from({ length: Math.min(listing.occupancy ?? 2, 4) }).map((_, index) => (
-                  <PersonIcon key={`${listing.listingId}-occ-${index}`} fontSize="inherit" color="action" />
-                ))}
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  Sleeps {listing.occupancy ?? 2}
-                </Typography>
-              </Stack>
-            </Box>
-          </Stack>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-            {(listing.channels ?? listing.ratePlans?.map((plan) => plan.name) ?? []).map((channel) => (
-              <Chip
-                key={`${listing.listingId}-${channel}`}
-                size="small"
-                label={channel}
-                color="primary"
-                variant="outlined"
-                sx={{ height: 22 }}
-              />
-            ))}
-          </Stack>
-        </Stack>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {listing.listingName}
+        </Typography>
       </Box>
       {dates.map((date) => (
         <DataCell
@@ -558,8 +453,6 @@ const ListingRow = React.memo(
           availability={listing.days[date]}
           today={today}
           isSelected={isDateSelected(listing.listingId, date)}
-          ratePlans={listing.ratePlans}
-          showChannelPricing={showChannelPricing}
           onMouseDown={(event) => onCellMouseDown(listing.listingId, date, event.shiftKey)}
           onMouseEnter={() => onCellMouseEnter(listing.listingId, date)}
           onMouseUp={onCellMouseUp}
@@ -598,8 +491,6 @@ export default function AvailabilityCalendar() {
   const [onlyOpenDates, setOnlyOpenDates] = useState(false);
   const [skipMissingPrices, setSkipMissingPrices] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [quickFilter, setQuickFilter] = useState<"all" | "sold-out" | "blocked">("all");
-  const [pricingView, setPricingView] = useState<"unified" | "channels">("unified");
 
   const toDate = useMemo(() => {
     const start = parseISO(fromDate);
@@ -641,34 +532,10 @@ export default function AvailabilityCalendar() {
   }, [clearSelection, fromDate, rangeDays, selectedProperty]);
 
   const filteredListings = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    return listings.filter((listing) => {
-      const matchesSearch = listing.listingName.toLowerCase().includes(searchTerm);
-
-      if (!matchesSearch) {
-        return false;
-      }
-
-      if (quickFilter === "all") {
-        return true;
-      }
-
-      const hasMatchingDay = dayRange.some((date) => {
-        const day = listing.days[date];
-
-        if (!day) return false;
-
-        if (quickFilter === "blocked") {
-          return day.status === "blocked";
-        }
-
-        return day.inventory === 0 && day.status !== "blocked";
-      });
-
-      return hasMatchingDay;
-    });
-  }, [dayRange, listings, quickFilter, search]);
+    return listings.filter((listing) =>
+      listing.listingName.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  }, [listings, search]);
 
   const today = useMemo(() => new Date(), []);
   const selectedEntries = useMemo(
@@ -1209,43 +1076,6 @@ export default function AvailabilityCalendar() {
           )}
         </Box>
 
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1}
-          alignItems={{ xs: "flex-start", md: "center" }}
-          justifyContent="space-between"
-          sx={{ mb: 1 }}
-        >
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            {(
-              [
-                { label: "All rooms", value: "all" },
-                { label: "Sold-out", value: "sold-out" },
-                { label: "Blocked", value: "blocked" },
-              ] as const
-            ).map((chip) => (
-              <Chip
-                key={chip.value}
-                label={chip.label}
-                color={quickFilter === chip.value ? "primary" : "default"}
-                variant={quickFilter === chip.value ? "filled" : "outlined"}
-                onClick={() => setQuickFilter(chip.value)}
-              />
-            ))}
-          </Stack>
-
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={pricingView}
-            onChange={(_, value) => value && setPricingView(value)}
-            aria-label="Pricing view"
-          >
-            <ToggleButton value="unified">Unified pricing</ToggleButton>
-            <ToggleButton value="channels">Channel pricing</ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-
         <Box
           sx={{
             borderRadius: 2,
@@ -1326,7 +1156,6 @@ export default function AvailabilityCalendar() {
                     isDateSelected={isDateSelected}
                     isRowSelected={getSelectedDatesForListing(listing.listingId).length > 0}
                     onCellChange={handleCellChange}
-                    showChannelPricing={pricingView === "channels"}
                   />
                 ))}
               </Box>

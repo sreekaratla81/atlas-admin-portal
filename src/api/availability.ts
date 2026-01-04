@@ -21,9 +21,6 @@ export type CalendarListing = {
   listingName: string;
   days: Record<string, CalendarDay>;
   ratePlans?: CalendarRatePlan[];
-  occupancy?: number;
-  roomType?: string;
-  channels?: string[];
 };
 
 export type CalendarRatePlan = {
@@ -51,9 +48,6 @@ type CalendarApiListing = {
   listingName?: string;
   days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
   ratePlans?: CalendarApiRatePlan[];
-  occupancy?: number;
-  roomType?: string;
-  channels?: string[];
 };
 
 type CalendarApiRatePlan = {
@@ -242,9 +236,6 @@ export const fetchCalendarData = async (
         listingName: listing.listingName as string,
         days: normalizedDays,
         ratePlans: normalizedRatePlans,
-        occupancy: listing.occupancy,
-        roomType: listing.roomType,
-        channels: listing.channels,
       };
     });
 };
