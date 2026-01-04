@@ -5,6 +5,7 @@ export type CalendarDay = {
   date: string;
   status: "open" | "blocked";
   price?: number | null;
+  inventory?: number | null;
   blockType?: string;
   reason?: string;
 };
@@ -13,10 +14,18 @@ export type CalendarListing = {
   listingId: number;
   listingName: string;
   days: Record<string, CalendarDay>;
+  ratePlans: CalendarRatePlan[];
+};
+
+export type CalendarRatePlan = {
+  ratePlanId: number;
+  name: string;
+  daily: Record<string, CalendarDay>;
 };
 
 export type BulkUpdateSelection = {
   listingId: number;
+  ratePlanId?: number;
   dates: string[];
   blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
   unblock?: boolean;
@@ -27,6 +36,13 @@ type CalendarApiListing = {
   listingId?: number;
   listingName?: string;
   days?: CalendarDay[] | Record<string, CalendarDay>;
+  ratePlans?: CalendarApiRatePlan[] | CalendarApiRatePlan;
+};
+
+type CalendarApiRatePlan = {
+  ratePlanId?: number;
+  name?: string;
+  daily?: CalendarDay[] | Record<string, CalendarDay>;
 };
 
 export const buildDateArray = (from: string, to: string): string[] => {
@@ -57,6 +73,7 @@ export const buildBulkBlockPayload = (selection: BulkUpdateSelection) => ({
 
 export const buildBulkPricePayload = (selection: BulkUpdateSelection) => ({
   listingId: selection.listingId,
+  ratePlanId: selection.ratePlanId,
   dates: selection.dates,
   price: selection.nightlyPrice,
 });
@@ -73,6 +90,27 @@ const normalizeDays = (
     }
     return acc;
   }, {});
+};
+
+const normalizeRatePlans = (
+  ratePlans: CalendarApiListing["ratePlans"]
+): CalendarRatePlan[] => {
+  return asArray<CalendarApiRatePlan>(ratePlans ?? [], "rate plans").reduce<CalendarRatePlan[]>(
+    (acc, plan) => {
+      if (!plan.ratePlanId || !plan.name) {
+        return acc;
+      }
+
+      acc.push({
+        ratePlanId: plan.ratePlanId,
+        name: plan.name,
+        daily: normalizeDays(plan.daily),
+      });
+
+      return acc;
+    },
+    []
+  );
 };
 
 export const fetchCalendarData = async (
@@ -99,5 +137,6 @@ export const fetchCalendarData = async (
       listingId: listing.listingId as number,
       listingName: listing.listingName as string,
       days: normalizeDays(listing.days),
+      ratePlans: normalizeRatePlans(listing.ratePlans),
     }));
 };
