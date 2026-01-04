@@ -148,6 +148,8 @@ export const fetchMockAvailability = async (
       listingName: listing.name as string,
       days: buildListingDays(listing.id as number, dates),
       ratePlans: [],
+      occupancy: 2 + ((listing.id as number) % 2),
+      channels: ["Direct", "OTA", "Corporate"],
     }));
 };
 
