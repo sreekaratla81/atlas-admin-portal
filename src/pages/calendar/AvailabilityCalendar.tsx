@@ -313,64 +313,73 @@ const DataCell = React.memo(
             onMouseUp={(event) => event.stopPropagation()}
           />
           <TextField
-            size="small"
-            type="number"
-            value={inventoryDraft}
-            onFocus={() => setEditingField("inventory")}
-            onChange={(event) => setInventoryDraft(event.target.value)}
-            onBlur={() => commitChange("inventory")}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commitChange("inventory");
-                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
-              }
-              if (event.key === "Escape") {
-                setInventoryDraft(
-                  availability?.inventory != null ? String(availability.inventory) : ""
-                );
-                setEditingField(null);
-              }
-              if (event.key === "Tab") {
-                commitChange("inventory");
-              }
-            }}
-            placeholder="Rooms"
-            inputProps={{
-              min: 0,
-              style: { padding: "4px 8px", textAlign: "center" },
-              "data-calendar-input": "true",
-            }}
-            sx={{
-              width: "100%",
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: badgeColors.background,
-                color: badgeColors.color,
-                borderRadius: 9999,
-                fontWeight: 700,
-                fontSize: "0.8rem",
-                height: 26,
-                py: 0.25,
-                "& fieldset": {
-                  borderColor: "transparent",
-                },
-              },
-              "& .MuiOutlinedInput-input": {
-                textAlign: "center",
-                paddingRight: 0,
-                paddingLeft: 0,
-              },
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-            onMouseUp={(event) => event.stopPropagation()}
-            InputProps={{
-              endAdornment: (
-                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                  rooms
-                </Typography>
-              ),
-            }}
-          />
+  size="small"
+  type="number"
+  value={inventoryDraft}
+  onFocus={() => setEditingField("inventory")}
+  onChange={(event) => {
+    const v = event.target.value;
+    if ( v === "0" || v === "1") {
+      setInventoryDraft(v);
+    }
+  }}
+  onBlur={() => commitChange("inventory")}
+  onWheel={(e) => e.currentTarget.blur()}
+  onKeyDown={(event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitChange("inventory");
+      focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+    }
+    if (event.key === "Escape") {
+      setInventoryDraft(
+        availability?.inventory != null ? String(availability.inventory) : ""
+      );
+      setEditingField(null);
+    }
+    if (event.key === "Tab") {
+      commitChange("inventory");
+    }
+  }}
+  placeholder="Rooms"
+  inputProps={{
+    min: 0,
+    max: 1,
+    step: 1,
+    style: { padding: "4px 8px", textAlign: "center" },
+    "data-calendar-input": "true",
+  }}
+  sx={{
+    width: "100%",
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: badgeColors.background,
+      color: badgeColors.color,
+      borderRadius: 9999,
+      fontWeight: 700,
+      fontSize: "0.8rem",
+      height: 26,
+      py: 0.25,
+      "& fieldset": {
+        borderColor: "transparent",
+      },
+    },
+    "& .MuiOutlinedInput-input": {
+      textAlign: "center",
+      paddingRight: 0,
+      paddingLeft: 0,
+    },
+  }}
+  onMouseDown={(event) => event.stopPropagation()}
+  onMouseUp={(event) => event.stopPropagation()}
+  InputProps={{
+    endAdornment: (
+      <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+        rooms
+      </Typography>
+    ),
+  }}
+/>
+
         </Stack>
         {isToday && (
           <Box
