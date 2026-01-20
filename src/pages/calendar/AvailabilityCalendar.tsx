@@ -42,8 +42,7 @@ import {
   CalendarListing,
   fetchCalendarData,
   formatCurrencyINR,
-  patchAvailabilityCell,
-  patchAvailabilityBulk,
+  patchAvailabilityAdmin,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -204,7 +203,13 @@ const DataCell = React.memo(
     const value = trimmed === "" ? null : Number(trimmed);
     const currentValue =
       field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
-
+      
+console.log("INVENTORY CHECK", {
+  draft: inventoryDraft,
+  value,
+  currentValue,
+  equal: value === currentValue,
+});
     if (Number.isNaN(value)) {
       if (field === "price") {
         setPriceDraft(availability?.price != null ? String(availability.price) : "");
@@ -319,6 +324,7 @@ const DataCell = React.memo(
   onFocus={() => setEditingField("inventory")}
   onChange={(event) => {
     const v = event.target.value;
+     console.log("INPUT TYPED:", v);
     if ( v === "0" || v === "1") {
       setInventoryDraft(v);
     }
@@ -526,12 +532,34 @@ export default function AvailabilityCalendar() {
 
       const calendarListings = await fetchCalendarData(selectedProperty || undefined, fromDate, toDate);
       setListings(calendarListings);
+      console.log("fetched listings", calendarListings)
     } catch (err) {
       setError("We couldn't load availability data. Please try again.");
     } finally {
       setLoading(false);
     }
   }, [fromDate, selectedProperty, toDate]);
+
+  const fetchAndMergeListings = useCallback(async (listingIds?: number[]) => {
+    try {
+      const resp = await api.get("/listings");
+      const all = asArray<{ id?: number; name?: string }>(resp.data, "listings");
+      const lookup = new Map<number, string>();
+      all.forEach((l) => {
+        if (l.id != null && l.name) lookup.set(l.id, l.name);
+      });
+
+      setListings((current) =>
+        current.map((listing) => {
+          if (listingIds && listingIds.length > 0 && !listingIds.includes(listing.listingId)) return listing;
+          const name = lookup.get(listing.listingId);
+          return name ? { ...listing, listingName: name } : listing;
+        })
+      );
+    } catch (err) {
+      // ignore merge errors
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -740,6 +768,8 @@ export default function AvailabilityCalendar() {
           delete nextListingDay.blockType;
           delete nextListingDay.reason;
         }
+console.log("STATE BEFORE", listing.days[date]);
+console.log("STATE UPDATE", update);
 
         return {
           ...listing,
@@ -836,17 +866,25 @@ export default function AvailabilityCalendar() {
       }, {});
 
       try {
-        await Promise.all(
-          Object.values(groupedPayloads).map((payload) =>
-            patchAvailabilityBulk({
-              ...payload,
-              status: statusValue,
-              blockType: blockTypeValue,
-              price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
-              inventory: inventoryValue ?? undefined,
-            })
-          )
-        );
+        // Convert bulk updates to use patchAvailabilityAdmin
+        const updates = [];
+        for (const payload of Object.values(groupedPayloads)) {
+          for (const listingId of payload.listingIds) {
+            updates.push(
+              patchAvailabilityAdmin({
+                listingId,
+                startDate: payload.startDate,
+                endDate: payload.endDate,
+                availableRooms: inventoryValue ?? 0,
+                ...(priceMode === "fixed" && normalizedPriceInput !== undefined && { price: normalizedPriceInput }),
+                ...(statusValue && { status: statusValue }),
+                ...(blockTypeValue && { blockType: blockTypeValue })
+              })
+            );
+          }
+        }
+        
+        await Promise.all(updates);
         setSuccessNotice("Availability updated successfully.");
         setErrorNotice("");
         clearSelection();
@@ -917,12 +955,68 @@ export default function AvailabilityCalendar() {
 
     try {
       await Promise.all(perDateUpdates.map((update) => patchAvailabilityCell(update)));
+
+      const statusDerivedAvailableRooms =
+        statusAction === "block" || statusAction === "close-channels"
+          ? 0
+          : statusAction === "unblock"
+            ? 1
+            : null;
+      const desiredAvailableRooms = inventoryValue ?? statusDerivedAvailableRooms;
+      console.log("bulk admin patch decision", {
+        inventoryValue,
+        statusAction,
+        statusDerivedAvailableRooms,
+        desiredAvailableRooms,
+      });
+
+      // If inventory or status is part of the bulk change, call admin PATCH per listing for the selected ranges
+      if (desiredAvailableRooms !== null && desiredAvailableRooms !== undefined) {
+        // compute min/max date per listing
+        const ranges = new Map<number, { start: string; end: string }>();
+        perDateUpdates.forEach((u) => {
+          const existing = ranges.get(u.listingId);
+          if (!existing) {
+            ranges.set(u.listingId, { start: u.date, end: u.date });
+          } else {
+            if (u.date < existing.start) existing.start = u.date;
+            if (u.date > existing.end) existing.end = u.date;
+          }
+        });
+
+        try {
+          console.log("bulk admin patch ranges", Array.from(ranges.entries()));
+          await Promise.all(
+            Array.from(ranges.entries())
+              .filter(([listingId]) => listingId > 0)
+              .map(([listingId, range]) =>
+                patchAvailabilityAdmin({
+                  listingId,
+                  startDate: range.start,
+                  endDate: range.end,
+                  availableRooms: desiredAvailableRooms,
+                })
+              )
+          );
+        } catch (serverErr: any) {
+          const msg = serverErr && typeof serverErr === "object" ? JSON.stringify(serverErr) : String(serverErr);
+          setListings(snapshot);
+          setErrorNotice(`Update failed: ${msg}`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Merge listing info after successful updates
+      const affectedListingIds = Array.from(new Set(perDateUpdates.map((u) => u.listingId)));
+      await fetchAndMergeListings(affectedListingIds);
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
       clearSelection();
     } catch (err) {
       setListings(snapshot);
-      setErrorNotice("Update failed. Changes have been reverted.");
+      const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
+      setErrorNotice(`Update failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -955,12 +1049,28 @@ export default function AvailabilityCalendar() {
       setListings((current) => applyCellUpdateForDate(current, listingId, date, update));
 
       try {
-        await patchAvailabilityCell({ listingId, date, ...update });
+        // Use patchAvailabilityAdmin for the update
+        const payload = {
+          listingId,
+          startDate: date,
+          endDate: date,
+          availableRooms: update.inventory ?? 0,
+          ...(update.price !== undefined && { price: update.price })
+        };
+        
+        console.log("Sending update to API:", payload);
+        await patchAvailabilityAdmin(payload);
+        
+        // Merge latest listing info for this listing
+        await fetchAndMergeListings([listingId]);
+        // Merge latest listing info for this listing
+        await fetchAndMergeListings([listingId]);
         setSuccessNotice("Availability updated successfully.");
         setErrorNotice("");
       } catch (err) {
         setListings(snapshot);
-        setErrorNotice("Update failed. Changes have been reverted.");
+        const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
+        setErrorNotice(`Update failed: ${msg}`);
       }
     },
     [applyCellUpdateForDate, listings]

@@ -131,8 +131,10 @@ const buildListingDays = (listingId: number, dates: string[]): Record<string, Ca
   }, {});
 };
 
+
 export const shouldUseMockAvailability = () =>
   import.meta.env.DEV || import.meta.env.VITE_USE_MOCK_AVAILABILITY === "true";
+
 
 export const fetchMockAvailability = async (
   listings: { id?: number; name?: string }[],

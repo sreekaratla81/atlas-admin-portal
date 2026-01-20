@@ -15,14 +15,24 @@ export const api = axios.create({
 api.interceptors.response.use(
   (res) => {
     const ct = String(res.headers?.["content-type"] || "");
-    if (!ct.includes("application/json")) {
-      // eslint-disable-next-line no-console
-      console.error("Non-JSON response from API", { url: res.config?.url, ct, preview: String(res.data).slice(0, 120) });
+
+    // If Axios already parsed JSON, don't complain
+    if (
+      !ct.includes("application/json") &&
+      typeof res.data === "string"
+    ) {
+      console.warn("Non-JSON response from API", {
+        url: res.config?.url,
+        ct,
+        preview: res.data.slice(0, 120),
+      });
     }
+
     return res;
   },
   (err) => Promise.reject(err)
 );
+
 
 // Helper to ensure arrays before .map()
 export function asArray<T>(val: unknown, label: string): T[] {

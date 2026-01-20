@@ -109,74 +109,7 @@ const handlePropertiesGet = (config: AxiosRequestConfig): AxiosResponse =>
     { id: 2, name: "Atlas City Center" },
   ]);
 
-const handleCellPatch = (config: AxiosRequestConfig): AxiosResponse => {
-  type Payload = { listingId: number; ratePlanId: number; date: string; price?: number | null; inventory?: number | null };
-  const body = parseData<Payload>(config);
-  const { listingId, ratePlanId, date } = body;
-  const basePrice =
-    baseListings.find((listing) => listing.listingId === listingId)?.ratePlans.find((plan) => plan.ratePlanId === ratePlanId)?.basePrice ??
-    DEFAULT_PRICE;
-
-  const day = ensureDay(listingId, ratePlanId, date, basePrice);
-  if (body.price !== undefined) {
-    day.price = body.price;
-  }
-  if (body.inventory !== undefined) {
-    day.inventory = body.inventory;
-  }
-
-  return buildResponse(config, { success: true, day });
-};
-
-const handleBulkPatch = (config: AxiosRequestConfig): AxiosResponse => {
-  type Payload = {
-    listingIds?: number[];
-    ratePlanIds?: number[];
-    startDate: string;
-    endDate: string;
-    price?: number | null;
-    inventory?: number | null;
-    status?: "open" | "blocked";
-    blockType?: string;
-  };
-
-  const body = parseData<Payload>(config);
-  const listingIds = body.listingIds && body.listingIds.length > 0 ? body.listingIds : baseListings.map((l) => l.listingId);
-  const ratePlanIds = body.ratePlanIds && body.ratePlanIds.length > 0 ? body.ratePlanIds : baseListings.flatMap((l) => l.ratePlans.map((p) => p.ratePlanId));
-  const startDate = body.startDate ?? format(new Date(), "yyyy-MM-dd");
-  const endDate = body.endDate ?? startDate;
-  const dates = buildRange(startDate, endDate);
-
-  listingIds.forEach((listingId) => {
-    const listing = baseListings.find((item) => item.listingId === listingId);
-    ratePlanIds.forEach((ratePlanId) => {
-      const plan = listing?.ratePlans.find((item) => item.ratePlanId === ratePlanId);
-      const basePrice = plan?.basePrice ?? DEFAULT_PRICE;
-
-      dates.forEach((date) => {
-        const day = ensureDay(listingId, ratePlanId, date, basePrice);
-        if (body.status) {
-          day.status = body.status;
-          if (body.status === "blocked" && body.blockType) {
-            day.blockType = body.blockType;
-          }
-          if (body.status === "open") {
-            delete day.blockType;
-            delete day.reason;
-          }
-        }
-        if (body.price !== undefined) {
-          day.price = body.price;
-        }
-        if (body.inventory !== undefined) {
-          day.inventory = body.inventory;
-        }
-      });
-    });
-  });
-
-  return buildResponse(config, { success: true });
-};
+// Removed handleCellPatch and handleBulkPatch handlers as per request
 
 export const setupAvailabilityMocks = (api: AxiosInstance) => {
   const enabled = import.meta.env.VITE_USE_MOCK_AVAILABILITY !== "false" && import.meta.env.DEV;
@@ -192,10 +125,6 @@ export const setupAvailabilityMocks = (api: AxiosInstance) => {
       config.adapter = async () => handleAvailabilityGet(config, url);
     } else if (url.pathname === "/properties" && method === "get") {
       config.adapter = async () => handlePropertiesGet(config);
-    } else if (url.pathname === "/admin/calendar/availability/cell" && method === "patch") {
-      config.adapter = async () => handleCellPatch(config);
-    } else if (url.pathname === "/admin/calendar/availability/bulk" && method === "patch") {
-      config.adapter = async () => handleBulkPatch(config);
     }
 
     return config;

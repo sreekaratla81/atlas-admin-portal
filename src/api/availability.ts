@@ -1,11 +1,5 @@
 import { addDays, format, isAfter, parseISO } from "date-fns";
 import { api, asArray } from "@/lib/api";
-import {
-  fetchMockAvailability,
-  shouldUseMockAvailability,
-  updateMockRangeAvailability,
-  updateMockSingleAvailability,
-} from "@/services/mockAvailabilityRates";
 
 export type CalendarDay = {
   date: string;
@@ -108,44 +102,154 @@ export const buildBulkPricePayload = (selection: BulkUpdateSelection) => {
   };
 };
 
-export const patchAvailabilityCell = async (params: {
+// patchAvailabilityCell and patchAvailabilityBulk functions have been removed as per request
+
+export type AvailabilityDateResponse = {
   listingId: number;
   date: string;
-  price?: number | null;
-  inventory?: number | null;
-  status?: "open" | "blocked";
-  blockType?: string;
-}) => {
-  if (shouldUseMockAvailability()) {
-    return updateMockSingleAvailability(params);
-  }
-
-  return api.patch("/admin/calendar/availability/cell", params);
+  availableRooms: number;
 };
 
-export const patchAvailabilityBulk = async (params: {
-  listingIds: number[];
+export type AdminAvailabilityUpdate = {
+  listingId: number;
   startDate: string;
   endDate: string;
+  availableRooms: number;
   price?: number | null;
-  inventory?: number | null;
-  status?: "open" | "blocked";
-  blockType?: string;
-}) => {
-  if (shouldUseMockAvailability()) {
-    const selection: BulkUpdateSelection = {
-      listingId: params.listingIds[0],
-      listingIds: params.listingIds,
-      dates: buildDateArray(params.startDate, params.endDate),
-      nightlyPrice: params.price ?? undefined,
-      blockType: params.blockType as BulkUpdateSelection["blockType"],
-      unblock: params.status === "open",
-    };
+};
 
-    return updateMockRangeAvailability(selection);
+export const fetchAvailabilityDates = async (
+  listingId: number,
+  from: string,
+  to: string
+): Promise<AvailabilityDateResponse[]> => {
+  const dateArray = buildDateArray(from, to);
+  const results: AvailabilityDateResponse[] = [];
+  
+  // Fetch availability for each date in the range
+  for (const date of dateArray) {
+    try {
+      const response = await api.get("/availability/listing-availability", {
+        params: { 
+          listingId, 
+          startDate: date 
+        },
+      });
+      
+      results.push({
+        listingId: response.data.listingId,
+        date: response.data.date,
+        availableRooms: response.data.inventory ? 1 : 0
+      });
+    } catch (error) {
+      console.error(`Failed to fetch availability for date ${date}:`, error);
+    }
   }
+  
+  return results;
+};
 
-  return api.patch("/admin/calendar/availability/bulk", params);
+export const patchAvailabilityAdmin = async (payload: AdminAvailabilityUpdate) => {
+  const dates = buildDateArray(payload.startDate, payload.endDate);
+  const inventory = payload.availableRooms > 0;
+  
+  const results = [];
+  
+  for (const date of dates) {
+    try {
+      // First update inventory
+      const response = await api.patch("/availability/update-inventory", null, {
+        params: {
+          listingId: payload.listingId,
+          date: date,
+          inventory: inventory
+        }
+      });
+      
+      // If price is provided, update it as well
+      if (payload.price !== undefined && payload.price !== null) {
+        await api.patch("/availability/update-price", null, {
+          params: {
+            listingId: payload.listingId,
+            date: date,
+            price: payload.price
+          }
+        });
+      }
+      
+      results.push({
+        date,
+        success: true,
+        data: response.data
+      });
+    } catch (error) {
+      console.error(`Failed to update availability for date ${date}:`, error);
+      results.push({
+        date,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+  
+  return {
+    success: results.every(r => r.success),
+    results
+  };
+};
+
+export const fetchCalendarData = async (
+  propertyId: string | number | undefined,
+  from: string,
+  to: string
+): Promise<CalendarListing[]> => {
+  try {
+    // First, fetch all listings for the property
+    const listingsResponse = await api.get("/listings");
+    const allListings = asArray<{ id: number; name: string }>(
+      listingsResponse.data,
+      "listings"
+    );
+    
+    // Filter listings by property if propertyId is provided
+    const filteredListings = propertyId 
+      ? allListings.filter((l: any) => l.propertyId === Number(propertyId))
+      : allListings;
+    
+    // Fetch availability for each listing
+    const results: CalendarListing[] = [];
+    
+    for (const listing of filteredListings) {
+      try {
+        const availabilityResponse = await fetchAvailabilityDates(listing.id, from, to);
+        
+        const daysMap: Record<string, CalendarDay> = {};
+        
+        availabilityResponse.forEach(avail => {
+          daysMap[avail.date] = {
+            date: avail.date,
+            status: avail.availableRooms > 0 ? 'open' : 'blocked',
+            inventory: avail.availableRooms,
+            blockType: 'INVENTORY'
+          };
+        });
+        
+        results.push({
+          listingId: listing.id,
+          listingName: listing.name,
+          days: daysMap,
+          ratePlans: []
+        });
+      } catch (error) {
+        console.error(`Failed to fetch availability for listing ${listing.id}:`, error);
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("Failed to fetch calendar data:", error);
+    throw error;
+  }
 };
 
 const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
@@ -191,51 +295,4 @@ const normalizeRatePlans = (
       name: plan.name as string,
       days: normalizeDays(plan.daily ?? plan.days),
     }));
-};
-
-export const fetchCalendarData = async (
-  propertyId: string | number | undefined,
-  from: string,
-  to: string
-): Promise<CalendarListing[]> => {
-  if (shouldUseMockAvailability()) {
-    const listingsResponse = await api.get("/listings", {
-      params: propertyId ? { propertyId } : undefined,
-    });
-    const listingResults = asArray<{ id?: number; name?: string }>(
-      listingsResponse.data,
-      "listings"
-    );
-
-    return fetchMockAvailability(listingResults, from, to);
-  }
-
-  const response = await api.get("/admin/calendar/availability", {
-    params: {
-      propertyId: propertyId || undefined,
-      startDate: from,
-      endDate: to,
-    },
-  });
-
-  const listings = asArray<CalendarApiListing>(
-    response.data?.listings ?? response.data?.data ?? response.data,
-    "availability listings"
-  );
-
-  return listings
-    .filter((listing) => (listing.listingId || listing.listingId === 0) && listing.listingName)
-    .map((listing) => {
-      const normalizedRatePlans = normalizeRatePlans(listing.ratePlans);
-      const normalizedDays = normalizeDays(
-        listing.days ?? listing.ratePlans?.[0]?.daily ?? listing.ratePlans?.[0]?.days
-      );
-
-      return {
-        listingId: listing.listingId as number,
-        listingName: listing.listingName as string,
-        days: normalizedDays,
-        ratePlans: normalizedRatePlans,
-      };
-    });
-};
+}
