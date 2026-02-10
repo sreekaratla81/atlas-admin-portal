@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, getDay, isSameDay, parseISO } from "date-fns";
 import {
   Alert,
@@ -42,8 +42,8 @@ import {
   CalendarListing,
   fetchCalendarData,
   formatCurrencyINR,
-  patchAvailabilityCell,
-  patchAvailabilityBulk,
+  patchAvailabilityAdmin,
+  AdminAvailabilityUpdate,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -204,7 +204,13 @@ const DataCell = React.memo(
     const value = trimmed === "" ? null : Number(trimmed);
     const currentValue =
       field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
-
+      
+console.log("INVENTORY CHECK", {
+  draft: inventoryDraft,
+  value,
+  currentValue,
+  equal: value === currentValue,
+});
     if (Number.isNaN(value)) {
       if (field === "price") {
         setPriceDraft(availability?.price != null ? String(availability.price) : "");
@@ -313,64 +319,74 @@ const DataCell = React.memo(
             onMouseUp={(event) => event.stopPropagation()}
           />
           <TextField
-            size="small"
-            type="number"
-            value={inventoryDraft}
-            onFocus={() => setEditingField("inventory")}
-            onChange={(event) => setInventoryDraft(event.target.value)}
-            onBlur={() => commitChange("inventory")}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commitChange("inventory");
-                focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
-              }
-              if (event.key === "Escape") {
-                setInventoryDraft(
-                  availability?.inventory != null ? String(availability.inventory) : ""
-                );
-                setEditingField(null);
-              }
-              if (event.key === "Tab") {
-                commitChange("inventory");
-              }
-            }}
-            placeholder="Rooms"
-            inputProps={{
-              min: 0,
-              style: { padding: "4px 8px", textAlign: "center" },
-              "data-calendar-input": "true",
-            }}
-            sx={{
-              width: "100%",
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: badgeColors.background,
-                color: badgeColors.color,
-                borderRadius: 9999,
-                fontWeight: 700,
-                fontSize: "0.8rem",
-                height: 26,
-                py: 0.25,
-                "& fieldset": {
-                  borderColor: "transparent",
-                },
-              },
-              "& .MuiOutlinedInput-input": {
-                textAlign: "center",
-                paddingRight: 0,
-                paddingLeft: 0,
-              },
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-            onMouseUp={(event) => event.stopPropagation()}
-            InputProps={{
-              endAdornment: (
-                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                  rooms
-                </Typography>
-              ),
-            }}
-          />
+  size="small"
+  type="number"
+  value={inventoryDraft}
+  onFocus={() => setEditingField("inventory")}
+  onChange={(event) => {
+    const v = event.target.value;
+     console.log("INPUT TYPED:", v);
+    if ( v === "0" || v === "1") {
+      setInventoryDraft(v);
+    }
+  }}
+  onBlur={() => commitChange("inventory")}
+  onWheel={(e) => e.currentTarget.blur()}
+  onKeyDown={(event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitChange("inventory");
+      focusNextInput(event.currentTarget as HTMLInputElement, event.shiftKey);
+    }
+    if (event.key === "Escape") {
+      setInventoryDraft(
+        availability?.inventory != null ? String(availability.inventory) : ""
+      );
+      setEditingField(null);
+    }
+    if (event.key === "Tab") {
+      commitChange("inventory");
+    }
+  }}
+  placeholder="Rooms"
+  inputProps={{
+    min: 0,
+    max: 1,
+    step: 1,
+    style: { padding: "4px 8px", textAlign: "center" },
+    "data-calendar-input": "true",
+  }}
+  sx={{
+    width: "100%",
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: badgeColors.background,
+      color: badgeColors.color,
+      borderRadius: 9999,
+      fontWeight: 700,
+      fontSize: "0.8rem",
+      height: 26,
+      py: 0.25,
+      "& fieldset": {
+        borderColor: "transparent",
+      },
+    },
+    "& .MuiOutlinedInput-input": {
+      textAlign: "center",
+      paddingRight: 0,
+      paddingLeft: 0,
+    },
+  }}
+  onMouseDown={(event) => event.stopPropagation()}
+  onMouseUp={(event) => event.stopPropagation()}
+  InputProps={{
+    endAdornment: (
+      <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+        rooms
+      </Typography>
+    ),
+  }}
+/>
+
         </Stack>
         {isToday && (
           <Box
@@ -508,6 +524,12 @@ export default function AvailabilityCalendar() {
     getSelectedDatesForListing,
   } = useCalendarSelection(dayRange);
 
+  // Local queue of pending admin updates that will be sent only when user clicks "Save"
+  const [pendingAdminUpdates, setPendingAdminUpdates] = useState<AdminAvailabilityUpdate[]>([]);
+
+  // Prevent duplicate fetches for the same parameters (e.g. React StrictMode)
+  const lastFetchKeyRef = useRef<string | null>(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -515,8 +537,13 @@ export default function AvailabilityCalendar() {
       const propertiesResponse = await api.get("/properties");
       setProperties(asArray<Property>(propertiesResponse.data, "properties"));
 
-      const calendarListings = await fetchCalendarData(selectedProperty || undefined, fromDate, toDate);
+      const calendarListings = await fetchCalendarData(
+        selectedProperty || undefined,
+        fromDate,
+        toDate
+      );
       setListings(calendarListings);
+      console.log("fetched listings", calendarListings);
     } catch (err) {
       setError("We couldn't load availability data. Please try again.");
     } finally {
@@ -524,9 +551,36 @@ export default function AvailabilityCalendar() {
     }
   }, [fromDate, selectedProperty, toDate]);
 
+  const fetchAndMergeListings = useCallback(async (listingIds?: number[]) => {
+    try {
+      const resp = await api.get("/listings");
+      const all = asArray<{ id?: number; name?: string }>(resp.data, "listings");
+      const lookup = new Map<number, string>();
+      all.forEach((l) => {
+        if (l.id != null && l.name) lookup.set(l.id, l.name);
+      });
+
+      setListings((current) =>
+        current.map((listing) => {
+          if (listingIds && listingIds.length > 0 && !listingIds.includes(listing.listingId)) return listing;
+          const name = lookup.get(listing.listingId);
+          return name ? { ...listing, listingName: name } : listing;
+        })
+      );
+    } catch (err) {
+      // ignore merge errors
+    }
+  }, []);
+
   useEffect(() => {
+    const key = `${selectedProperty || "all"}|${fromDate}|${toDate}`;
+    if (lastFetchKeyRef.current === key) {
+      // Same params as last time; avoid duplicate API call
+      return;
+    }
+    lastFetchKeyRef.current = key;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, fromDate, selectedProperty, toDate]);
   useEffect(() => {
     clearSelection();
   }, [clearSelection, fromDate, rangeDays, selectedProperty]);
@@ -731,6 +785,8 @@ export default function AvailabilityCalendar() {
           delete nextListingDay.blockType;
           delete nextListingDay.reason;
         }
+console.log("STATE BEFORE", listing.days[date]);
+console.log("STATE UPDATE", update);
 
         return {
           ...listing,
@@ -744,7 +800,7 @@ export default function AvailabilityCalendar() {
     []
   );
 
-  const handleSave = useCallback(async () => {
+  const handleApplyBulk = useCallback(async () => {
     if (!hasSelection) {
       return;
     }
@@ -792,7 +848,8 @@ export default function AvailabilityCalendar() {
       targetSelections.every((entry) => entry.filteredDates.length === entry.dates.length);
 
     const snapshot = listings;
-    setSaving(true);
+
+    // Optimistic UI updates only; actual API call will happen on Save
 
     if (canUseBulk) {
       const optimisticUpdates = targetSelections
@@ -800,7 +857,7 @@ export default function AvailabilityCalendar() {
           listingId: entry.listingId,
           dates: entry.filteredDates,
           update: {
-            status: statusValue,
+            status: statusValue as "open" | "blocked" | undefined,
             blockType: blockTypeValue,
             price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
             inventory: inventoryValue ?? undefined,
@@ -826,28 +883,25 @@ export default function AvailabilityCalendar() {
         return acc;
       }, {});
 
-      try {
-        await Promise.all(
-          Object.values(groupedPayloads).map((payload) =>
-            patchAvailabilityBulk({
-              ...payload,
-              status: statusValue,
-              blockType: blockTypeValue,
-              price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
-              inventory: inventoryValue ?? undefined,
-            })
-          )
-        );
-        setSuccessNotice("Availability updated successfully.");
-        setErrorNotice("");
-        clearSelection();
-      } catch (err) {
-        setListings(snapshot);
-        setErrorNotice("Update failed. Changes have been reverted.");
-      } finally {
-        setSaving(false);
+      // Enqueue admin updates instead of sending immediately
+      const newAdminUpdates: AdminAvailabilityUpdate[] = [];
+      for (const payload of Object.values(groupedPayloads)) {
+        for (const listingId of payload.listingIds) {
+          newAdminUpdates.push({
+            listingId,
+            startDate: payload.startDate,
+            endDate: payload.endDate,
+            availableRooms: inventoryValue ?? 0,
+            ...(priceMode === "fixed" &&
+              normalizedPriceInput !== undefined && { price: normalizedPriceInput }),
+          });
+        }
       }
 
+      setPendingAdminUpdates((prev) => [...prev, ...newAdminUpdates]);
+      setSuccessNotice("Changes staged. Click Save to apply.");
+      setErrorNotice("");
+      clearSelection();
       return;
     }
 
@@ -907,13 +961,54 @@ export default function AvailabilityCalendar() {
     });
 
     try {
-      await Promise.all(perDateUpdates.map((update) => patchAvailabilityCell(update)));
-      setSuccessNotice("Availability updated successfully.");
+      // For per-date updates we also stage admin payloads instead of calling API directly
+      const statusDerivedAvailableRooms =
+        statusAction === "block" || statusAction === "close-channels"
+          ? 0
+          : statusAction === "unblock"
+            ? 1
+            : null;
+      const desiredAvailableRooms = inventoryValue ?? statusDerivedAvailableRooms;
+      console.log("bulk admin patch decision", {
+        inventoryValue,
+        statusAction,
+        statusDerivedAvailableRooms,
+        desiredAvailableRooms,
+      });
+
+      // If inventory or status is part of the bulk change, stage admin PATCH per listing for the selected ranges
+      if (desiredAvailableRooms !== null && desiredAvailableRooms !== undefined) {
+        // compute min/max date per listing
+        const ranges = new Map<number, { start: string; end: string }>();
+        perDateUpdates.forEach((u) => {
+          const existing = ranges.get(u.listingId);
+          if (!existing) {
+            ranges.set(u.listingId, { start: u.date, end: u.date });
+          } else {
+            if (u.date < existing.start) existing.start = u.date;
+            if (u.date > existing.end) existing.end = u.date;
+          }
+        });
+
+        const staged: AdminAvailabilityUpdate[] = Array.from(ranges.entries())
+          .filter(([listingId]) => listingId > 0)
+          .map(([listingId, range]) => ({
+            listingId,
+            startDate: range.start,
+            endDate: range.end,
+            availableRooms: desiredAvailableRooms,
+          }));
+
+        setPendingAdminUpdates((prev) => [...prev, ...staged]);
+      }
+
+      setSuccessNotice("Changes staged. Click Save to apply.");
       setErrorNotice("");
       clearSelection();
     } catch (err) {
       setListings(snapshot);
-      setErrorNotice("Update failed. Changes have been reverted.");
+      const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
+      setErrorNotice(`Update failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -936,26 +1031,50 @@ export default function AvailabilityCalendar() {
   ]);
 
   const handleCellChange = useCallback(
-    async (
-      listingId: number,
-      date: string,
-      update: { price?: number | null; inventory?: number | null }
-    ) => {
-      const snapshot = listings;
-
+    (listingId: number, date: string, update: { price?: number | null; inventory?: number | null }) => {
+      // Update UI immediately
       setListings((current) => applyCellUpdateForDate(current, listingId, date, update));
 
-      try {
-        await patchAvailabilityCell({ listingId, date, ...update });
-        setSuccessNotice("Availability updated successfully.");
-        setErrorNotice("");
-      } catch (err) {
-        setListings(snapshot);
-        setErrorNotice("Update failed. Changes have been reverted.");
-      }
+      // Stage admin payload; real API call will be on Save
+      setPendingAdminUpdates((prev) => [
+        ...prev,
+        {
+          listingId,
+          startDate: date,
+          endDate: date,
+          availableRooms: update.inventory ?? 0,
+          ...(update.price !== undefined && { price: update.price }),
+        },
+      ]);
+
+      setSuccessNotice("Changes staged. Click Save to apply.");
+      setErrorNotice("");
     },
-    [applyCellUpdateForDate, listings]
+    [applyCellUpdateForDate]
   );
+
+  const handleSave = useCallback(async () => {
+    if (pendingAdminUpdates.length === 0) {
+      setSuccessNotice("");
+      setErrorNotice("No changes to save.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await Promise.all(pendingAdminUpdates.map((u) => patchAvailabilityAdmin(u)));
+      const affectedListingIds = Array.from(new Set(pendingAdminUpdates.map((u) => u.listingId)));
+      await fetchAndMergeListings(affectedListingIds);
+      setPendingAdminUpdates([]);
+      setSuccessNotice("Availability updated successfully.");
+      setErrorNotice("");
+    } catch (err: any) {
+      const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
+      setErrorNotice(`Save failed: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [fetchAndMergeListings, pendingAdminUpdates]);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -1067,6 +1186,15 @@ export default function AvailabilityCalendar() {
                   onClick={() => setDrawerOpen(true)}
                 >
                   Bulk actions
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  disabled={pendingAdminUpdates.length === 0 || saving}
+                  onClick={handleSave}
+                >
+                  Save
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
                   Refresh
