@@ -1,4 +1,4 @@
-import { addDays, format, isAfter, parseISO } from "date-fns";
+import { addDays, format, isAfter, parseISO, differenceInCalendarMonths } from "date-fns";
 import { api, asArray } from "@/lib/api";
 
 export type CalendarDay = {
@@ -116,6 +116,9 @@ export type AdminAvailabilityUpdate = {
   endDate: string;
   availableRooms: number;
   price?: number | null;
+  // Optional metadata used only on the frontend; ignored by the API
+  status?: "open" | "blocked";
+  blockType?: "Maintenance" | "OwnerHold" | "OpsHold";
 };
 
 export const fetchAvailabilityDates = async (
@@ -123,30 +126,51 @@ export const fetchAvailabilityDates = async (
   from: string,
   to: string
 ): Promise<AvailabilityDateResponse[]> => {
-  const dateArray = buildDateArray(from, to);
-  const results: AvailabilityDateResponse[] = [];
-  
-  // Fetch availability for each date in the range
-  for (const date of dateArray) {
-    try {
-      const response = await api.get("/availability/listing-availability", {
-        params: { 
-          listingId, 
-          startDate: date 
-        },
-      });
-      
-      results.push({
-        listingId: response.data.listingId,
-        date: response.data.date,
-        availableRooms: response.data.inventory ? 1 : 0
-      });
-    } catch (error) {
-      console.error(`Failed to fetch availability for date ${date}:`, error);
-    }
+  // New API returns multiple months of availability data in a single call:
+  // GET /availability/listing-availability?listingId=2&startDate=2026-02-10&months=2
+  //
+  // Response shape (example):
+  // {
+  //   "listingId": 6,
+  //   "listingName": "Atlas302",
+  //   "availability": [
+  //     { "date": "2026-02-12", "status": "Available", "inventory": 1 },
+  //     ...
+  //   ]
+  // }
+
+  // Derive how many calendar months the [from, to] range spans so we can
+  // pass an appropriate `months` value to the API.
+  const start = parseISO(from);
+  const end = parseISO(to);
+  const months = Math.max(1, differenceInCalendarMonths(end, start) + 1);
+
+  try {
+    const response = await api.get("/availability/listing-availability", {
+      params: {
+        listingId,
+        startDate: from,
+        months,
+      },
+    });
+
+    const data = response.data ?? {};
+    const availability = Array.isArray(data.availability)
+      ? data.availability
+      : [];
+
+    return availability.map((item: any) => ({
+      listingId: data.listingId ?? listingId,
+      date: item.date,
+      availableRooms: typeof item.inventory === "number" ? item.inventory : 0,
+    }));
+  } catch (error) {
+    console.error(
+      `Failed to fetch availability for listing ${listingId}:`,
+      error
+    );
+    return [];
   }
-  
-  return results;
 };
 
 export const patchAvailabilityAdmin = async (payload: AdminAvailabilityUpdate) => {

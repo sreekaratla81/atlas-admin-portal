@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, getDay, isSameDay, parseISO } from "date-fns";
 import {
   Alert,
@@ -43,6 +43,7 @@ import {
   fetchCalendarData,
   formatCurrencyINR,
   patchAvailabilityAdmin,
+  AdminAvailabilityUpdate,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
 
@@ -523,6 +524,12 @@ export default function AvailabilityCalendar() {
     getSelectedDatesForListing,
   } = useCalendarSelection(dayRange);
 
+  // Local queue of pending admin updates that will be sent only when user clicks "Save"
+  const [pendingAdminUpdates, setPendingAdminUpdates] = useState<AdminAvailabilityUpdate[]>([]);
+
+  // Prevent duplicate fetches for the same parameters (e.g. React StrictMode)
+  const lastFetchKeyRef = useRef<string | null>(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -530,9 +537,13 @@ export default function AvailabilityCalendar() {
       const propertiesResponse = await api.get("/properties");
       setProperties(asArray<Property>(propertiesResponse.data, "properties"));
 
-      const calendarListings = await fetchCalendarData(selectedProperty || undefined, fromDate, toDate);
+      const calendarListings = await fetchCalendarData(
+        selectedProperty || undefined,
+        fromDate,
+        toDate
+      );
       setListings(calendarListings);
-      console.log("fetched listings", calendarListings)
+      console.log("fetched listings", calendarListings);
     } catch (err) {
       setError("We couldn't load availability data. Please try again.");
     } finally {
@@ -562,8 +573,14 @@ export default function AvailabilityCalendar() {
   }, []);
 
   useEffect(() => {
+    const key = `${selectedProperty || "all"}|${fromDate}|${toDate}`;
+    if (lastFetchKeyRef.current === key) {
+      // Same params as last time; avoid duplicate API call
+      return;
+    }
+    lastFetchKeyRef.current = key;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, fromDate, selectedProperty, toDate]);
   useEffect(() => {
     clearSelection();
   }, [clearSelection, fromDate, rangeDays, selectedProperty]);
@@ -783,7 +800,7 @@ console.log("STATE UPDATE", update);
     []
   );
 
-  const handleSave = useCallback(async () => {
+  const handleApplyBulk = useCallback(async () => {
     if (!hasSelection) {
       return;
     }
@@ -831,7 +848,8 @@ console.log("STATE UPDATE", update);
       targetSelections.every((entry) => entry.filteredDates.length === entry.dates.length);
 
     const snapshot = listings;
-    setSaving(true);
+
+    // Optimistic UI updates only; actual API call will happen on Save
 
     if (canUseBulk) {
       const optimisticUpdates = targetSelections
@@ -839,7 +857,7 @@ console.log("STATE UPDATE", update);
           listingId: entry.listingId,
           dates: entry.filteredDates,
           update: {
-            status: statusValue,
+            status: statusValue as "open" | "blocked" | undefined,
             blockType: blockTypeValue,
             price: priceMode === "fixed" ? normalizedPriceInput ?? undefined : undefined,
             inventory: inventoryValue ?? undefined,
@@ -865,36 +883,25 @@ console.log("STATE UPDATE", update);
         return acc;
       }, {});
 
-      try {
-        // Convert bulk updates to use patchAvailabilityAdmin
-        const updates = [];
-        for (const payload of Object.values(groupedPayloads)) {
-          for (const listingId of payload.listingIds) {
-            updates.push(
-              patchAvailabilityAdmin({
-                listingId,
-                startDate: payload.startDate,
-                endDate: payload.endDate,
-                availableRooms: inventoryValue ?? 0,
-                ...(priceMode === "fixed" && normalizedPriceInput !== undefined && { price: normalizedPriceInput }),
-                ...(statusValue && { status: statusValue }),
-                ...(blockTypeValue && { blockType: blockTypeValue })
-              })
-            );
-          }
+      // Enqueue admin updates instead of sending immediately
+      const newAdminUpdates: AdminAvailabilityUpdate[] = [];
+      for (const payload of Object.values(groupedPayloads)) {
+        for (const listingId of payload.listingIds) {
+          newAdminUpdates.push({
+            listingId,
+            startDate: payload.startDate,
+            endDate: payload.endDate,
+            availableRooms: inventoryValue ?? 0,
+            ...(priceMode === "fixed" &&
+              normalizedPriceInput !== undefined && { price: normalizedPriceInput }),
+          });
         }
-        
-        await Promise.all(updates);
-        setSuccessNotice("Availability updated successfully.");
-        setErrorNotice("");
-        clearSelection();
-      } catch (err) {
-        setListings(snapshot);
-        setErrorNotice("Update failed. Changes have been reverted.");
-      } finally {
-        setSaving(false);
       }
 
+      setPendingAdminUpdates((prev) => [...prev, ...newAdminUpdates]);
+      setSuccessNotice("Changes staged. Click Save to apply.");
+      setErrorNotice("");
+      clearSelection();
       return;
     }
 
@@ -954,8 +961,7 @@ console.log("STATE UPDATE", update);
     });
 
     try {
-      await Promise.all(perDateUpdates.map((update) => patchAvailabilityCell(update)));
-
+      // For per-date updates we also stage admin payloads instead of calling API directly
       const statusDerivedAvailableRooms =
         statusAction === "block" || statusAction === "close-channels"
           ? 0
@@ -970,7 +976,7 @@ console.log("STATE UPDATE", update);
         desiredAvailableRooms,
       });
 
-      // If inventory or status is part of the bulk change, call admin PATCH per listing for the selected ranges
+      // If inventory or status is part of the bulk change, stage admin PATCH per listing for the selected ranges
       if (desiredAvailableRooms !== null && desiredAvailableRooms !== undefined) {
         // compute min/max date per listing
         const ranges = new Map<number, { start: string; end: string }>();
@@ -984,33 +990,19 @@ console.log("STATE UPDATE", update);
           }
         });
 
-        try {
-          console.log("bulk admin patch ranges", Array.from(ranges.entries()));
-          await Promise.all(
-            Array.from(ranges.entries())
-              .filter(([listingId]) => listingId > 0)
-              .map(([listingId, range]) =>
-                patchAvailabilityAdmin({
-                  listingId,
-                  startDate: range.start,
-                  endDate: range.end,
-                  availableRooms: desiredAvailableRooms,
-                })
-              )
-          );
-        } catch (serverErr: any) {
-          const msg = serverErr && typeof serverErr === "object" ? JSON.stringify(serverErr) : String(serverErr);
-          setListings(snapshot);
-          setErrorNotice(`Update failed: ${msg}`);
-          setSaving(false);
-          return;
-        }
+        const staged: AdminAvailabilityUpdate[] = Array.from(ranges.entries())
+          .filter(([listingId]) => listingId > 0)
+          .map(([listingId, range]) => ({
+            listingId,
+            startDate: range.start,
+            endDate: range.end,
+            availableRooms: desiredAvailableRooms,
+          }));
+
+        setPendingAdminUpdates((prev) => [...prev, ...staged]);
       }
 
-      // Merge listing info after successful updates
-      const affectedListingIds = Array.from(new Set(perDateUpdates.map((u) => u.listingId)));
-      await fetchAndMergeListings(affectedListingIds);
-      setSuccessNotice("Availability updated successfully.");
+      setSuccessNotice("Changes staged. Click Save to apply.");
       setErrorNotice("");
       clearSelection();
     } catch (err) {
@@ -1039,42 +1031,50 @@ console.log("STATE UPDATE", update);
   ]);
 
   const handleCellChange = useCallback(
-    async (
-      listingId: number,
-      date: string,
-      update: { price?: number | null; inventory?: number | null }
-    ) => {
-      const snapshot = listings;
-
+    (listingId: number, date: string, update: { price?: number | null; inventory?: number | null }) => {
+      // Update UI immediately
       setListings((current) => applyCellUpdateForDate(current, listingId, date, update));
 
-      try {
-        // Use patchAvailabilityAdmin for the update
-        const payload = {
+      // Stage admin payload; real API call will be on Save
+      setPendingAdminUpdates((prev) => [
+        ...prev,
+        {
           listingId,
           startDate: date,
           endDate: date,
           availableRooms: update.inventory ?? 0,
-          ...(update.price !== undefined && { price: update.price })
-        };
-        
-        console.log("Sending update to API:", payload);
-        await patchAvailabilityAdmin(payload);
-        
-        // Merge latest listing info for this listing
-        await fetchAndMergeListings([listingId]);
-        // Merge latest listing info for this listing
-        await fetchAndMergeListings([listingId]);
-        setSuccessNotice("Availability updated successfully.");
-        setErrorNotice("");
-      } catch (err) {
-        setListings(snapshot);
-        const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
-        setErrorNotice(`Update failed: ${msg}`);
-      }
+          ...(update.price !== undefined && { price: update.price }),
+        },
+      ]);
+
+      setSuccessNotice("Changes staged. Click Save to apply.");
+      setErrorNotice("");
     },
-    [applyCellUpdateForDate, listings]
+    [applyCellUpdateForDate]
   );
+
+  const handleSave = useCallback(async () => {
+    if (pendingAdminUpdates.length === 0) {
+      setSuccessNotice("");
+      setErrorNotice("No changes to save.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await Promise.all(pendingAdminUpdates.map((u) => patchAvailabilityAdmin(u)));
+      const affectedListingIds = Array.from(new Set(pendingAdminUpdates.map((u) => u.listingId)));
+      await fetchAndMergeListings(affectedListingIds);
+      setPendingAdminUpdates([]);
+      setSuccessNotice("Availability updated successfully.");
+      setErrorNotice("");
+    } catch (err: any) {
+      const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
+      setErrorNotice(`Save failed: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [fetchAndMergeListings, pendingAdminUpdates]);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -1186,6 +1186,15 @@ console.log("STATE UPDATE", update);
                   onClick={() => setDrawerOpen(true)}
                 >
                   Bulk actions
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  disabled={pendingAdminUpdates.length === 0 || saving}
+                  onClick={handleSave}
+                >
+                  Save
                 </Button>
                 <Button size="small" variant="contained" onClick={fetchData}>
                   Refresh
