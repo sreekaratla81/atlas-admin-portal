@@ -219,11 +219,13 @@ const Bookings = () => {
     setIsLoading(true);
     setFetchError('');
     try {
-        let url = `/bookings`;
-        if (start && end) {
-          url += `?checkinStart=${dayjs(start).format('YYYY-MM-DD')}&checkinEnd=${dayjs(end).format('YYYY-MM-DD')}`;
-        }
-        const { data } = await api.get(url);
+      const params = {};
+      if (start && end) {
+        params.checkinStart = dayjs(start).format('YYYY-MM-DD');
+        params.checkinEnd = dayjs(end).format('YYYY-MM-DD');
+      }
+      params.include = 'guest';
+      const { data } = await api.get('/bookings', { params });
       const sorted = [...asArray(data, 'bookings')].sort(
         (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
       );
