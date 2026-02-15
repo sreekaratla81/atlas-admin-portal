@@ -1,4 +1,5 @@
 # Baseline gate per DEVSECOPS-GATES-BASELINE.md: lint (0 errors) + build + vitest
+# Status check name for branch protection: gate
 name: Gate
 
 on:

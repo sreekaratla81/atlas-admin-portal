@@ -39,6 +39,13 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
 
 **CI:** The Gate workflow (`.github/workflows/gate.yml`) runs `npm ci` → lint → build → `npx vitest run` on push to `main`/`dev` and on pull requests. See `CONTRIBUTING.md` for the full PR checklist.
 
+## Documentation
+
+- **CONTRIBUTING.md** — PR checklist, Gate workflow, branch rules.
+- **docs/admin-design-system.md** — Semantic tokens, status colors, theming.
+- **docs/admin-calendar.md** — Availability calendar operator guide.
+- **AGENTS.md** — Instructions for AI assistants (gate, CONTRIBUTING).
+
 ## Project Map
 
 - `src/main.tsx` – entry point wiring React Query, AuthProvider, router, and error boundary. 【F:src/main.tsx†L4-L30】
