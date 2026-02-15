@@ -3,7 +3,6 @@ import { getAuthConfig } from '@/lib/env';
 
 const cfg = getAuthConfig();
 if (import.meta.env.DEV) {
-  // eslint-disable-next-line no-console
   console.log('Bypass enabled:', cfg.bypass || cfg.disabled);
 }
 

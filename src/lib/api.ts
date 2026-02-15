@@ -4,7 +4,6 @@ import { getTenantSlug } from "@/tenant/store";
 
 const apiBase = getApiBase();
 if (import.meta.env.PROD && !apiBase) {
-  // eslint-disable-next-line no-console
   console.error("CONFIG: Missing VITE_API_BASE in production build.");
 }
 
@@ -56,7 +55,6 @@ api.interceptors.response.use(
 // Helper to ensure arrays before .map()
 export function asArray<T>(val: unknown, label: string): T[] {
   if (Array.isArray(val)) return val as T[];
-  // eslint-disable-next-line no-console
   console.error(`${label} expected array, got:`, val);
   return [];
 }

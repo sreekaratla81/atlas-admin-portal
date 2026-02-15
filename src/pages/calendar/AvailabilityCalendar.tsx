@@ -16,8 +16,6 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Skeleton,
   Snackbar,
@@ -41,7 +39,6 @@ import {
   CalendarDay,
   CalendarListing,
   fetchCalendarData,
-  formatCurrencyINR,
   patchAvailabilityAdmin,
   AdminAvailabilityUpdate,
 } from "@/api/availability";
@@ -544,7 +541,7 @@ export default function AvailabilityCalendar() {
       );
       setListings(calendarListings);
       console.log("fetched listings", calendarListings);
-    } catch (err) {
+    } catch (_err) {
       setError("We couldn't load availability data. Please try again.");
     } finally {
       setLoading(false);
@@ -567,7 +564,7 @@ export default function AvailabilityCalendar() {
           return name ? { ...listing, listingName: name } : listing;
         })
       );
-    } catch (err) {
+    } catch (_err) {
       // ignore merge errors
     }
   }, []);
@@ -800,7 +797,7 @@ console.log("STATE UPDATE", update);
     []
   );
 
-  const handleApplyBulk = useCallback(async () => {
+  const _handleApplyBulk = useCallback(async () => {
     if (!hasSelection) {
       return;
     }

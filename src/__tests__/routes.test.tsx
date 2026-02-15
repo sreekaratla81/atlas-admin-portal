@@ -11,7 +11,7 @@ vi.mock("@/auth/ProtectedRoute", () => ({
 }));
 
 vi.mock("@/pages/Dashboard", () => ({ default: () => <div>Mock Dashboard</div> }));
-vi.mock("@/pages/Calendar", () => ({ default: () => <div>Mock Calendar</div> }));
+vi.mock("@/pages/calendar/AvailabilityCalendar", () => ({ default: () => <div>Availability Calendar</div> }));
 vi.mock("@/pages/ChannelManager", () => ({ default: () => <div>Mock Channel Manager</div> }));
 vi.mock("@/pages/Reservation", () => ({ default: () => <button>CREATE MANUAL BOOKING</button> }));
 vi.mock("@/pages/Listings", () => ({ default: () => <h1>Listings</h1> }));
@@ -62,7 +62,7 @@ describe("App routes", () => {
 
   it("renders calendar", () => {
     renderAt("/calendar");
-    expect(screen.getByText(/Mock Calendar/i)).toBeInTheDocument();
+    expect(screen.getByText(/Availability Calendar/i)).toBeInTheDocument();
   });
 
   it("renders channel manager", () => {

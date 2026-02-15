@@ -307,7 +307,7 @@ const normalizeDays = (
   }, {});
 };
 
-const normalizeRatePlans = (
+const _normalizeRatePlans = (
   ratePlans: CalendarApiRatePlan[] | undefined
 ): CalendarRatePlan[] => {
   if (!ratePlans) return [];

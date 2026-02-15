@@ -16,11 +16,9 @@ let teardownMocks: (() => void) | undefined;
 initTenantFromEnv();
 
 if (import.meta.env.DEV) {
-  // eslint-disable-next-line no-console
   console.log('apiBase', getApiBase());
   teardownMocks = setupMocks();
 } else if (import.meta.env.PROD && getApiBase().includes('localhost')) {
-  // eslint-disable-next-line no-console
   console.warn('apiBase points to localhost in production');
 }
 
