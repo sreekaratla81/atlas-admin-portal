@@ -8,7 +8,8 @@
 
 - [ ] PR is raised from `dev` branch
 - [ ] PR merges into `main` only
-- [ ] Code has been tested locally
+- [ ] Code has been tested locally (see CONTRIBUTING.md)
+- [ ] **Gate** workflow (`.github/workflows/gate.yml`) must pass before merge
 - [ ] No secrets (.env) are committed
 - [ ] Follows repo naming and folder structure
 
