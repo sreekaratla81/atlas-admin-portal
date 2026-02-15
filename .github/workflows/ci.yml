@@ -1,6 +1,6 @@
-# Baseline gate per DEVSECOPS-GATES-BASELINE.md: lint (0 errors) + build + vitest
-# Status check name for branch protection: gate
-name: Gate
+# CI: lint + build + vitest. Per DEVSECOPS-GATES-BASELINE.md.
+# Status check name for branch protection: CI
+name: CI
 
 on:
   push:
@@ -9,11 +9,11 @@ on:
     branches: [main, dev]
 
 concurrency:
-  group: gate-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  gate:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

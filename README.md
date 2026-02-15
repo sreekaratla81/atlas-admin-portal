@@ -37,7 +37,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
    - `npm run lint` enforces ESLint with React/TypeScript rules. 【F:package.json†L6-L12】【F:.eslintrc.cjs†L1-L27】
    - `npm run format` verifies Markdown/YAML/JSON formatting with Prettier. 【F:package.json†L6-L12】
 
-**CI:** The Gate workflow (`.github/workflows/gate.yml`) runs `npm ci` → lint → build → `npx vitest run` on push to `main`/`dev` and on pull requests. See `CONTRIBUTING.md` for the full PR checklist.
+**CI:** The CI workflow (`.github/workflows/ci.yml`) runs `npm ci` → lint → build → `npx vitest run` on push to `main`/`dev` and on pull requests. See `CONTRIBUTING.md` for the full PR checklist.
 
 ## Documentation
 
