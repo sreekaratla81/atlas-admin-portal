@@ -25,6 +25,7 @@ Before requesting review:
    npm run format
    ```
 
+   The **Gate** workflow (`.github/workflows/gate.yml`) runs the same checks on push/PR; it must pass before merge.
    - Tests use Vitest and jsdom. 【F:package.json†L6-L12】
    - Linting relies on ESLint with React and TypeScript rules. 【F:.eslintrc.cjs†L1-L27】
    - Formatting checks Markdown/JSON/YAML with Prettier. 【F:package.json†L6-L12】
