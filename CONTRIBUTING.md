@@ -20,6 +20,7 @@ Before requesting review:
 3. **Run automated checks**
 
    ```bash
+   npm run build
    npm test -- --run
    npm run lint
    npm run format
@@ -43,3 +44,7 @@ Before requesting review:
 - Two approvals or an approval plus QA sign-off are recommended for feature work.
 - Expect feedback on accessibility, performance, auth flows, and API contract usage.
 - Ship small, incremental PRs when touching critical flows such as bookings or payments.
+
+## Docs
+
+See [README](README.md), `docs/admin-design-system.md`, `docs/admin-calendar.md`, and `docs/messaging-templates-implementation-plan.md` for feature-specific guidance.
