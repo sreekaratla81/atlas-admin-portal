@@ -159,7 +159,7 @@ export const fetchAvailabilityDates = async (
       ? data.availability
       : [];
 
-    return availability.map((item: any) => ({
+    return availability.map((item: { date: string; inventory?: number }) => ({
       listingId: data.listingId ?? listingId,
       date: item.date,
       availableRooms: typeof item.inventory === "number" ? item.inventory : 0,
@@ -211,7 +211,7 @@ export const patchAvailabilityAdmin = async (payload: AdminAvailabilityUpdate) =
       results.push({
         date,
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }
@@ -230,14 +230,14 @@ export const fetchCalendarData = async (
   try {
     // First, fetch all listings for the property
     const listingsResponse = await api.get("/listings");
-    const allListings = asArray<{ id: number; name: string }>(
+    const allListings = asArray<{ id: number; name: string; propertyId?: number }>(
       listingsResponse.data,
       "listings"
     );
     
     // Filter listings by property if propertyId is provided
     const filteredListings = propertyId 
-      ? allListings.filter((l: any) => l.propertyId === Number(propertyId))
+      ? allListings.filter((l) => l.propertyId === Number(propertyId))
       : allListings;
     
     // Fetch availability for each listing

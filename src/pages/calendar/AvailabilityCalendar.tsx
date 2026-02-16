@@ -1049,7 +1049,7 @@ export default function AvailabilityCalendar() {
       setPendingAdminUpdates([]);
       setSuccessNotice("Availability updated successfully.");
       setErrorNotice("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
       setErrorNotice(`Save failed: ${msg}`);
     } finally {
