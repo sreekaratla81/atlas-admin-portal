@@ -70,7 +70,6 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
       amountDetails,
       internalNotes,
     };
-    console.log("Booking Data:", bookingData);
     onClose();
   };
 

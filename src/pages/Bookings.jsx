@@ -306,7 +306,6 @@ const Bookings = () => {
         guestsActual,
         extraGuestCharge
       });
-      console.log(payload);
       if (formMode === 'edit' && selectedBookingId) {
         await api.put(
           `/bookings/${selectedBookingId}`,
@@ -357,7 +356,6 @@ const Bookings = () => {
   };
 
   const handleEdit = (bookingToEdit) => {
-    console.log('Editing booking', bookingToEdit);
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
     lastFetchedGuestIdRef.current = null;
