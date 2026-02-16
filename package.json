@@ -1,6 +1,9 @@
 {
   "name": "admin-portal",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "node scripts/no-localhost.js && vite build",
