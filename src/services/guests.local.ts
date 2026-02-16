@@ -5,7 +5,7 @@ import { normalize } from '@/utils/normalize';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const TS_KEY = 'guest_cache_ts_v1';
 
-function mapGuest(x:any): GuestSummary {
+function mapGuest(x: { id?: unknown; name?: string; fullName?: string; phone?: string; email?: string }): GuestSummary {
   const g: GuestSummary = { id:String(x.id), name:x.name ?? x.fullName ?? '', phone:x.phone ?? '', email:x.email ?? '' };
   g._n = normalize(`${g.name} ${g.phone} ${g.email}`);
   return g;
@@ -17,7 +17,7 @@ export async function hydrateGuests(force=false): Promise<number> {
   if (!force && freshEnough && (await getAllGuests()).length > 0) return 0;
   const t0 = performance.now();
   const { data } = await api.get('/guests');
-  const items = asArray<any>(data, 'guests');
+  const items = asArray<{ id?: unknown; name?: string; fullName?: string; phone?: string; email?: string }>(data, 'guests');
   const all = items.map(mapGuest);
   await clearStaleThenPut(all);
   localStorage.setItem(TS_KEY, String(Date.now()));
