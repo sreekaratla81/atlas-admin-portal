@@ -42,6 +42,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
 ## Documentation
 
 - **CONTRIBUTING.md** — PR checklist, Gate workflow, branch rules.
+- **docs/messaging-templates-implementation-plan.md** — Messaging templates UI and API integration.
 - **docs/admin-design-system.md** — Semantic tokens, status colors, theming.
 - **docs/admin-calendar.md** — Availability calendar operator guide.
 - **AGENTS.md** — Instructions for AI assistants (gate, CONTRIBUTING).
