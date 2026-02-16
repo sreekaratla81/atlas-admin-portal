@@ -13,6 +13,7 @@ import ReservationPage from "@/pages/Reservation"; // ✅ NEW IMPORT
 import DashboardPage from "@/pages/Dashboard";
 import AvailabilityCalendarPage from "@/pages/calendar/AvailabilityCalendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
+import { TemplatesPage, TemplateEditPage, MessagesPage } from "@/pages/messaging";
 import AppLayout from "@/components/layout/AppLayout";
 
 export type AppRoute = {
@@ -47,6 +48,11 @@ const baseRoutes: AppRoute[] = [
       { path: "properties", element: <Properties />, label: "Properties" },
       { path: "reports", element: <Reports />, label: "Reports" },
       { path: "bank-accounts", element: <BankAccountsPage />, label: "Bank Accounts" },
+      { path: "messaging", element: <Navigate to="/messaging/templates" replace /> },
+      { path: "messaging/templates", element: <TemplatesPage />, label: "Templates" },
+      { path: "messaging/templates/new", element: <TemplateEditPage /> },
+      { path: "messaging/templates/:id", element: <TemplateEditPage /> },
+      { path: "messaging/messages", element: <MessagesPage />, label: "Messages" },
       { path: "*", element: <Navigate to="/reservations" replace /> },
     ],
   },
