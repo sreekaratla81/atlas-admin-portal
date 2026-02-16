@@ -1,5 +1,7 @@
 # Contributing
 
+For feature work spanning admin UI and API, see `atlas-api/docs/ATLAS-HIGH-VALUE-BACKLOG.md` and `atlas-api/docs/ATLAS-FEATURE-EXECUTION-PROMPT.md`.
+
 ## Branching & Workflow
 
 - Fork or branch from `main`.
