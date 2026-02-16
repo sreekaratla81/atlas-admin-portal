@@ -23,9 +23,9 @@ Before requesting review:
 
    ```bash
    npm ci
+   npm run lint
    npm run build
    npm test -- --run
-   npm run lint
    npm run format
    ```
 
