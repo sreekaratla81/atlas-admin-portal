@@ -202,12 +202,6 @@ const DataCell = React.memo(
     const currentValue =
       field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
       
-console.log("INVENTORY CHECK", {
-  draft: inventoryDraft,
-  value,
-  currentValue,
-  equal: value === currentValue,
-});
     if (Number.isNaN(value)) {
       if (field === "price") {
         setPriceDraft(availability?.price != null ? String(availability.price) : "");
@@ -322,8 +316,7 @@ console.log("INVENTORY CHECK", {
   onFocus={() => setEditingField("inventory")}
   onChange={(event) => {
     const v = event.target.value;
-     console.log("INPUT TYPED:", v);
-    if ( v === "0" || v === "1") {
+    if (v === "0" || v === "1") {
       setInventoryDraft(v);
     }
   }}
@@ -540,7 +533,6 @@ export default function AvailabilityCalendar() {
         toDate
       );
       setListings(calendarListings);
-      console.log("fetched listings", calendarListings);
     } catch (_err) {
       setError("We couldn't load availability data. Please try again.");
     } finally {
@@ -782,8 +774,6 @@ export default function AvailabilityCalendar() {
           delete nextListingDay.blockType;
           delete nextListingDay.reason;
         }
-console.log("STATE BEFORE", listing.days[date]);
-console.log("STATE UPDATE", update);
 
         return {
           ...listing,
@@ -966,12 +956,6 @@ console.log("STATE UPDATE", update);
             ? 1
             : null;
       const desiredAvailableRooms = inventoryValue ?? statusDerivedAvailableRooms;
-      console.log("bulk admin patch decision", {
-        inventoryValue,
-        statusAction,
-        statusDerivedAvailableRooms,
-        desiredAvailableRooms,
-      });
 
       // If inventory or status is part of the bulk change, stage admin PATCH per listing for the selected ranges
       if (desiredAvailableRooms !== null && desiredAvailableRooms !== undefined) {
