@@ -12,7 +12,7 @@ export default function VariableChipBar({ onInsert, disabled }: VariableChipBarP
       <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
         Insert:
       </Typography>
-      {TEMPLATE_VARIABLES.map(({ key, label }) => (
+      {TEMPLATE_VARIABLES.map(({ key }) => (
         <Chip
           key={key}
           label={`{${key}}`}

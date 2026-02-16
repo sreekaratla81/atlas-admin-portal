@@ -32,32 +32,6 @@ export type BulkUpdateSelection = {
   nightlyPrice?: number | null;
 };
 
-type CalendarApiDay = Omit<CalendarDay, "price" | "inventory"> & {
-  price?: number | string | null;
-  inventory?: number | string | null;
-};
-
-type CalendarApiListing = {
-  listingId?: number;
-  listingName?: string;
-  days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
-  ratePlans?: CalendarApiRatePlan[];
-};
-
-type CalendarApiRatePlan = {
-  ratePlanId?: number;
-  name?: string;
-  daily?: CalendarApiDay[] | Record<string, CalendarApiDay>;
-  days?: CalendarApiDay[] | Record<string, CalendarApiDay>;
-};
-
-const parseNullableNumber = (value: unknown) => {
-  if (value == null) return null;
-
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isNaN(parsed) ? null : parsed;
-};
-
 export const buildDateArray = (from: string, to: string): string[] => {
   const start = parseISO(from);
   const end = parseISO(to);
@@ -275,48 +249,3 @@ export const fetchCalendarData = async (
     throw error;
   }
 };
-
-const normalizeDay = (day: CalendarApiDay): CalendarDay => ({
-  date: day.date,
-  status: day.status ?? "open",
-  price: parseNullableNumber(day.price),
-  inventory: parseNullableNumber(day.inventory),
-  blockType: day.blockType,
-  reason: day.reason,
-});
-
-const normalizeDays = (
-  days: CalendarApiListing["days"]
-): Record<string, CalendarDay> => {
-  if (!days) return {};
-
-  if (Array.isArray(days)) {
-    return days.reduce<Record<string, CalendarDay>>((acc, day) => {
-      if (day?.date) {
-        acc[day.date] = normalizeDay(day);
-      }
-      return acc;
-    }, {});
-  }
-
-  return Object.entries(days).reduce<Record<string, CalendarDay>>((acc, [key, day]) => {
-    if (day?.date ?? key) {
-      acc[day.date ?? key] = normalizeDay({ ...day, date: day.date ?? key });
-    }
-    return acc;
-  }, {});
-};
-
-const _normalizeRatePlans = (
-  ratePlans: CalendarApiRatePlan[] | undefined
-): CalendarRatePlan[] => {
-  if (!ratePlans) return [];
-
-  return ratePlans
-    .filter((plan) => plan.ratePlanId && plan.name)
-    .map((plan) => ({
-      ratePlanId: plan.ratePlanId as number,
-      name: plan.name as string,
-      days: normalizeDays(plan.daily ?? plan.days),
-    }));
-}

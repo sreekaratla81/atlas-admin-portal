@@ -533,7 +533,7 @@ export default function AvailabilityCalendar() {
         toDate
       );
       setListings(calendarListings);
-    } catch (_err) {
+    } catch {
       setError("We couldn't load availability data. Please try again.");
     } finally {
       setLoading(false);
@@ -556,7 +556,7 @@ export default function AvailabilityCalendar() {
           return name ? { ...listing, listingName: name } : listing;
         })
       );
-    } catch (_err) {
+    } catch {
       // ignore merge errors
     }
   }, []);
@@ -787,6 +787,7 @@ export default function AvailabilityCalendar() {
     []
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for bulk-apply UI
   const _handleApplyBulk = useCallback(async () => {
     if (!hasSelection) {
       return;

@@ -60,6 +60,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     fetchTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTemplates recreated each render; mount + filter change
   }, [channelFilter, statusFilter]);
 
   const handleDuplicate = (t: MessageTemplate) => {

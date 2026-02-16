@@ -9,7 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Typography,
   Alert,
   Paper,
   Grid,
@@ -101,7 +100,7 @@ export default function TemplateEditPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [id, isNew, duplicateFrom?.name, duplicateFrom?.channel]);
+  }, [id, isNew, duplicateFrom]);
 
   const insertVariable = (variable: string) => {
     setBody((prev) => prev + variable);
