@@ -24,7 +24,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
    ```bash
    npm run dev
    ```
-   The app serves at http://localhost:5173. Do not commit `.env` or `.env.local`; they may contain secrets. with API calls proxied to `VITE_API_BASE` during development. 【F:vite.config.ts†L1-L33】
+   The app serves at http://localhost:5173. API calls are proxied to `VITE_API_BASE` during development. Do not commit `.env` or `.env.local`; they may contain secrets. 【F:vite.config.ts†L1-L33】
 5. **Execute checks**
 
    ```bash
