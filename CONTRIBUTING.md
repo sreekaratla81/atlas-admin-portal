@@ -20,6 +20,7 @@ Before requesting review:
 3. **Run automated checks**
 
    ```bash
+   npm ci
    npm run build
    npm test -- --run
    npm run lint
