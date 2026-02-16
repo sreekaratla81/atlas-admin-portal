@@ -101,6 +101,8 @@ const Reservation: React.FC = () => {
   const [checkinFrom, setCheckinFrom] = useState<Dayjs | null>(null);
   const [checkinTo, setCheckinTo] = useState<Dayjs | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setSelectedSource reserved for future source filter UI
+  const [selectedSource, setSelectedSource] = useState<string>("");
   const [propertySearch, setPropertySearch] = useState<string>("");
   const [selectedManualProperty, setSelectedManualProperty] = useState<Property | null>(null);
   const [openManualBookingList, setOpenManualBookingList] = useState<boolean>(false);
