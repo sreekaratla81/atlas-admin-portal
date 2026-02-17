@@ -555,7 +555,13 @@ const Reservation: React.FC = () => {
         <ManualBookingPopup
           property={selectedManualProperty}
           open={openFullManualBooking}
-          onClose={() => setOpenFullManualBooking(false)}
+          onClose={() => {
+            setOpenFullManualBooking(false);
+            setSelectedManualProperty(null);
+          }}
+          onSuccess={() => {
+            fetchBookings();
+          }}
         />
       )}
     </AdminShellLayout>
