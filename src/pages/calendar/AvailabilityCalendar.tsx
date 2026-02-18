@@ -1181,7 +1181,7 @@ export default function AvailabilityCalendar() {
     setErrorNotice("");
     setSuccessNotice("");
     try {
-      await api.post("/pricing/base", {
+      await api.post("/pricing/send", {
         listingId: listingIdNum,
         baseNightlyRate: base,
         weekendNightlyRate:
