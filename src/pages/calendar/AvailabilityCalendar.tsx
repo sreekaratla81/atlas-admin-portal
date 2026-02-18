@@ -509,6 +509,16 @@ export default function AvailabilityCalendar() {
   } | null>(null);
   const [cellPriceReason, setCellPriceReason] = useState("");
 
+  const [adminPricingOpen, setAdminPricingOpen] = useState(false);
+  const [adminPricingSubmitting, setAdminPricingSubmitting] = useState(false);
+  const [adminPricingForm, setAdminPricingForm] = useState({
+    listingId: "",
+    baseNightlyRate: "",
+    weekendNightlyRate: "",
+    extraGuestRate: "",
+    currency: "INR",
+  });
+
   const toDate = useMemo(() => {
     const start = parseISO(fromDate);
     return format(addDays(start, rangeDays - 1), "yyyy-MM-dd");
@@ -1145,6 +1155,56 @@ export default function AvailabilityCalendar() {
     performSave();
   }, [pendingAdminUpdates.length, performSave]);
 
+  const handleAdminPricingOpen = useCallback(() => {
+    setAdminPricingForm({
+      listingId: "",
+      baseNightlyRate: "",
+      weekendNightlyRate: "",
+      extraGuestRate: "",
+      currency: "INR",
+    });
+    setAdminPricingOpen(true);
+  }, []);
+
+  const handleAdminPricingSubmit = useCallback(async () => {
+    const listingIdNum = Number(adminPricingForm.listingId);
+    if (!Number.isInteger(listingIdNum) || listingIdNum <= 0) {
+      setErrorNotice("Listing ID must be a positive integer.");
+      return;
+    }
+    const base = Number(adminPricingForm.baseNightlyRate);
+    if (Number.isNaN(base) || base < 0) {
+      setErrorNotice("Base nightly rate must be a non-negative number.");
+      return;
+    }
+    setAdminPricingSubmitting(true);
+    setErrorNotice("");
+    setSuccessNotice("");
+    try {
+      await api.post("/pricing/base", {
+        listingId: listingIdNum,
+        baseNightlyRate: base,
+        weekendNightlyRate:
+          adminPricingForm.weekendNightlyRate === ""
+            ? undefined
+            : Number(adminPricingForm.weekendNightlyRate),
+        extraGuestRate:
+          adminPricingForm.extraGuestRate === ""
+            ? undefined
+            : Number(adminPricingForm.extraGuestRate),
+        currency: adminPricingForm.currency || "INR",
+      });
+      setSuccessNotice("Base pricing saved successfully.");
+      setAdminPricingOpen(false);
+    } catch (err: unknown) {
+      const res = err && typeof err === "object" && "response" in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      const message = res?.data?.message ?? (err && typeof err === "object" ? JSON.stringify(err) : String(err));
+      setErrorNotice(message || "Failed to save base pricing.");
+    } finally {
+      setAdminPricingSubmitting(false);
+    }
+  }, [adminPricingForm]);
+
   return (
     <AdminShellLayout title="Availability Calendar">
       <Stack spacing={2} sx={{ pb: 2 }}>
@@ -1235,6 +1295,13 @@ export default function AvailabilityCalendar() {
                   placeholder="Search listings"
                   label="Listing"
                 />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleAdminPricingOpen}
+                >
+                  Admin
+                </Button>
               </Stack>
 
               <Stack
@@ -1625,6 +1692,82 @@ export default function AvailabilityCalendar() {
             variant="contained"
           >
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={adminPricingOpen} onClose={() => !adminPricingSubmitting && setAdminPricingOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Base pricing</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              size="small"
+              label="Listing ID"
+              type="number"
+              value={adminPricingForm.listingId}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, listingId: e.target.value }))
+              }
+              required
+              inputProps={{ min: 1, step: 1 }}
+            />
+            <TextField
+              size="small"
+              label="Base nightly rate"
+              type="number"
+              value={adminPricingForm.baseNightlyRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, baseNightlyRate: e.target.value }))
+              }
+              required
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Weekend nightly rate"
+              type="number"
+              value={adminPricingForm.weekendNightlyRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({
+                  ...prev,
+                  weekendNightlyRate: e.target.value,
+                }))
+              }
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Extra guest rate"
+              type="number"
+              value={adminPricingForm.extraGuestRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, extraGuestRate: e.target.value }))
+              }
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Currency"
+              value={adminPricingForm.currency}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, currency: e.target.value }))
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            onClick={() => setAdminPricingOpen(false)}
+            disabled={adminPricingSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAdminPricingSubmit}
+            disabled={adminPricingSubmitting}
+          >
+            {adminPricingSubmitting ? "Saving…" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>
