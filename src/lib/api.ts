@@ -18,7 +18,19 @@ export function addTenantHeader(config: { headers: { set: (k: string, v: string)
   return config;
 }
 
-api.interceptors.request.use(addTenantHeader);
+api.interceptors.request.use((config) => {
+  if (import.meta.env.DEV) {
+    const base = getApiBase();
+    const slug = getTenantSlug();
+    if (!base?.trim()) {
+      console.error("[Atlas] DEV: VITE_API_BASE is not set. API calls will fail. Set it in .env or .env.local.");
+    }
+    if (!slug?.trim()) {
+      console.warn("[Atlas] DEV: Tenant slug not set (VITE_TENANT_SLUG or Auth0 app_metadata). Tenant-scoped endpoints may return 400.");
+    }
+  }
+  return addTenantHeader(config);
+});
 
 api.interceptors.response.use(
   (res) => {
