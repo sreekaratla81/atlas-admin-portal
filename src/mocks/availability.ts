@@ -2,7 +2,6 @@ import { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { addDays, format, isAfter, parseISO } from "date-fns";
 import { CalendarDay } from "@/api/availability";
 
-const DEFAULT_PRICE = 3200;
 const DEFAULT_INVENTORY = 4;
 
 const baseListings = [
@@ -49,14 +48,6 @@ const buildRange = (start: string, end: string) => {
   return dates;
 };
 
-const parseData = <T>(config: AxiosRequestConfig): T => {
-  if (!config.data) return {} as T;
-  try {
-    return typeof config.data === "string" ? (JSON.parse(config.data) as T) : (config.data as T);
-  } catch (err) {
-    return {} as T;
-  }
-};
 
 const buildResponse = (config: AxiosRequestConfig, data: unknown, status = 200): AxiosResponse => ({
   data,

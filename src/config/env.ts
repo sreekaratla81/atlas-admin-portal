@@ -4,6 +4,7 @@ export const IS_LOCALHOST = typeof window !== 'undefined' && /^(localhost|127\.0
 
 export const ENV = {
   VITE_API_BASE: getApiBase(),
+  VITE_TENANT_SLUG: (import.meta.env.VITE_TENANT_SLUG ?? '').trim() || undefined,
   VITE_AUTH_DISABLED: String(import.meta.env.VITE_AUTH_DISABLED || '').toLowerCase() === 'true',
   VITE_AUTH_BYPASS: String(import.meta.env.VITE_AUTH_BYPASS || '').toLowerCase() === 'true',
   VITE_AUTH0_DOMAIN: import.meta.env.VITE_AUTH0_DOMAIN || '',
@@ -12,6 +13,11 @@ export const ENV = {
   VITE_DEFAULT_AFTER_LOGIN: import.meta.env.VITE_DEFAULT_AFTER_LOGIN || '/bookings',
   VITE_ALLOWED_EMAILS: import.meta.env.VITE_ALLOWED_EMAILS,
 } as const;
+
+/** Tenant slug from env (fallback when user profile has none). Do not use for UI tenant picker. */
+export function getTenantSlugFromEnv(): string | undefined {
+  return ENV.VITE_TENANT_SLUG;
+}
 
 export function getAuthConfig() {
   return {

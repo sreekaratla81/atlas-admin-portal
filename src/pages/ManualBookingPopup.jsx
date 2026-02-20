@@ -11,10 +11,18 @@ import {
   Button,
   Divider,
   IconButton,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { api } from "@/lib/api";
 
-const ManualBookingPopup = ({ open, onClose, property }) => {
+const normalizePhone = (phone) => {
+  if (!phone || typeof phone !== "string") return "";
+  return phone.replace(/\s+/g, "").replace(/^\+/, "");
+};
+
+const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
   const [guestDetails, setGuestDetails] = useState({
     fullName: "",
     email: "",
@@ -37,6 +45,8 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
   });
 
   const [internalNotes, setInternalNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleGuestChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -62,16 +72,95 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
     }));
   };
 
-  const handleSubmit = () => {
-    const bookingData = {
-      property,
-      guestDetails,
-      stayDetails,
-      amountDetails,
-      internalNotes,
-    };
-    console.log("Booking Data:", bookingData);
-    onClose();
+  const findOrCreateGuest = async () => {
+    const phoneNorm = normalizePhone(guestDetails.phone);
+    if (!phoneNorm) throw new Error("Phone is required");
+    const { data } = await api.get("/guests");
+    const guests = Array.isArray(data) ? data : data?.guests ?? [];
+    const match = guests.find((g) => normalizePhone(g.phone || "") === phoneNorm);
+    if (match) return match.id;
+    const { data: created } = await api.post("/guests", {
+      name: guestDetails.fullName.trim(),
+      phone: guestDetails.phone.trim(),
+      email: guestDetails.email.trim(),
+      idProofUrl: "N/A",
+    });
+    return created.id;
+  };
+
+  const handleSubmit = async () => {
+    setSubmitError("");
+    if (!guestDetails.fullName?.trim()) {
+      setSubmitError("Full name is required.");
+      return;
+    }
+    if (!guestDetails.email?.trim()) {
+      setSubmitError("Email is required.");
+      return;
+    }
+    if (!guestDetails.phone?.trim()) {
+      setSubmitError("Phone is required.");
+      return;
+    }
+    if (!stayDetails.checkIn || !stayDetails.checkOut) {
+      setSubmitError("Check-in and check-out dates are required.");
+      return;
+    }
+    if (!amountDetails.total || parseFloat(amountDetails.total) <= 0) {
+      setSubmitError("Total amount is required.");
+      return;
+    }
+    if (!amountDetails.advance || parseFloat(amountDetails.advance) < 0) {
+      setSubmitError("Advance amount is required.");
+      return;
+    }
+    if (!property?.id) {
+      setSubmitError("Property/listing is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const guestId = await findOrCreateGuest();
+      const totalAmount = parseFloat(amountDetails.total);
+      const amountReceived = parseFloat(amountDetails.advance);
+      const payload = {
+        listingId: Number(property.id),
+        guestId,
+        checkinDate: stayDetails.checkIn,
+        checkoutDate: stayDetails.checkOut,
+        bookingSource: "Walk-in",
+        bookingStatus: "Confirmed",
+        totalAmount,
+        amountReceived,
+        currency: "INR",
+        guestsPlanned: Number(stayDetails.guests) || 1,
+        guestsActual: Number(stayDetails.guests) || 1,
+        extraGuestCharge: 0,
+        commissionAmount: 0,
+        notes: internalNotes?.trim() || "",
+        paymentStatus: amountReceived >= totalAmount ? "Paid" : "Pending",
+      };
+      await api.post("/bookings", payload);
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      const d = err?.response?.data;
+      let msg = "Failed to create booking.";
+      if (d) {
+        if (typeof d === "string") msg = d;
+        else if (d.errors && typeof d.errors === "object") {
+          const parts = Object.entries(d.errors).flatMap(([k, v]) =>
+            Array.isArray(v) ? v.map((m) => `${k}: ${m}`) : [`${k}: ${v}`]
+          );
+          msg = parts.join(" ") || d.title || msg;
+        } else if (d.message) msg = d.message;
+        else if (d.title) msg = d.title;
+      } else if (err?.message) msg = err.message;
+      setSubmitError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -266,14 +355,22 @@ const ManualBookingPopup = ({ open, onClose, property }) => {
           sx={{ mb: 2 }}
         />
 
+        {submitError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSubmitError("")}>
+            {submitError}
+          </Alert>
+        )}
+
         <Box sx={{ mt: 2 }}>
           <Button
             variant="contained"
             color="primary"
             fullWidth
             onClick={handleSubmit}
+            disabled={submitting}
+            startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            Create Booking
+            {submitting ? "Creating…" : "Create Booking"}
           </Button>
         </Box>
       </DialogContent>

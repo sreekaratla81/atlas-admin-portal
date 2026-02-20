@@ -1,6 +1,0 @@
-{
-  "sub": "auth0|local-dev",
-  "email": "dev@atlas.local",
-  "name": "Local Dev",
-  "roles": ["admin"]
-}

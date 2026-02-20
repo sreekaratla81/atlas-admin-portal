@@ -24,7 +24,7 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
    ```bash
    npm run dev
    ```
-   The app serves at http://localhost:5173 with API calls proxied to `VITE_API_BASE` during development. 【F:vite.config.ts†L1-L33】
+   The app serves at http://localhost:5173. API calls are proxied to `VITE_API_BASE` during development. Do not commit `.env` or `.env.local`; they may contain secrets. 【F:vite.config.ts†L1-L33】
 5. **Execute checks**
 
    ```bash
@@ -36,6 +36,16 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
    - `npm test` runs the Vitest suite (React components, hooks, utilities). 【F:package.json†L6-L12】
    - `npm run lint` enforces ESLint with React/TypeScript rules. 【F:package.json†L6-L12】【F:.eslintrc.cjs†L1-L27】
    - `npm run format` verifies Markdown/YAML/JSON formatting with Prettier. 【F:package.json†L6-L12】
+
+**CI:** The CI workflow (`.github/workflows/ci.yml`) runs `npm ci` → lint → build → `npx vitest run` on push to `main`/`dev` and on pull requests. See `CONTRIBUTING.md` for the full PR checklist.
+
+## Documentation
+
+- **CONTRIBUTING.md** — PR checklist, gate workflow, branch rules.
+- **docs/messaging-templates-implementation-plan.md** — Messaging templates UI and API integration.
+- **docs/admin-design-system.md** — Semantic tokens, status colors, theming.
+- **docs/admin-calendar.md** — Availability calendar operator guide.
+- **AGENTS.md** — Instructions for AI assistants (gate, CONTRIBUTING).
 
 ## Project Map
 

@@ -101,6 +101,7 @@ const Reservation: React.FC = () => {
   const [checkinFrom, setCheckinFrom] = useState<Dayjs | null>(null);
   const [checkinTo, setCheckinTo] = useState<Dayjs | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setSelectedSource reserved for future source filter UI
   const [selectedSource, setSelectedSource] = useState<string>("");
   const [propertySearch, setPropertySearch] = useState<string>("");
   const [selectedManualProperty, setSelectedManualProperty] = useState<Property | null>(null);
@@ -227,6 +228,7 @@ const Reservation: React.FC = () => {
         clearTimeout(retryTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; fetchBookings identity changes
   }, []);
 
   // ----------------------
@@ -553,7 +555,13 @@ const Reservation: React.FC = () => {
         <ManualBookingPopup
           property={selectedManualProperty}
           open={openFullManualBooking}
-          onClose={() => setOpenFullManualBooking(false)}
+          onClose={() => {
+            setOpenFullManualBooking(false);
+            setSelectedManualProperty(null);
+          }}
+          onSuccess={() => {
+            fetchBookings();
+          }}
         />
       )}
     </AdminShellLayout>

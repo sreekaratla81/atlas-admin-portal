@@ -5,18 +5,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import AuthProvider from "./auth/AuthProvider";
+import TenantSync from "./auth/TenantSync";
 import "./style.css";
 import { getApiBase } from "@/utils/env";
+import { initTenantFromEnv } from "@/tenant/store";
 import { setupMocks } from "@/mocks";
 
 let teardownMocks: (() => void) | undefined;
 
+initTenantFromEnv();
+
 if (import.meta.env.DEV) {
-  // eslint-disable-next-line no-console
   console.log('apiBase', getApiBase());
   teardownMocks = setupMocks();
 } else if (import.meta.env.PROD && getApiBase().includes('localhost')) {
-  // eslint-disable-next-line no-console
   console.warn('apiBase points to localhost in production');
 }
 
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <TenantSync />
             <App />
           </AuthProvider>
         </QueryClientProvider>

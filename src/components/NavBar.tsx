@@ -14,6 +14,8 @@ const navItems: NavItem[] = [
   { path: "/properties", label: "Properties" },
   { path: "/calendar/availability", label: "Calendar" },
   { path: "/channel-manager", label: "Channel Manager" },
+  { path: "/messaging/templates", label: "Message templates" },
+  { path: "/messaging/messages", label: "Messages" },
   { path: "/reports", label: "Reports" },
   { path: "/bank-accounts", label: "Bank Accounts" },
   { path: "/dashboard", label: "Dashboard" },

@@ -9,6 +9,10 @@ import {
   Button,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   FormControl,
@@ -16,8 +20,6 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Skeleton,
   Snackbar,
@@ -41,8 +43,8 @@ import {
   CalendarDay,
   CalendarListing,
   fetchCalendarData,
-  formatCurrencyINR,
   patchAvailabilityAdmin,
+  updateDailyRate,
   AdminAvailabilityUpdate,
 } from "@/api/availability";
 import useCalendarSelection from "@/hooks/useCalendarSelection";
@@ -205,12 +207,6 @@ const DataCell = React.memo(
     const currentValue =
       field === "price" ? availability?.price ?? null : availability?.inventory ?? null;
       
-console.log("INVENTORY CHECK", {
-  draft: inventoryDraft,
-  value,
-  currentValue,
-  equal: value === currentValue,
-});
     if (Number.isNaN(value)) {
       if (field === "price") {
         setPriceDraft(availability?.price != null ? String(availability.price) : "");
@@ -325,8 +321,7 @@ console.log("INVENTORY CHECK", {
   onFocus={() => setEditingField("inventory")}
   onChange={(event) => {
     const v = event.target.value;
-     console.log("INPUT TYPED:", v);
-    if ( v === "0" || v === "1") {
+    if (v === "0" || v === "1") {
       setInventoryDraft(v);
     }
   }}
@@ -507,6 +502,22 @@ export default function AvailabilityCalendar() {
   const [onlyOpenDates, setOnlyOpenDates] = useState(false);
   const [skipMissingPrices, setSkipMissingPrices] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cellPriceReasonDialog, setCellPriceReasonDialog] = useState<{
+    listingId: number;
+    date: string;
+    price: number;
+  } | null>(null);
+  const [cellPriceReason, setCellPriceReason] = useState("");
+
+  const [adminPricingOpen, setAdminPricingOpen] = useState(false);
+  const [adminPricingSubmitting, setAdminPricingSubmitting] = useState(false);
+  const [adminPricingForm, setAdminPricingForm] = useState({
+    listingId: "",
+    baseNightlyRate: "",
+    weekendNightlyRate: "",
+    extraGuestRate: "",
+    currency: "INR",
+  });
 
   const toDate = useMemo(() => {
     const start = parseISO(fromDate);
@@ -543,8 +554,7 @@ export default function AvailabilityCalendar() {
         toDate
       );
       setListings(calendarListings);
-      console.log("fetched listings", calendarListings);
-    } catch (err) {
+    } catch {
       setError("We couldn't load availability data. Please try again.");
     } finally {
       setLoading(false);
@@ -567,7 +577,7 @@ export default function AvailabilityCalendar() {
           return name ? { ...listing, listingName: name } : listing;
         })
       );
-    } catch (err) {
+    } catch {
       // ignore merge errors
     }
   }, []);
@@ -785,8 +795,6 @@ export default function AvailabilityCalendar() {
           delete nextListingDay.blockType;
           delete nextListingDay.reason;
         }
-console.log("STATE BEFORE", listing.days[date]);
-console.log("STATE UPDATE", update);
 
         return {
           ...listing,
@@ -800,7 +808,8 @@ console.log("STATE UPDATE", update);
     []
   );
 
-  const handleApplyBulk = useCallback(async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for bulk-apply UI
+  const _handleApplyBulk = useCallback(async () => {
     if (!hasSelection) {
       return;
     }
@@ -883,15 +892,17 @@ console.log("STATE UPDATE", update);
         return acc;
       }, {});
 
-      // Enqueue admin updates instead of sending immediately
+      // Enqueue admin updates instead of sending immediately (price → PUT pricing/daily-rate on Save)
       const newAdminUpdates: AdminAvailabilityUpdate[] = [];
+      const includeInventory =
+        hasInventoryAction || statusAction !== "none";
       for (const payload of Object.values(groupedPayloads)) {
         for (const listingId of payload.listingIds) {
           newAdminUpdates.push({
             listingId,
             startDate: payload.startDate,
             endDate: payload.endDate,
-            availableRooms: inventoryValue ?? 0,
+            ...(includeInventory && { availableRooms: inventoryValue ?? 0 }),
             ...(priceMode === "fixed" &&
               normalizedPriceInput !== undefined && { price: normalizedPriceInput }),
           });
@@ -969,16 +980,9 @@ console.log("STATE UPDATE", update);
             ? 1
             : null;
       const desiredAvailableRooms = inventoryValue ?? statusDerivedAvailableRooms;
-      console.log("bulk admin patch decision", {
-        inventoryValue,
-        statusAction,
-        statusDerivedAvailableRooms,
-        desiredAvailableRooms,
-      });
 
       // If inventory or status is part of the bulk change, stage admin PATCH per listing for the selected ranges
       if (desiredAvailableRooms !== null && desiredAvailableRooms !== undefined) {
-        // compute min/max date per listing
         const ranges = new Map<number, { start: string; end: string }>();
         perDateUpdates.forEach((u) => {
           const existing = ranges.get(u.listingId);
@@ -1000,6 +1004,19 @@ console.log("STATE UPDATE", update);
           }));
 
         setPendingAdminUpdates((prev) => [...prev, ...staged]);
+      }
+
+      // Stage price updates for Save (PUT pricing/daily-rate)
+      const priceStaged: AdminAvailabilityUpdate[] = perDateUpdates
+        .filter((u) => u.price !== undefined && u.price !== null)
+        .map((u) => ({
+          listingId: u.listingId,
+          startDate: u.date,
+          endDate: u.date,
+          price: u.price!,
+        }));
+      if (priceStaged.length > 0) {
+        setPendingAdminUpdates((prev) => [...prev, ...priceStaged]);
       }
 
       setSuccessNotice("Changes staged. Click Save to apply.");
@@ -1035,46 +1052,158 @@ console.log("STATE UPDATE", update);
       // Update UI immediately
       setListings((current) => applyCellUpdateForDate(current, listingId, date, update));
 
-      // Stage admin payload; real API call will be on Save
+      const isPriceOnly =
+        update.price !== undefined &&
+        update.price !== null &&
+        update.inventory === undefined;
+
+      if (isPriceOnly) {
+        setCellPriceReasonDialog({ listingId, date, price: update.price });
+        setCellPriceReason("");
+        setSuccessNotice("");
+        return;
+      }
+
       setPendingAdminUpdates((prev) => [
         ...prev,
         {
           listingId,
           startDate: date,
           endDate: date,
-          availableRooms: update.inventory ?? 0,
-          ...(update.price !== undefined && { price: update.price }),
+          ...(update.inventory !== undefined && { availableRooms: update.inventory }),
+          ...(update.price !== undefined && update.price !== null && { price: update.price }),
         },
       ]);
-
       setSuccessNotice("Changes staged. Click Save to apply.");
       setErrorNotice("");
     },
     [applyCellUpdateForDate]
   );
 
-  const handleSave = useCallback(async () => {
+  const confirmCellPriceReason = useCallback(
+    (reason?: string) => {
+      if (!cellPriceReasonDialog) return;
+      const { listingId, date, price } = cellPriceReasonDialog;
+      setPendingAdminUpdates((prev) => [
+        ...prev,
+        {
+          listingId,
+          startDate: date,
+          endDate: date,
+          price,
+          ...(reason != null && reason.trim() !== "" && { reason: reason.trim() }),
+        },
+      ]);
+      setCellPriceReasonDialog(null);
+      setCellPriceReason("");
+      setSuccessNotice("Changes staged. Click Save to apply.");
+      setErrorNotice("");
+    },
+    [cellPriceReasonDialog]
+  );
+
+  const performSave = useCallback(async () => {
+    if (pendingAdminUpdates.length === 0) return;
+
+    setSaving(true);
+    try {
+      const pricePromises: Promise<void>[] = [];
+      const inventoryUpdates: AdminAvailabilityUpdate[] = [];
+
+      for (const u of pendingAdminUpdates) {
+        if (u.price !== undefined && u.price !== null) {
+          const dates = buildDateArray(u.startDate, u.endDate);
+          for (const date of dates) {
+            pricePromises.push(
+              updateDailyRate(u.listingId, date, u.price!, "INR", u.reason)
+            );
+          }
+        }
+          if (u.availableRooms !== undefined) {
+            inventoryUpdates.push(u);
+          }
+        }
+
+        await Promise.all([
+          ...pricePromises,
+          ...inventoryUpdates.map((u) => patchAvailabilityAdmin(u)),
+        ]);
+        const affectedListingIds = Array.from(
+          new Set(pendingAdminUpdates.map((u) => u.listingId))
+        );
+        await fetchAndMergeListings(affectedListingIds);
+        setPendingAdminUpdates([]);
+        setSuccessNotice("Availability updated successfully.");
+        setErrorNotice("");
+      } catch (err: unknown) {
+        const msg =
+          err && typeof err === "object" ? JSON.stringify(err) : String(err);
+        setErrorNotice(`Save failed: ${msg}`);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [fetchAndMergeListings, pendingAdminUpdates]
+  );
+
+  const handleSave = useCallback(() => {
     if (pendingAdminUpdates.length === 0) {
       setSuccessNotice("");
       setErrorNotice("No changes to save.");
       return;
     }
+    performSave();
+  }, [pendingAdminUpdates.length, performSave]);
 
-    setSaving(true);
-    try {
-      await Promise.all(pendingAdminUpdates.map((u) => patchAvailabilityAdmin(u)));
-      const affectedListingIds = Array.from(new Set(pendingAdminUpdates.map((u) => u.listingId)));
-      await fetchAndMergeListings(affectedListingIds);
-      setPendingAdminUpdates([]);
-      setSuccessNotice("Availability updated successfully.");
-      setErrorNotice("");
-    } catch (err: any) {
-      const msg = err && typeof err === "object" ? JSON.stringify(err) : String(err);
-      setErrorNotice(`Save failed: ${msg}`);
-    } finally {
-      setSaving(false);
+  const handleAdminPricingOpen = useCallback(() => {
+    setAdminPricingForm({
+      listingId: "",
+      baseNightlyRate: "",
+      weekendNightlyRate: "",
+      extraGuestRate: "",
+      currency: "INR",
+    });
+    setAdminPricingOpen(true);
+  }, []);
+
+  const handleAdminPricingSubmit = useCallback(async () => {
+    const listingIdNum = Number(adminPricingForm.listingId);
+    if (!Number.isInteger(listingIdNum) || listingIdNum <= 0) {
+      setErrorNotice("Listing ID must be a positive integer.");
+      return;
     }
-  }, [fetchAndMergeListings, pendingAdminUpdates]);
+    const base = Number(adminPricingForm.baseNightlyRate);
+    if (Number.isNaN(base) || base < 0) {
+      setErrorNotice("Base nightly rate must be a non-negative number.");
+      return;
+    }
+    setAdminPricingSubmitting(true);
+    setErrorNotice("");
+    setSuccessNotice("");
+    try {
+      await api.post("/pricing/send", {
+        listingId: listingIdNum,
+        baseNightlyRate: base,
+        weekendNightlyRate:
+          adminPricingForm.weekendNightlyRate === ""
+            ? undefined
+            : Number(adminPricingForm.weekendNightlyRate),
+        extraGuestRate:
+          adminPricingForm.extraGuestRate === ""
+            ? undefined
+            : Number(adminPricingForm.extraGuestRate),
+        currency: adminPricingForm.currency || "INR",
+      });
+      setSuccessNotice("Base pricing saved successfully.");
+      setAdminPricingOpen(false);
+    } catch (err: unknown) {
+      const res = err && typeof err === "object" && "response" in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      const message = res?.data?.message ?? (err && typeof err === "object" ? JSON.stringify(err) : String(err));
+      setErrorNotice(message || "Failed to save base pricing.");
+    } finally {
+      setAdminPricingSubmitting(false);
+    }
+  }, [adminPricingForm]);
 
   return (
     <AdminShellLayout title="Availability Calendar">
@@ -1166,6 +1295,13 @@ console.log("STATE UPDATE", update);
                   placeholder="Search listings"
                   label="Listing"
                 />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleAdminPricingOpen}
+                >
+                  Admin
+                </Button>
               </Stack>
 
               <Stack
@@ -1516,6 +1652,125 @@ console.log("STATE UPDATE", update);
           </Stack>
         </Box>
       </Drawer>
+
+      <Dialog
+        open={Boolean(cellPriceReasonDialog)}
+        onClose={() => confirmCellPriceReason()}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle>Reason for price update</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Optional reason for this price change (e.g. seasonal rate, promotion).
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Reason (optional)"
+            placeholder="e.g. Seasonal rate, promotion"
+            value={cellPriceReason}
+            onChange={(e) => setCellPriceReason(e.target.value)}
+            fullWidth
+            variant="outlined"
+            size="small"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmCellPriceReason(cellPriceReason);
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button onClick={() => confirmCellPriceReason()} color="inherit">
+            Skip
+          </Button>
+          <Button
+            onClick={() => confirmCellPriceReason(cellPriceReason)}
+            variant="contained"
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={adminPricingOpen} onClose={() => !adminPricingSubmitting && setAdminPricingOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Base pricing</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              size="small"
+              label="Listing ID"
+              type="number"
+              value={adminPricingForm.listingId}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, listingId: e.target.value }))
+              }
+              required
+              inputProps={{ min: 1, step: 1 }}
+            />
+            <TextField
+              size="small"
+              label="Base nightly rate"
+              type="number"
+              value={adminPricingForm.baseNightlyRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, baseNightlyRate: e.target.value }))
+              }
+              required
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Weekend nightly rate"
+              type="number"
+              value={adminPricingForm.weekendNightlyRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({
+                  ...prev,
+                  weekendNightlyRate: e.target.value,
+                }))
+              }
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Extra guest rate"
+              type="number"
+              value={adminPricingForm.extraGuestRate}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, extraGuestRate: e.target.value }))
+              }
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <TextField
+              size="small"
+              label="Currency"
+              value={adminPricingForm.currency}
+              onChange={(e) =>
+                setAdminPricingForm((prev) => ({ ...prev, currency: e.target.value }))
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            onClick={() => setAdminPricingOpen(false)}
+            disabled={adminPricingSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAdminPricingSubmit}
+            disabled={adminPricingSubmitting}
+          >
+            {adminPricingSubmitting ? "Saving…" : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={Boolean(successNotice)}

@@ -1,5 +1,7 @@
 # Contributing
 
+For feature work spanning admin UI and API, see `atlas-api/docs/ATLAS-HIGH-VALUE-BACKLOG.md` and `atlas-api/docs/ATLAS-FEATURE-EXECUTION-PROMPT.md`.
+
 ## Branching & Workflow
 
 - Fork or branch from `main`.
@@ -20,16 +22,19 @@ Before requesting review:
 3. **Run automated checks**
 
    ```bash
-   npm test -- --run
+   npm ci
    npm run lint
+   npm run build
+   npm test -- --run
    npm run format
    ```
 
+   The **CI** workflow (`.github/workflows/ci.yml`) runs the same checks on push/PR; it must pass before merge.
    - Tests use Vitest and jsdom. 【F:package.json†L6-L12】
    - Linting relies on ESLint with React and TypeScript rules. 【F:.eslintrc.cjs†L1-L27】
    - Formatting checks Markdown/JSON/YAML with Prettier. 【F:package.json†L6-L12】
 
-4. **Ensure environment files are excluded** – keep secrets in `.env.local`, which is git-ignored by default. 【F:.gitignore†L1-L40】
+4. **Never commit `.env` or `.env.local`** – they may contain secrets (API keys, Auth0). Keep them in `.env.local` and rely on `.gitignore`. 【F:.gitignore†L1-L40】
 
 ## Code Style Highlights
 
@@ -42,3 +47,7 @@ Before requesting review:
 - Two approvals or an approval plus QA sign-off are recommended for feature work.
 - Expect feedback on accessibility, performance, auth flows, and API contract usage.
 - Ship small, incremental PRs when touching critical flows such as bookings or payments.
+
+## Docs
+
+See [README](README.md), `docs/admin-design-system.md`, `docs/admin-calendar.md`, and `docs/messaging-templates-implementation-plan.md` for feature-specific guidance.

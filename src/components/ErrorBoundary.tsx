@@ -5,7 +5,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, { er
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
-  componentDidCatch(error: Error, info: any) {
+  componentDidCatch(_error: Error, _info: React.ErrorInfo) {
     /* log to Sentry or console */
   }
   render() {
