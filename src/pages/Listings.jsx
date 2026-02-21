@@ -20,6 +20,26 @@ const Listings = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [basePricingForm, setBasePricingForm] = useState({
+    listingId: '',
+    baseNightlyRate: '',
+    weekendNightlyRate: '',
+    extraGuestRate: '',
+    currency: 'INR'
+  });
+  const [basePricingLoading, setBasePricingLoading] = useState(false);
+  const [basePricingError, setBasePricingError] = useState('');
+  const [basePricingSuccess, setBasePricingSuccess] = useState(false);
+
+  const [pricingForm, setPricingForm] = useState({
+    globalDiscountPercent: '',
+    convenienceFeePercent: '',
+    updatedBy: ''
+  });
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState('');
+  const [pricingSuccess, setPricingSuccess] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -37,8 +57,25 @@ const Listings = () => {
     }
   };
 
+  const fetchPricingSettings = async () => {
+    try {
+      const { data } = await api.get('/tenant/settings/pricing');
+      setPricingForm({
+        globalDiscountPercent: data.globalDiscountPercent ?? data.GlobalDiscountPercent ?? '',
+        convenienceFeePercent: data.convenienceFeePercent ?? data.ConvenienceFeePercent ?? '',
+        updatedBy: data.updatedBy ?? data.UpdatedBy ?? ''
+      });
+    } catch {
+      setPricingForm({ globalDiscountPercent: '', convenienceFeePercent: '', updatedBy: '' });
+    }
+  };
+
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    fetchPricingSettings();
   }, []);
 
   const resetForm = () => {
@@ -49,6 +86,86 @@ const Listings = () => {
     });
     setEditId(null);
     setErrorMsg('');
+  };
+
+  const resetBasePricingForm = () => {
+    setBasePricingForm({
+      listingId: '',
+      baseNightlyRate: '',
+      weekendNightlyRate: '',
+      extraGuestRate: '',
+      currency: 'INR'
+    });
+    setBasePricingError('');
+    setBasePricingSuccess(false);
+  };
+
+  const submitBasePricing = async (e) => {
+    e?.preventDefault();
+    const listingId = parseInt(basePricingForm.listingId, 10);
+    const baseNightlyRate = parseFloat(basePricingForm.baseNightlyRate);
+    if (!listingId || listingId <= 0) {
+      setBasePricingError('Please select a listing.');
+      return;
+    }
+    if (Number.isNaN(baseNightlyRate) || baseNightlyRate < 0) {
+      setBasePricingError('Base nightly rate must be 0 or greater.');
+      return;
+    }
+    setBasePricingLoading(true);
+    setBasePricingError('');
+    setBasePricingSuccess(false);
+    try {
+      await api.post('/pricing/send', {
+        listingId,
+        baseNightlyRate,
+        weekendNightlyRate: basePricingForm.weekendNightlyRate === '' ? null : parseFloat(basePricingForm.weekendNightlyRate),
+        extraGuestRate: basePricingForm.extraGuestRate === '' ? null : parseFloat(basePricingForm.extraGuestRate),
+        currency: basePricingForm.currency || 'INR'
+      });
+      setBasePricingSuccess(true);
+      resetBasePricingForm();
+    } catch (err) {
+      setBasePricingError(err?.response?.data?.message || 'Failed to save base pricing.');
+    } finally {
+      setBasePricingLoading(false);
+    }
+  };
+
+  const resetPricingForm = () => {
+    setPricingError('');
+    setPricingSuccess(false);
+    fetchPricingSettings();
+  };
+
+  const submitPricing = async (e) => {
+    e?.preventDefault();
+    const convenienceFeePercent = Number(pricingForm.convenienceFeePercent);
+    const globalDiscountPercent = Number(pricingForm.globalDiscountPercent);
+    if (Number.isNaN(convenienceFeePercent) || convenienceFeePercent < 0 || convenienceFeePercent > 100) {
+      setPricingError('Convenience fee must be between 0 and 100.');
+      return;
+    }
+    if (Number.isNaN(globalDiscountPercent) || globalDiscountPercent < 0 || globalDiscountPercent > 100) {
+      setPricingError('Global discount percent must be between 0 and 100.');
+      return;
+    }
+    setPricingLoading(true);
+    setPricingError('');
+    setPricingSuccess(false);
+    try {
+      await api.put('/tenant/settings/pricing', {
+        convenienceFeePercent,
+        globalDiscountPercent,
+        updatedBy: pricingForm.updatedBy?.trim() || null
+      });
+      setPricingSuccess(true);
+      fetchPricingSettings();
+    } catch (err) {
+      setPricingError(err?.response?.data?.message || 'Failed to update pricing settings.');
+    } finally {
+      setPricingLoading(false);
+    }
   };
 
   const submit = async () => {
@@ -293,6 +410,175 @@ const Listings = () => {
                     </Button>
                   )}
                 </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+            Base pricing
+          </Typography>
+          {basePricingError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {basePricingError}
+            </Alert>
+          )}
+          {basePricingSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Base pricing saved.
+            </Alert>
+          )}
+          <Box component="form" onSubmit={submitBasePricing}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 2,
+                flexWrap: 'wrap',
+                '& > *': { flex: '1 1 300px', minWidth: '250px' }
+              }}>
+                <FormControl required sx={{ flex: '1 1 300px' }}>
+                  <InputLabel>Listing ID *</InputLabel>
+                  <Select
+                    value={basePricingForm.listingId}
+                    label="Listing ID *"
+                    onChange={e => setBasePricingForm({ ...basePricingForm, listingId: e.target.value })}
+                  >
+                    <MenuItem value=""><em>Select Listing</em></MenuItem>
+                    {listings.map(l => (
+                      <MenuItem key={l.id} value={l.id}>{l.name} (ID: {l.id})</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Base nightly rate *"
+                  type="number"
+                  required
+                  inputProps={{ min: 0, step: '0.01' }}
+                  value={basePricingForm.baseNightlyRate}
+                  onChange={e => setBasePricingForm({ ...basePricingForm, baseNightlyRate: e.target.value })}
+                  sx={{ flex: '1 1 300px' }}
+                />
+                <TextField
+                  label="Weekend nightly rate"
+                  type="number"
+                  inputProps={{ min: 0, step: '0.01' }}
+                  value={basePricingForm.weekendNightlyRate}
+                  onChange={e => setBasePricingForm({ ...basePricingForm, weekendNightlyRate: e.target.value })}
+                  sx={{ flex: '1 1 300px' }}
+                />
+                <TextField
+                  label="Extra guest rate"
+                  type="number"
+                  inputProps={{ min: 0, step: '0.01' }}
+                  value={basePricingForm.extraGuestRate}
+                  onChange={e => setBasePricingForm({ ...basePricingForm, extraGuestRate: e.target.value })}
+                  sx={{ flex: '1 1 300px' }}
+                />
+                <FormControl sx={{ flex: '1 1 300px' }}>
+                  <InputLabel>Currency</InputLabel>
+                  <Select
+                    value={basePricingForm.currency}
+                    label="Currency"
+                    onChange={e => setBasePricingForm({ ...basePricingForm, currency: e.target.value })}
+                  >
+                    <MenuItem value="INR">INR</MenuItem>
+                    <MenuItem value="USD">USD</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                <Button
+                  type="button"
+                  onClick={resetBasePricingForm}
+                  disabled={basePricingLoading}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={basePricingLoading}
+                  sx={{ textTransform: 'none', minWidth: 120 }}
+                >
+                  {basePricingLoading ? <CircularProgress size={24} /> : 'Save'}
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+            Tenant pricing settings
+          </Typography>
+          {pricingError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPricingError('')}>
+              {pricingError}
+            </Alert>
+          )}
+          {pricingSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPricingSuccess(false)}>
+              Pricing settings updated.
+            </Alert>
+          )}
+          <Box component="form" onSubmit={submitPricing}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3
+            }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 2,
+                flexWrap: 'wrap',
+                '& > *': {
+                  flex: '1 1 300px',
+                  minWidth: '250px'
+                }
+              }}>
+                <TextField
+                  label="Global discount (%)"
+                  type="number"
+                  value={pricingForm.globalDiscountPercent}
+                  onChange={e => setPricingForm({ ...pricingForm, globalDiscountPercent: e.target.value })}
+                  inputProps={{ min: 0, max: 100, step: 0.01 }}
+                  sx={{ flex: '1 1 300px' }}
+                />
+                <TextField
+                  label="Convenience fee (%)"
+                  type="number"
+                  value={pricingForm.convenienceFeePercent}
+                  onChange={e => setPricingForm({ ...pricingForm, convenienceFeePercent: e.target.value })}
+                  inputProps={{ min: 0, max: 100, step: 0.01 }}
+                  sx={{ flex: '1 1 300px' }}
+                />
+                <TextField
+                  label="Updated by"
+                  value={pricingForm.updatedBy}
+                  onChange={e => setPricingForm({ ...pricingForm, updatedBy: e.target.value })}
+                  inputProps={{ maxLength: 100 }}
+                  sx={{ flex: '1 1 300px' }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  onClick={resetPricingForm}
+                  disabled={pricingLoading}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={pricingLoading}
+                  sx={{ minWidth: 120 }}
+                >
+                  {pricingLoading ? 'Saving…' : 'Save'}
+                </Button>
               </Box>
             </Box>
           </Box>

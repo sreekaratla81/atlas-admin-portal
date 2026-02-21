@@ -246,6 +246,7 @@ const DataCell = React.memo(
   return (
     <Tooltip key={`${listingId}-${date}`} title={tooltipText} arrow>
       <Box
+        data-testid={`calendar-cell-${listingId}-${date}`}
         sx={{
           width: CELL_WIDTH,
           height: 56,
@@ -296,6 +297,7 @@ const DataCell = React.memo(
               min: 0,
               style: { padding: "4px 8px", textAlign: "center" },
               "data-calendar-input": "true",
+              "data-testid": "calendar-price-input",
             }}
             sx={{
               width: "100%",
@@ -350,6 +352,7 @@ const DataCell = React.memo(
     step: 1,
     style: { padding: "4px 8px", textAlign: "center" },
     "data-calendar-input": "true",
+    "data-testid": "calendar-rooms-input",
   }}
   sx={{
     width: "100%",
@@ -1250,15 +1253,21 @@ export default function AvailabilityCalendar() {
             >
               <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center" rowGap={1.5}>
                 <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>Property</InputLabel>
+                  <InputLabel id="calendar-property-label">Property</InputLabel>
                   <Select
                     value={selectedProperty}
                     label="Property"
+                    labelId="calendar-property-label"
                     onChange={(event) => setSelectedProperty(event.target.value)}
+                    data-testid="calendar-property-select"
                   >
                     <MenuItem value="">All properties</MenuItem>
                     {properties.map((property) => (
-                      <MenuItem key={property.id} value={String(property.id)}>
+                      <MenuItem
+                        key={property.id}
+                        value={String(property.id)}
+                        data-testid={`calendar-property-option-${property.id}`}
+                      >
                         {property.name}
                       </MenuItem>
                     ))}
@@ -1329,6 +1338,7 @@ export default function AvailabilityCalendar() {
                   color="success"
                   disabled={pendingAdminUpdates.length === 0 || saving}
                   onClick={handleSave}
+                  data-testid="calendar-save-btn"
                 >
                   Save
                 </Button>
@@ -1778,7 +1788,12 @@ export default function AvailabilityCalendar() {
         onClose={() => setSuccessNotice("")}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert onClose={() => setSuccessNotice("")} severity="success" sx={{ width: "100%" }}>
+        <Alert
+          onClose={() => setSuccessNotice("")}
+          severity="success"
+          sx={{ width: "100%" }}
+          data-testid="calendar-success-toast"
+        >
           {successNotice}
         </Alert>
       </Snackbar>
