@@ -32,11 +32,14 @@ api.interceptors.request.use((config) => {
   return addTenantHeader(config);
 });
 
+const RETRY_LIMIT = 2;
+const RETRY_DELAY_MS = 1000;
+const RETRYABLE_CODES = new Set([408, 429, 500, 502, 503, 504]);
+
 api.interceptors.response.use(
   (res) => {
     const ct = String(res.headers?.["content-type"] || "");
 
-    // If Axios already parsed JSON, don't complain
     if (
       !ct.includes("application/json") &&
       typeof res.data === "string"
@@ -50,8 +53,23 @@ api.interceptors.response.use(
 
     return res;
   },
-  (err) => {
+  async (err) => {
+    const config = err.config;
     const status = err.response?.status;
+
+    if (
+      config &&
+      !config.__retryCount &&
+      (config.method === "get" || config.method === "GET") &&
+      (RETRYABLE_CODES.has(status) || !err.response)
+    ) {
+      config.__retryCount = (config.__retryCount ?? 0) + 1;
+      if (config.__retryCount <= RETRY_LIMIT) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * config.__retryCount));
+        return api(config);
+      }
+    }
+
     if (status === 404 || status === 403) {
       err.message =
         err.response?.data?.message ||
