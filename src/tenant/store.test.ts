@@ -1,34 +1,30 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { getTenantSlug, setTenantSlug, initTenantFromEnv } from "./store";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+const TOKEN_KEY = 'atlas_admin_token';
+const USER_KEY = 'atlas_admin_user';
 
 describe("tenant store", () => {
   afterEach(() => {
-    setTenantSlug(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     vi.unstubAllEnvs();
     vi.resetModules();
   });
 
-  it("returns null when no slug set", () => {
-    expect(getTenantSlug()).toBeNull();
+  it("returns tenant slug from stored user", async () => {
+    localStorage.setItem(USER_KEY, JSON.stringify({ tenantSlug: "sunrise" }));
+    const { getTenantSlug } = await import("./store");
+    expect(getTenantSlug()).toBe("sunrise");
   });
 
-  it("setTenantSlug and getTenantSlug roundtrip", () => {
-    setTenantSlug("atlas");
+  it("falls back to VITE_TENANT_SLUG when no stored user", async () => {
+    vi.stubEnv("VITE_TENANT_SLUG", "atlas");
+    const { getTenantSlug } = await import("./store");
     expect(getTenantSlug()).toBe("atlas");
-    setTenantSlug("contoso");
-    expect(getTenantSlug()).toBe("contoso");
   });
 
-  it("setTenantSlug trims and treats empty as null", () => {
-    setTenantSlug("  my-tenant  ");
-    expect(getTenantSlug()).toBe("my-tenant");
-    setTenantSlug("");
+  it("returns null when nothing is configured", async () => {
+    const { getTenantSlug } = await import("./store");
     expect(getTenantSlug()).toBeNull();
-    setTenantSlug("  ");
-    expect(getTenantSlug()).toBeNull();
-  });
-
-  it("initTenantFromEnv runs without throwing", () => {
-    expect(() => initTenantFromEnv()).not.toThrow();
   });
 });

@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import BookingsPage from "@/pages/Bookings";
-import CallbackPage from "@/pages/AuthCallback";
+import LoginPage from "@/pages/LoginPage";
 import Listings from "@/pages/Listings";
 import Properties from "@/pages/Properties";
 import Reports from "@/pages/Reports";
@@ -9,7 +9,7 @@ import Guests from "@/pages/Guests";
 import BankAccountsPage from "@/pages/BankAccountsPage";
 import ProtectedRoute from "@/auth/ProtectedRoute";
 import DevConfig from "@/pages/DevConfig";
-import ReservationPage from "@/pages/Reservation"; // ✅ NEW IMPORT
+import ReservationPage from "@/pages/Reservation";
 import DashboardPage from "@/pages/Dashboard";
 import AvailabilityCalendarPage from "@/pages/calendar/AvailabilityCalendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
@@ -27,7 +27,7 @@ export type AppRoute = {
 };
 
 const baseRoutes: AppRoute[] = [
-  { path: "/auth/callback", element: <CallbackPage /> },
+  { path: "/login", element: <LoginPage /> },
   {
     path: "/",
     element: (

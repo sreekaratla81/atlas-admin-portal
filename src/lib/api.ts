@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getApiBase } from "@/utils/env";
 import { getTenantSlug } from "@/tenant/store";
+import { getStoredToken } from "@/auth/AuthContext";
 
 const apiBase = getApiBase();
 if (import.meta.env.PROD && !apiBase) {
@@ -19,17 +20,22 @@ export function addTenantHeader(config: { headers: { set: (k: string, v: string)
 }
 
 api.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) config.headers.set("Authorization", `Bearer ${token}`);
+
+  const slug = getTenantSlug();
+  if (slug) config.headers.set("X-Tenant-Slug", slug);
+
   if (import.meta.env.DEV) {
     const base = getApiBase();
-    const slug = getTenantSlug();
     if (!base?.trim()) {
       console.error("[Atlas] DEV: VITE_API_BASE is not set. API calls will fail. Set it in .env or .env.local.");
     }
     if (!slug?.trim()) {
-      console.warn("[Atlas] DEV: Tenant slug not set (VITE_TENANT_SLUG or Auth0 app_metadata). Tenant-scoped endpoints may return 400.");
+      console.warn("[Atlas] DEV: Tenant slug not set. Tenant-scoped endpoints may return 400.");
     }
   }
-  return addTenantHeader(config);
+  return config;
 });
 
 const RETRY_LIMIT = 2;
