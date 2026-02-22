@@ -7,16 +7,17 @@ import {
 import { api, asArray } from '@/lib/api';
 import AdminShellLayout from '@/components/layout/AdminShellLayout';
 import { safeFind } from '../utils/array';
+import type { Listing, Property } from '@/types/api';
 
-const Listings = () => {
-  const [listings, setListings] = useState([]);
-  const [properties, setProperties] = useState([]);
+const Listings: React.FC = () => {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [form, setForm] = useState({
     name: '', propertyId: '', floor: '', type: '', status: 'active',
     wifiName: '', wifiPassword: '', maxGuests: '',
     checkInTime: '', checkOutTime: ''
   });
-  const [editId, setEditId] = useState(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -100,7 +101,7 @@ const Listings = () => {
     setBasePricingSuccess(false);
   };
 
-  const submitBasePricing = async (e) => {
+  const submitBasePricing = async (e: any) => {
     e?.preventDefault();
     const listingId = parseInt(basePricingForm.listingId, 10);
     const baseNightlyRate = parseFloat(basePricingForm.baseNightlyRate);
@@ -125,7 +126,7 @@ const Listings = () => {
       });
       setBasePricingSuccess(true);
       resetBasePricingForm();
-    } catch (err) {
+    } catch (err: any) {
       setBasePricingError(err?.response?.data?.message || 'Failed to save base pricing.');
     } finally {
       setBasePricingLoading(false);
@@ -138,7 +139,7 @@ const Listings = () => {
     fetchPricingSettings();
   };
 
-  const submitPricing = async (e) => {
+  const submitPricing = async (e: any) => {
     e?.preventDefault();
     const convenienceFeePercent = Number(pricingForm.convenienceFeePercent);
     const globalDiscountPercent = Number(pricingForm.globalDiscountPercent);
@@ -161,7 +162,7 @@ const Listings = () => {
       });
       setPricingSuccess(true);
       fetchPricingSettings();
-    } catch (err) {
+    } catch (err: any) {
       setPricingError(err?.response?.data?.message || 'Failed to update pricing settings.');
     } finally {
       setPricingLoading(false);
@@ -193,13 +194,13 @@ const Listings = () => {
     }
   };
 
-  const edit = (l) => {
+  const edit = (l: any) => {
     setForm({ ...l, propertyId: l.propertyId.toString() });
     setEditId(l.id);
     setErrorMsg('');
   };
 
-  const remove = async (id) => {
+  const remove = async (id: number) => {
     if (confirm("Delete this listing?")) {
       setLoading(true);
       setErrorMsg('');
@@ -218,7 +219,7 @@ const Listings = () => {
     <AdminShellLayout title="Listings">
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {errorMsg && (
-          <Alert severity="error">
+          <Alert severity="error" onClose={() => setErrorMsg('')}>
             {errorMsg}
           </Alert>
         )}
@@ -234,7 +235,7 @@ const Listings = () => {
             {editId ? 'Edit Listing' : 'Add Listing'}
           </Typography>
 
-          <Box component="form" onSubmit={e => { e.preventDefault(); submit(); }}>
+          <Box component="form" onSubmit={(e: any) => { e.preventDefault(); submit(); }}>
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -302,7 +303,7 @@ const Listings = () => {
                 <TextField
                   label="Check-in Time (e.g. 14:00)"
                   required
-                  inputProps={{ pattern: "^([01]\d|2[0-3]):([0-5]\d)$" }}
+                  inputProps={{ pattern: "^([01]\\d|2[0-3]):([0-5]\\d)$" }}
                   value={form.checkInTime}
                   onChange={e => setForm({ ...form, checkInTime: e.target.value })}
                   sx={{ flex: '1 1 300px' }}
@@ -311,7 +312,7 @@ const Listings = () => {
                 <TextField
                   label="Check-out Time (e.g. 11:00)"
                   required
-                  inputProps={{ pattern: "^([01]\d|2[0-3]):([0-5]\d)$" }}
+                  inputProps={{ pattern: "^([01]\\d|2[0-3]):([0-5]\\d)$" }}
                   value={form.checkOutTime}
                   onChange={e => setForm({ ...form, checkOutTime: e.target.value })}
                   sx={{ flex: '1 1 300px' }}
@@ -420,7 +421,7 @@ const Listings = () => {
             Base pricing
           </Typography>
           {basePricingError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBasePricingError('')}>
               {basePricingError}
             </Alert>
           )}
@@ -607,10 +608,10 @@ const Listings = () => {
                   <TableCell>{l.name}</TableCell>
                   <TableCell>{l.floor}</TableCell>
                   <TableCell>{l.type}</TableCell>
-                  <TableCell>{l.checkInTime}</TableCell>
-                  <TableCell>{l.checkOutTime}</TableCell>
+                  <TableCell>{(l as any).checkInTime}</TableCell>
+                  <TableCell>{(l as any).checkOutTime}</TableCell>
                   <TableCell>{l.status}</TableCell>
-                  <TableCell>{l.wifiName}</TableCell>
+                  <TableCell>{(l as any).wifiName}</TableCell>
                   <TableCell>{l.maxGuests}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>

@@ -7,13 +7,14 @@ import {
 import { api, asArray } from '@/lib/api';
 import AdminShellLayout from '@/components/layout/AdminShellLayout';
 import Card from '@/components/ui/Card';
+import type { Property } from '@/types/api';
 
-const Properties = () => {
-  const [list, setList] = useState([]);
+const Properties: React.FC = () => {
+  const [list, setList] = useState<Property[]>([]);
   const [form, setForm] = useState({
     name: '', address: '', type: '', ownerName: '', contactPhone: '', commissionPercent: '', status: 'active'
   });
-  const [editId, setEditId] = useState(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -65,13 +66,13 @@ const Properties = () => {
     }
   };
 
-  const edit = (prop) => {
+  const edit = (prop: any) => {
     setForm({ ...prop, commissionPercent: prop.commissionPercent.toString() });
     setEditId(prop.id);
     setErrorMsg('');
   };
 
-  const remove = async (id) => {
+  const remove = async (id: number) => {
     if (confirm("Are you sure you want to delete this property?")) {
       setLoading(true);
       setErrorMsg('');
@@ -96,7 +97,7 @@ const Properties = () => {
       }
     >
       {errorMsg && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setErrorMsg('')}>
           {errorMsg}
         </Alert>
       )}
@@ -109,7 +110,7 @@ const Properties = () => {
 
       <div className="page-grid">
         <Card title={editId ? 'Edit Property' : 'Add Property'}>
-          <Box component="form" onSubmit={e => { e.preventDefault(); submit(); }}>
+          <Box component="form" onSubmit={(e: any) => { e.preventDefault(); submit(); }}>
 
             {/* Form Row Container */}
             <Box sx={{

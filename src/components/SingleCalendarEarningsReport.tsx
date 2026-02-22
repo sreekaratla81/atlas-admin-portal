@@ -15,7 +15,7 @@ import {
 import { computeThresholds, getHighlightStyle } from '../utils/percentile';
 import { safeFind } from '../utils/array';
 
-const SOURCE_COLORS = {
+const SOURCE_COLORS: Record<string, string> = {
   airbnb: 'var(--accent-primary)',
   agoda: 'var(--status-warning-strong)',
   'walk-in': 'var(--status-error-strong)',
@@ -27,17 +27,17 @@ const SOURCE_COLORS = {
 };
 
 function SingleCalendarEarningsReport() {
-  const [listings, setListings] = useState([]);
-  const [selectedListingId, setSelectedListingId] = useState('');
-  const [earnings, setEarnings] = useState([]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [selectedListingId, setSelectedListingId] = useState<string>('');
+  const [earnings, setEarnings] = useState<any[]>([]);
   const [thresholds, setThresholds] = useState({ top: 0, bottom: 0 });
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [loading, setLoading] = useState(false);
-  const [monthlyTotals, setMonthlyTotals] = useState([]);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [loading, setLoading] = useState<boolean>(false);
+  const [monthlyTotals, setMonthlyTotals] = useState<any[]>([]);
 
   const earningsMap = React.useMemo(() => {
-    const map = new Map();
-    (earnings || []).forEach((entry) => {
+    const map = new Map<string, any>();
+    (earnings || []).forEach((entry: any) => {
       if (entry?.date) {
         const dateKey = entry.date.split('T')[0];
         map.set(dateKey, entry);
@@ -49,7 +49,7 @@ function SingleCalendarEarningsReport() {
   const calendarDates = React.useMemo(() => {
     const start = startOfWeek(startOfMonth(currentDate));
     const end = endOfWeek(endOfMonth(currentDate));
-    const dates = [];
+    const dates: Date[] = [];
     let day = start;
     while (day <= end) {
       dates.push(day);
@@ -60,52 +60,50 @@ function SingleCalendarEarningsReport() {
 
   const calendarTotal = React.useMemo(() => {
     return earnings
-      .filter((val) => {
+      .filter((val: any) => {
         const d = new Date(val.date);
         return (
           d.getFullYear() === currentDate.getFullYear() &&
           d.getMonth() === currentDate.getMonth()
         );
       })
-      .reduce((sum, val) => sum + (parseFloat(val.total) || 0), 0);
+      .reduce((sum: number, val: any) => sum + (parseFloat(val.total) || 0), 0);
   }, [earnings, currentDate]);
 
-  // Fetch listings
-    useEffect(() => {
-      api
-        .get(`/admin/reports/listings`)
-        .then((res) => {
+  useEffect(() => {
+    api
+      .get(`/admin/reports/listings`)
+      .then((res: any) => {
         const data = asArray(res.data, 'listings');
-        const validListings = data.filter((l) => l?.listingId && l?.name);
+        const validListings = data.filter((l: any) => l?.listingId && l?.name);
         setListings(validListings);
 
         const defaultListing =
-          safeFind(validListings, (l) => l.name.toLowerCase().includes('ph')) ||
+          safeFind(validListings, (l: any) => l.name.toLowerCase().includes('ph')) ||
           validListings[0];
 
         if (defaultListing?.listingId) {
           setSelectedListingId(String(defaultListing.listingId));
         }
       })
-      .catch((err) => console.error('Failed to fetch listings:', err));
+      .catch((err: any) => console.error('Failed to fetch listings:', err));
   }, []);
 
-  // Fetch earnings
-    useEffect(() => {
-      if (!selectedListingId) return;
-      const month = format(currentDate, 'yyyy-MM');
-      setLoading(true);
-      setEarnings([]);
-      api
-        .get(`/reports/calendar-earnings`, {
-          params: { listingId: selectedListingId, month },
-        })
-        .then((res) => {
+  useEffect(() => {
+    if (!selectedListingId) return;
+    const month = format(currentDate, 'yyyy-MM');
+    setLoading(true);
+    setEarnings([]);
+    api
+      .get(`/reports/calendar-earnings`, {
+        params: { listingId: selectedListingId, month },
+      })
+      .then((res: any) => {
         const data = asArray(res.data, 'earnings');
         setEarnings(data);
 
-        const totalsObj = {};
-        data.forEach((entry) => {
+        const totalsObj: Record<string, { amount: number }> = {};
+        data.forEach((entry: any) => {
           if (entry?.date) {
             const dateKey = entry.date.split('T')[0];
             totalsObj[dateKey] = { amount: entry.total || 0 };
@@ -113,7 +111,7 @@ function SingleCalendarEarningsReport() {
         });
         setThresholds(computeThresholds(totalsObj));
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Failed to fetch earnings:', err);
         setEarnings([]);
         setThresholds({ top: 0, bottom: 0 });
@@ -121,7 +119,6 @@ function SingleCalendarEarningsReport() {
       .finally(() => setLoading(false));
   }, [selectedListingId, currentDate]);
 
-  // Compute monthly totals across listings for the current month
   useEffect(() => {
     async function fetchTotals() {
       const monthStart = startOfMonth(currentDate);
@@ -134,14 +131,14 @@ function SingleCalendarEarningsReport() {
 
         const bookings = asArray(bookRes.data, 'bookings');
         const listData = asArray(listRes.data, 'listings');
-        const listingMap = {};
-        listData.forEach((l) => {
+        const listingMap: Record<string, string> = {};
+        listData.forEach((l: any) => {
           const id = l.listingId || l.id;
           if (id) listingMap[id] = l.name;
         });
 
-        const totals = {};
-        bookings.forEach((b) => {
+        const totals: Record<string, any> = {};
+        bookings.forEach((b: any) => {
           const checkin = b.checkinDate || b.checkInDate;
           if (!checkin) return;
           const checkDate = parseISO(checkin);
@@ -205,10 +202,10 @@ function SingleCalendarEarningsReport() {
       </label>
       <select
         value={selectedListingId}
-        onChange={(e) => setSelectedListingId(e.target.value)}
+        onChange={(e: any) => setSelectedListingId(e.target.value)}
         style={{ width: 300, padding: 8, fontSize: 16 }}
       >
-        {listings.map((l) => (
+        {listings.map((l: any) => (
           <option key={l.listingId} value={String(l.listingId)}>
             {l.name}
           </option>
@@ -256,7 +253,7 @@ function SingleCalendarEarningsReport() {
             height: '100%',
           }}
         >
-          {calendarDates.map((date) => {
+          {calendarDates.map((date: Date) => {
             const dateKey = format(date, 'yyyy-MM-dd');
             const data = earningsMap.get(dateKey);
             const isToday = dateKey === format(new Date(), 'yyyy-MM-dd');
@@ -302,7 +299,7 @@ function SingleCalendarEarningsReport() {
                   {format(date, 'd')}
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', marginTop: 4 }}>
-                  {(data?.earnings || []).map((e, i) => {
+                  {(data?.earnings || []).map((e: any, i: number) => {
                     const amount = Number(e.amount).toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     });
@@ -409,7 +406,7 @@ function SingleCalendarEarningsReport() {
               </tr>
             </thead>
             <tbody>
-              {monthlyTotals.map((row, idx) => (
+              {monthlyTotals.map((row: any, idx: number) => (
                 <tr
                   key={idx}
                   style={{
@@ -444,37 +441,37 @@ function SingleCalendarEarningsReport() {
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.total, 0)
+                      .reduce((sum: number, r: any) => sum + r.total, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.airbnb, 0)
+                      .reduce((sum: number, r: any) => sum + r.airbnb, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.bookingcom, 0)
+                      .reduce((sum: number, r: any) => sum + r.bookingcom, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.agoda, 0)
+                      .reduce((sum: number, r: any) => sum + r.agoda, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.makemytrip, 0)
+                      .reduce((sum: number, r: any) => sum + r.makemytrip, 0)
                       .toLocaleString('en-IN')}
                   </td>
                   <td style={{ padding: '8px', textAlign: 'right' }}>
                     ₹
                     {monthlyTotals
-                      .reduce((sum, r) => sum + r.other, 0)
+                      .reduce((sum: number, r: any) => sum + r.other, 0)
                       .toLocaleString('en-IN')}
                   </td>
                 </tr>

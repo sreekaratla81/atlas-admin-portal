@@ -17,12 +17,19 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { api } from "@/lib/api";
 
-const normalizePhone = (phone) => {
+const normalizePhone = (phone: any) => {
   if (!phone || typeof phone !== "string") return "";
   return phone.replace(/\s+/g, "").replace(/^\+/, "");
 };
 
-const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
+interface ManualBookingPopupProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+  property: any;
+}
+
+const ManualBookingPopup: React.FC<ManualBookingPopupProps> = ({ open, onClose, onSuccess, property }) => {
   const [guestDetails, setGuestDetails] = useState({
     fullName: "",
     email: "",
@@ -44,11 +51,11 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
     balance: "",
   });
 
-  const [internalNotes, setInternalNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [internalNotes, setInternalNotes] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>("");
 
-  const handleGuestChange = (e) => {
+  const handleGuestChange = (e: any) => {
     const { name, value, type, checked } = e.target;
     setGuestDetails((prev) => ({
       ...prev,
@@ -56,7 +63,7 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
     }));
   };
 
-  const handleStayChange = (e) => {
+  const handleStayChange = (e: any) => {
     const { name, value } = e.target;
     setStayDetails((prev) => ({
       ...prev,
@@ -64,7 +71,7 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
     }));
   };
 
-  const handleAmountChange = (e) => {
+  const handleAmountChange = (e: any) => {
     const { name, value } = e.target;
     setAmountDetails((prev) => ({
       ...prev,
@@ -77,7 +84,7 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
     if (!phoneNorm) throw new Error("Phone is required");
     const { data } = await api.get("/guests");
     const guests = Array.isArray(data) ? data : data?.guests ?? [];
-    const match = guests.find((g) => normalizePhone(g.phone || "") === phoneNorm);
+    const match = guests.find((g: any) => normalizePhone(g.phone || "") === phoneNorm);
     if (match) return match.id;
     const { data: created } = await api.post("/guests", {
       name: guestDetails.fullName.trim(),
@@ -144,14 +151,14 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
       await api.post("/bookings", payload);
       onSuccess?.();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       const d = err?.response?.data;
       let msg = "Failed to create booking.";
       if (d) {
         if (typeof d === "string") msg = d;
         else if (d.errors && typeof d.errors === "object") {
           const parts = Object.entries(d.errors).flatMap(([k, v]) =>
-            Array.isArray(v) ? v.map((m) => `${k}: ${m}`) : [`${k}: ${v}`]
+            Array.isArray(v) ? v.map((m: any) => `${k}: ${m}`) : [`${k}: ${v}`]
           );
           msg = parts.join(" ") || d.title || msg;
         } else if (d.message) msg = d.message;
@@ -351,7 +358,7 @@ const ManualBookingPopup = ({ open, onClose, onSuccess, property }) => {
           rows={3}
           fullWidth
           value={internalNotes}
-          onChange={(e) => setInternalNotes(e.target.value)}
+          onChange={(e: any) => setInternalNotes(e.target.value)}
           sx={{ mb: 2 }}
         />
 

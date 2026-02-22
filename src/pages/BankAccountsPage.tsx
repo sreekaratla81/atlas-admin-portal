@@ -26,16 +26,17 @@ import {
 import AdminShellLayout from '@/components/layout/AdminShellLayout';
 import BankAccountForm from '../components/BankAccountForm';
 import BankAccountEarningsReport from '../components/BankAccountEarningsReport';
+import type { BankAccount } from '@/types/api';
 
-const BankAccountsPage = () => {
-  const [accounts, setAccounts] = useState([]);
+const BankAccountsPage: React.FC = () => {
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ bankName: '', accountNumber: '', ifsc: '', accountType: '' });
-  const [editId, setEditId] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [deleteItem, setDeleteItem] = useState<BankAccount | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -54,7 +55,7 @@ const BankAccountsPage = () => {
     fetchData();
   }, []);
 
-  const handleOpen = (acc) => {
+  const handleOpen = (acc?: BankAccount) => {
     if (acc) {
       setForm({
         bankName: acc.bankName || '',
@@ -112,7 +113,7 @@ const BankAccountsPage = () => {
     <AdminShellLayout title="Bank Accounts">
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {error && (
-          <Alert severity="error">
+          <Alert severity="error" onClose={() => setError('')}>
             {error}
           </Alert>
         )}

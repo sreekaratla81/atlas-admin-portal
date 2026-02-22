@@ -12,7 +12,7 @@ import dayjs from 'dayjs';
 import { api, asArray } from '@/lib/api';
 
 function buildEmptyMonths() {
-  const months = {};
+  const months: Record<string, { month: string; total: number }> = {};
   for (let i = 11; i >= 0; i--) {
     const d = dayjs().subtract(i, 'month');
     months[d.format('YYYY-MM')] = {
@@ -24,17 +24,17 @@ function buildEmptyMonths() {
 }
 
 function EarningsReport() {
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showZeroMonths, setShowZeroMonths] = useState(false);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showZeroMonths, setShowZeroMonths] = useState<boolean>(false);
 
   useEffect(() => {
     async function fetchMonthlyEarnings() {
       try {
         const { data } = await api.get(`/admin/reports/earnings/monthly`);
-        const normalized = asArray(data, 'monthly earnings').map((entry) => ({
+        const normalized = asArray(data, 'monthly earnings').map((entry: any) => ({
   month: dayjs(entry.month).format('MMM'),
-  total: entry.totalNet, // only net earnings now
+  total: entry.totalNet,
   totalNet: entry.totalNet,
 }));
 
@@ -44,10 +44,10 @@ function EarningsReport() {
         try {
           const { data: bookingsData } = await api.get(`/admin/reports/bookings`);
           const months = buildEmptyMonths();
-          asArray(bookingsData, 'bookings').forEach((b) => {
+          asArray(bookingsData, 'bookings').forEach((b: any) => {
             const key = dayjs(b.paymentDate || b.createdAt).format('YYYY-MM');
             if (months[key]) {
-              months[key].total += parseFloat(b.amountReceived) || 0; // sum only
+              months[key].total += parseFloat(b.amountReceived) || 0;
             }
           });
           setMonthlyData(Object.values(months));
@@ -110,10 +110,10 @@ function EarningsReport() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis
-                  tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`}
+                  tickFormatter={(val: any) => `₹${val.toLocaleString('en-IN')}`}
                 />
                 <Tooltip
-                  formatter={(val) => `₹${Number(val).toLocaleString('en-IN')}`}
+                  formatter={(val: any) => `₹${Number(val).toLocaleString('en-IN')}`}
                 />
                 <Bar dataKey="total" fill="#4caf50" name="Total Earnings" />
               </BarChart>
@@ -131,8 +131,8 @@ function EarningsReport() {
               </thead>
               <tbody>
                 {monthlyData
-                  .filter((row) => showZeroMonths || row.total > 0)
-                  .map((row, idx) => (
+                  .filter((row: any) => showZeroMonths || row.total > 0)
+                  .map((row: any, idx: number) => (
                     <tr
                       key={row.month}
                       style={{

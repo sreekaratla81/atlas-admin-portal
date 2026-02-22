@@ -12,10 +12,14 @@ import {
 import { asArray } from '@/lib/api';
 import { getBankAccountEarnings, getBankAccounts } from '../api/bankAccountsApi';
 
-const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+interface BankAccountEarningsReportProps {
+  accounts?: any;
+}
+
+const BankAccountEarningsReport: React.FC<BankAccountEarningsReportProps> = ({ accounts: externalAccounts }) => {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -28,14 +32,14 @@ const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
         const accounts = asArray(accountsRes, 'bankaccounts');
         const earningsArr = asArray(earningsRes, 'bankaccount earnings');
 
-        const earningsMap = {};
-        earningsArr.forEach((e) => {
+        const earningsMap: Record<string, number> = {};
+        earningsArr.forEach((e: any) => {
           const key =
             e.accountDisplay || `${e.bank} - ${String(e.accountNumber || '').slice(-4)}`;
           earningsMap[key] = parseFloat(e.amountReceived) || 0;
         });
 
-        const normalized = accounts.map((acc) => {
+        const normalized = accounts.map((acc: any) => {
           const label = `${acc.bankName} - ${String(acc.accountNumber).slice(-4)}`;
           return {
             label,
@@ -72,7 +76,7 @@ const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" />
               <YAxis
-                tickFormatter={(v) =>
+                tickFormatter={(v: any) =>
                   v.toLocaleString('en-IN', {
                     style: 'currency',
                     currency: 'INR',
@@ -80,7 +84,7 @@ const BankAccountEarningsReport = ({ accounts: externalAccounts }) => {
                 }
               />
               <Tooltip
-                formatter={(val) =>
+                formatter={(val: any) =>
                   Number(val).toLocaleString('en-IN', {
                     style: 'currency',
                     currency: 'INR',

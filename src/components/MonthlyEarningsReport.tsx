@@ -5,13 +5,13 @@ import { Button, Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 import { api, asArray } from '@/lib/api';
 
-function aggregateData(bookings, listings) {
-  const listingMap = {};
-  listings.forEach(l => {
+function aggregateData(bookings: any[], listings: any[]) {
+  const listingMap: Record<string, string> = {};
+  listings.forEach((l: any) => {
     listingMap[l.id] = l.name;
   });
-  const months = {};
-  bookings.forEach(b => {
+  const months: Record<string, Record<string, { net: number; fees: number }>> = {};
+  bookings.forEach((b: any) => {
     const monthKey = dayjs(b.paymentDate || b.createdAt).format('MMMM YYYY');
     if (!months[monthKey]) months[monthKey] = {};
     if (!months[monthKey][b.listingId]) {
@@ -32,7 +32,7 @@ function aggregateData(bookings, listings) {
   }));
 }
 
-function generatePDF(month, rows) {
+function generatePDF(month: string, rows: any[]) {
   const doc = new jsPDF();
 
   doc.setFontSize(18);
@@ -41,7 +41,7 @@ function generatePDF(month, rows) {
   autoTable(doc, {
     startY: 30,
     head: [['Listing', 'Tax Type', 'Total ($)', 'Fees ($)', 'Net ($)']],
-    body: rows.map((row) => [
+    body: rows.map((row: any) => [
       row.listing,
       row.taxType,
       row.total.toFixed(2),
@@ -49,14 +49,14 @@ function generatePDF(month, rows) {
       row.net.toFixed(2),
     ]),
     styles: { halign: 'center' },
-    headStyles: { fillColor: [63, 81, 181] }, // MUI primary color
+    headStyles: { fillColor: [63, 81, 181] },
   });
 
   doc.save(`${month.replace(' ', '_')}_Report.pdf`);
 }
 
 function MonthlyEarningsReport() {
-  const [earningsData, setEarningsData] = useState([]);
+  const [earningsData, setEarningsData] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -82,7 +82,7 @@ function MonthlyEarningsReport() {
         Download Airbnb earnings reports per month with breakdowns by listing and tax type.
       </Typography>
 
-      {earningsData.map((entry, index) => (
+      {earningsData.map((entry: any, index: number) => (
         <Box key={index} sx={{ marginBottom: 2 }}>
           <Typography variant="subtitle1">{entry.month}</Typography>
           <Button

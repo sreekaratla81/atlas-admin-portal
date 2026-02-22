@@ -17,18 +17,18 @@ import { buildBookingPayload } from '../utils/buildBookingPayload';
 import GuestTypeahead from '../components/GuestTypeahead';
 import AdminShellLayout from '@/components/layout/AdminShellLayout';
 
-const Bookings = () => {
-  const [listings, setListings] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [bankAccounts, setBankAccounts] = useState([]);
-  const [guests, setGuests] = useState([]);
-  const [selectedGuestId, setSelectedGuestId] = useState('');
-  const [selectedGuest, setSelectedGuest] = useState(null);
+const Bookings: React.FC = () => {
+  const [listings, setListings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [guests, setGuests] = useState<any[]>([]);
+  const [selectedGuestId, setSelectedGuestId] = useState<string>('');
+  const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const [guest, setGuest] = useState({ name: '', phone: '', email: '' });
-  const [addGuestOpen, setAddGuestOpen] = useState(false);
+  const [addGuestOpen, setAddGuestOpen] = useState<boolean>(false);
   const [newGuest, setNewGuest] = useState({ name: '', phone: '', email: '' });
   const [booking, setBooking] = useState({
-    id: null,
+    id: null as number | null,
     listingId: '',
     checkinDate: '',
     checkoutDate: '',
@@ -38,47 +38,43 @@ const Bookings = () => {
     notes: '',
     bankAccountId: ''
   });
-  const [guestsPlanned, setGuestsPlanned] = useState(2);
-  const [guestsActual, setGuestsActual] = useState(2);
-  const [extraGuestCharge, setExtraGuestCharge] = useState(0);
+  const [guestsPlanned, setGuestsPlanned] = useState<number>(2);
+  const [guestsActual, setGuestsActual] = useState<number>(2);
+  const [extraGuestCharge, setExtraGuestCharge] = useState<number>(0);
   const EXTRA_GUEST_RATE = 750;
-  const [showExtras, setShowExtras] = useState(false);
-  const [formMode, setFormMode] = useState('create');
-  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [showExtras, setShowExtras] = useState<boolean>(false);
+  const [formMode, setFormMode] = useState<string>('create');
+  const [selectedBookingId, setSelectedBookingId] = useState<any>(null);
   const [filters, setFilters] = useState({
     listing: '',
     guest: '',
   });
-  // Default sorting should be by check-in date so upcoming bookings appear first
-  const [sortField, setSortField] = useState('checkinDate');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState<string>('checkinDate');
+  const [sortOrder, setSortOrder] = useState<string>('desc');
 
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [deleteError, setDeleteError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState('');
-  const [checkinStart, setCheckinStart] = useState(null);
-  const [checkinEnd, setCheckinEnd] = useState(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const messageRef = useRef(null);
-  const lastFetchedGuestIdRef = useRef(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [successMsg, setSuccessMsg] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [deleteError, setDeleteError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string>('');
+  const [checkinStart, setCheckinStart] = useState<any>(null);
+  const [checkinEnd, setCheckinEnd] = useState<any>(null);
+  const [page, setPage] = useState<number>(0);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const messageRef = useRef<HTMLDivElement>(null);
+  const lastFetchedGuestIdRef = useRef<string | null>(null);
   const nights = booking.checkinDate && booking.checkoutDate
     ? dayjs(booking.checkoutDate).diff(dayjs(booking.checkinDate), 'day')
     : 0;
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = (_event: any, newPage: number) => {
     setPage(newPage);
   };
 
-  // Handle rows per page change
-  const handleChangeRowsPerPage = (event) => {
+  const handleChangeRowsPerPage = (event: any) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
-  // Calculate paginated data
 
   const timeOptions = [
     "08:00", "09:00", "10:00", "11:00", "12:00",
@@ -124,7 +120,7 @@ const Bookings = () => {
     }
 
     const match = guests.find(
-      g => String(g.id) === String(selectedGuestId)
+      (g: any) => String(g.id) === String(selectedGuestId)
     );
 
     if (match) {
@@ -174,7 +170,7 @@ const Bookings = () => {
           email: normalized.email || ''
         });
         setGuests(prev => {
-          const idx = prev.findIndex(g => String(g.id) === String(normalized.id));
+          const idx = prev.findIndex((g: any) => String(g.id) === String(normalized.id));
           if (idx === -1) {
             return [...prev, normalized];
           }
@@ -202,8 +198,6 @@ const Bookings = () => {
         const res = await api.post(`/guests`, newGuest);
         const g = res.data;
 
-        // Refresh the local guest cache so that future searches include the
-        // newly added guest and so other pages see the update.
         await hydrateGuests(true);
         const all = await getAllGuests();
         setGuests(all);
@@ -217,11 +211,11 @@ const Bookings = () => {
     }
   };
 
-  const fetchBookings = async (start, end) => {
+  const fetchBookings = async (start: any, end: any) => {
     setIsLoading(true);
     setFetchError('');
     try {
-      const params = {};
+      const params: any = {};
       if (start && end) {
         params.checkinStart = dayjs(start).format('YYYY-MM-DD');
         params.checkinEnd = dayjs(end).format('YYYY-MM-DD');
@@ -229,7 +223,7 @@ const Bookings = () => {
       params.include = 'guest';
       const { data } = await api.get('/bookings', { params });
       const sorted = [...asArray(data, 'bookings')].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+        (a: any, b: any) => new Date(b.checkinDate).getTime() - new Date(a.checkinDate).getTime()
       );
       setBookings(sorted);
     } catch (err) {
@@ -322,23 +316,23 @@ const Bookings = () => {
       reset();
       const { data: updatedData } = await api.get(`/bookings`);
       const sorted = [...asArray(updatedData, 'bookings')].sort(
-        (a, b) => new Date(b.checkinDate) - new Date(a.checkinDate)
+        (a: any, b: any) => new Date(b.checkinDate).getTime() - new Date(a.checkinDate).getTime()
       );
       setBookings(sorted);
-    } catch (err) {
+    } catch (err: any) {
       setErrorMsg(err?.response?.data?.message || err.message || "Booking failed.");
     } finally {
       setLoading(false);
     }
   };
 
-  const resolveListingId = (bookingToEdit) => {
+  const resolveListingId = (bookingToEdit: any) => {
     const directId = [
       bookingToEdit.listingId,
       bookingToEdit.listing_id,
       bookingToEdit.listingID,
       bookingToEdit?.listing?.id
-    ].find(id => id !== undefined && id !== null && id !== '');
+    ].find((id: any) => id !== undefined && id !== null && id !== '');
 
     if (directId !== undefined && directId !== null && directId !== '') {
       return directId.toString();
@@ -347,7 +341,7 @@ const Bookings = () => {
     const normalizedListingName = (bookingToEdit.listing ?? '').toString().toLowerCase().trim();
     if (normalizedListingName && listings.length) {
       const match = listings.find(
-        l => (l.name || '').toLowerCase().trim() === normalizedListingName
+        (l: any) => (l.name || '').toLowerCase().trim() === normalizedListingName
       );
       if (match?.id !== undefined && match?.id !== null) {
         return match.id.toString();
@@ -357,7 +351,7 @@ const Bookings = () => {
     return '';
   };
 
-  const handleEdit = (bookingToEdit) => {
+  const handleEdit = (bookingToEdit: any) => {
     setFormMode('edit');
     setSelectedBookingId(bookingToEdit.id);
     lastFetchedGuestIdRef.current = null;
@@ -365,7 +359,6 @@ const Bookings = () => {
     setBooking({
       id: bookingToEdit.id,
       listingId,
-      // Support both camelCase variations returned from the API
       checkinDate: (bookingToEdit.checkinDate || bookingToEdit.checkInDate)
         ? dayjs(bookingToEdit.checkinDate || bookingToEdit.checkInDate).format('YYYY-MM-DD')
         : '',
@@ -383,7 +376,7 @@ const Bookings = () => {
     setExtraGuestCharge(bookingToEdit.extraGuestCharge ?? 0);
     setShowExtras(!!bookingToEdit.guestsPlanned || !!bookingToEdit.guestsActual || !!bookingToEdit.extraGuestCharge);
     const guestFromList = guests.find(
-      g => String(g.id) === String(bookingToEdit.guestId)
+      (g: any) => String(g.id) === String(bookingToEdit.guestId)
     ) || null;
     const fallbackGuest = {
       id: bookingToEdit.guestId != null ? bookingToEdit.guestId.toString() : '',
@@ -402,28 +395,26 @@ const Bookings = () => {
     setSuccessMsg('');
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: any) => {
     const confirmed = window.confirm('Are you sure you want to delete this booking?');
     if (!confirmed) return;
     try {
       await api.delete(`/bookings/${id}`);
-      setBookings(prev => prev.filter(b => b.id !== id));
-    } catch (err) {
+      setBookings(prev => prev.filter((b: any) => b.id !== id));
+    } catch (err: any) {
       console.error(err);
       setDeleteError(err?.response?.data?.message || err.message || 'Failed to delete booking.');
     }
   };
 
-  // Filtering logic
-  const filteredBookings = bookings.filter(b => (
+  const filteredBookings = bookings.filter((b: any) => (
     (!filters.listing || (b.listing || '').toLowerCase().includes(filters.listing.toLowerCase())) &&
     (!filters.guest || (b.guest || '').toLowerCase().includes(filters.guest.toLowerCase()))
   ));
 
-  // Sorting logic
-  const sortedBookings = [...filteredBookings].sort((a, b) => {
+  const sortedBookings = [...filteredBookings].sort((a: any, b: any) => {
     if (!sortField) return 0;
-    let aValue, bValue;
+    let aValue: any, bValue: any;
     if (sortField === 'checkinDate') {
       aValue = a.checkinDate;
       bValue = b.checkinDate;
@@ -442,7 +433,7 @@ const Bookings = () => {
     page * rowsPerPage + rowsPerPage
   );
 
-  const getPaymentTone = (status) => {
+  const getPaymentTone = (status: any) => {
     const normalized = (status || '').toLowerCase();
     if (normalized === 'paid' || normalized === 'completed') return 'success';
     if (normalized === 'pending') return 'warning';
@@ -500,7 +491,7 @@ const Bookings = () => {
             </Alert>
           </Snackbar>
           <form
-            onSubmit={e => {
+            onSubmit={(e: any) => {
               e.preventDefault();
               submit();
             }}
@@ -520,7 +511,7 @@ const Bookings = () => {
               <GuestTypeahead
                 allGuests={guests}
                 value={selectedGuest}
-                onSelect={(g) => {
+                onSelect={(g: any) => {
                   if (g) {
                     setSelectedGuestId(g.id.toString());
                     setSelectedGuest(g);
@@ -530,10 +521,6 @@ const Bookings = () => {
                       email: g.email || '',
                     });
                   } else {
-                    // Clear any previously selected guest details when the
-                    // user clears the typeahead input.  Without this check the
-                    // parent component would attempt to access properties of
-                    // `null` which results in runtime errors during typing.
                     setSelectedGuestId('');
                     setSelectedGuest(null);
                     setGuest({ name: '', phone: '', email: '' });
@@ -542,9 +529,9 @@ const Bookings = () => {
                 onAddNew={handleAddNewGuest}
               />
 
-              <TextField label="Phone" value={guest.phone} onChange={e=>setGuest({ ...guest, phone: e.target.value })} helperText="Autofilled from guest" />
+              <TextField label="Phone" value={guest.phone} onChange={(e: any)=>setGuest({ ...guest, phone: e.target.value })} helperText="Autofilled from guest" />
 
-              <TextField label="Email" type="email" value={guest.email} onChange={e=>setGuest({ ...guest, email: e.target.value })} helperText="Autofilled from guest" />
+              <TextField label="Email" type="email" value={guest.email} onChange={(e: any)=>setGuest({ ...guest, email: e.target.value })} helperText="Autofilled from guest" />
 
               <Typography variant="subtitle1" sx={{ width: '100%', mt: 2 }}>
                 Booking Details
@@ -555,19 +542,19 @@ const Bookings = () => {
                 <InputLabel>Listing</InputLabel>
                 <Select
                   value={booking.listingId || ''}
-                  onChange={e => {
+                  onChange={(e: any) => {
                     const val = e.target.value === '' ? '' : e.target.value.toString();
                     setBooking({ ...booking, listingId: val });
                   }}
                   label="Listing"
-                  renderValue={(selectedId) => {
+                  renderValue={(selectedId: any) => {
                     if (!selectedId) return '';
-                    const match = listings.find(l => String(l.id) === String(selectedId));
+                    const match = listings.find((l: any) => String(l.id) === String(selectedId));
                     return match?.name || '';
                   }}
                 >
                   <MenuItem value="">Select Listing</MenuItem>
-                  {listings.map(l => (
+                  {listings.map((l: any) => (
                     <MenuItem key={l.id} value={l.id != null ? l.id.toString() : ''}>{l.name}</MenuItem>
                   ))}
                 </Select>
@@ -578,7 +565,7 @@ const Bookings = () => {
                 label="Check-in Date"
                 type="date"
                 value={booking.checkinDate}
-                onChange={e => setBooking({ ...booking, checkinDate: e.target.value })}
+                onChange={(e: any) => setBooking({ ...booking, checkinDate: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
 
@@ -587,7 +574,7 @@ const Bookings = () => {
                 label="Check-out Date"
                 type="date"
                 value={booking.checkoutDate}
-                onChange={e => setBooking({ ...booking, checkoutDate: e.target.value })}
+                onChange={(e: any) => setBooking({ ...booking, checkoutDate: e.target.value })}
                 InputLabelProps={{ shrink: true }}
               />
 
@@ -604,7 +591,7 @@ const Bookings = () => {
                 <InputLabel>Booking Source</InputLabel>
                 <Select
                   value={booking.bookingSource}
-                  onChange={e => setBooking({ ...booking, bookingSource: e.target.value })}
+                  onChange={(e: any) => setBooking({ ...booking, bookingSource: e.target.value })}
                   label="Booking Source"
                 >
                   <MenuItem value="Walk-in">Walk-in</MenuItem>
@@ -623,11 +610,11 @@ const Bookings = () => {
                 <InputLabel>Bank Account</InputLabel>
                 <Select
                   value={booking.bankAccountId}
-                  onChange={e => setBooking({ ...booking, bankAccountId: e.target.value })}
+                  onChange={(e: any) => setBooking({ ...booking, bankAccountId: e.target.value })}
                   label="Bank Account"
                 >
                   <MenuItem value="">Select Account</MenuItem>
-                  {bankAccounts.map(acc => (
+                  {bankAccounts.map((acc: any) => (
                     <MenuItem key={acc.id} value={acc.id}>
                       {`${acc.bankName} - ${acc.accountNumber}`}
                     </MenuItem>
@@ -640,7 +627,7 @@ const Bookings = () => {
                 type="number"
                 placeholder="Net Amount"
                 value={booking.amountReceived}
-                onChange={e => setBooking({ ...booking, amountReceived: e.target.value })}
+                onChange={(e: any) => setBooking({ ...booking, amountReceived: e.target.value })}
                 inputProps={{
                   min: 0,
                   step: "0.01"
@@ -653,7 +640,7 @@ const Bookings = () => {
                 type="number"
                 placeholder="Commission"
                 value={booking.commissionAmount}
-                onChange={e => setBooking({ ...booking, commissionAmount: e.target.value })}
+                onChange={(e: any) => setBooking({ ...booking, commissionAmount: e.target.value })}
                 inputProps={{
                   min: 0,
                   step: "0.01"
@@ -665,7 +652,7 @@ const Bookings = () => {
                 label="Notes"
                 placeholder="Notes"
                 value={booking.notes}
-                onChange={e => setBooking({ ...booking, notes: e.target.value })}
+                onChange={(e: any) => setBooking({ ...booking, notes: e.target.value })}
                 multiline
                 rows={2}
                 sx={{ gridColumn: 'span 2' }}
@@ -699,13 +686,13 @@ const Bookings = () => {
                     label="Guests Planned"
                     type="number"
                     value={guestsPlanned}
-                    onChange={(e) => setGuestsPlanned(parseInt(e.target.value))}
+                    onChange={(e: any) => setGuestsPlanned(parseInt(e.target.value))}
                   />
                   <TextField
                     label="Guests Actual"
                     type="number"
                     value={guestsActual}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                       const actual = parseInt(e.target.value);
                       setGuestsActual(actual);
                       setExtraGuestCharge(actual > guestsPlanned ? (actual - guestsPlanned) * EXTRA_GUEST_RATE : 0);
@@ -715,7 +702,7 @@ const Bookings = () => {
                     label="Extra Guest Charge (₹)"
                     type="number"
                     value={extraGuestCharge}
-                    onChange={(e) => setExtraGuestCharge(parseInt(e.target.value))}
+                    onChange={(e: any) => setExtraGuestCharge(parseInt(e.target.value))}
                   />
                 </Box>
               )}
@@ -768,7 +755,7 @@ const Bookings = () => {
           variant="outlined"
           size="small"
           value={filters.listing}
-          onChange={e => setFilters(f => ({ ...f, listing: e.target.value }))}
+          onChange={(e: any) => setFilters((f: any) => ({ ...f, listing: e.target.value }))}
         />
 
         <TextField
@@ -776,20 +763,20 @@ const Bookings = () => {
           variant="outlined"
           size="small"
           value={filters.guest}
-          onChange={e => setFilters(f => ({ ...f, guest: e.target.value }))}
+          onChange={(e: any) => setFilters((f: any) => ({ ...f, guest: e.target.value }))}
         />
 
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
             label="Check-in Start"
             value={checkinStart}
-            onChange={val => setCheckinStart(val)}
+            onChange={(val: any) => setCheckinStart(val)}
             slotProps={{ textField: { size: 'small' } }}
           />
           <DatePicker
             label="Check-in End"
             value={checkinEnd}
-            onChange={val => setCheckinEnd(val)}
+            onChange={(val: any) => setCheckinEnd(val)}
             slotProps={{ textField: { size: 'small' } }}
           />
         </LocalizationProvider>
@@ -811,7 +798,7 @@ const Bookings = () => {
           size="small"
           onClick={() => {
             setSortField('checkinDate');
-            setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+            setSortOrder((o: string) => o === 'asc' ? 'desc' : 'asc');
           }}
           sx={{ borderColor: 'var(--color-border-subtle)' }}
         >
@@ -823,7 +810,7 @@ const Bookings = () => {
           size="small"
           onClick={() => {
             setSortField('amountReceived');
-            setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+            setSortOrder((o: string) => o === 'asc' ? 'desc' : 'asc');
           }}
           sx={{ borderColor: 'var(--color-border-subtle)' }}
         >
@@ -872,7 +859,7 @@ const Bookings = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedBookings.map(row => (
+                {paginatedBookings.map((row: any) => (
                   <TableRow key={row.id} hover>
                     <TableCell>{row.listing}</TableCell>
                     <TableCell>{row.guest}</TableCell>
@@ -951,18 +938,18 @@ const Bookings = () => {
           <TextField
             label="Name"
             value={newGuest.name}
-            onChange={e => setNewGuest({ ...newGuest, name: e.target.value })}
+            onChange={(e: any) => setNewGuest({ ...newGuest, name: e.target.value })}
           />
           <TextField
             label="Phone"
             value={newGuest.phone}
-            onChange={e => setNewGuest({ ...newGuest, phone: e.target.value })}
+            onChange={(e: any) => setNewGuest({ ...newGuest, phone: e.target.value })}
           />
           <TextField
             label="Email"
             type="email"
             value={newGuest.email}
-            onChange={e => setNewGuest({ ...newGuest, email: e.target.value })}
+            onChange={(e: any) => setNewGuest({ ...newGuest, email: e.target.value })}
           />
         </DialogContent>
         <DialogActions>

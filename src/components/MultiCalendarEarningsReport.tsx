@@ -8,16 +8,16 @@ const startDate = dayjs().startOf('month');
 const numberOfDays = 10;
 const days = [...Array(numberOfDays)].map((_, i) => startDate.add(i, 'day').format('YYYY-MM-DD'));
 
-function isBookedOn(listing, date) {
-  return safeFind(listing?.bookings, (b) =>
+function isBookedOn(listing: any, date: string) {
+  return safeFind(listing?.bookings, (b: any) =>
     dayjs(date).isBetween(b.start, b.end, 'day', '[]')
   );
 }
 
 function MultiCalendarEarningsReport() {
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,16 +39,16 @@ function MultiCalendarEarningsReport() {
             ]);
           const listData = asArray(listRes.data, 'listings');
           const bookData = asArray(bookRes.data, 'bookings');
-          const map = {};
-          const listObjects = listData.map((l) => ({
+          const map: Record<string, any> = {};
+          const listObjects = listData.map((l: any) => ({
             id: l.id,
             name: l.name,
             bookings: []
           }));
-          listObjects.forEach((l) => {
+          listObjects.forEach((l: any) => {
             map[l.id] = l;
           });
-          bookData.forEach((b) => {
+          bookData.forEach((b: any) => {
             const obj = map[b.listingId];
             if (obj) {
               obj.bookings.push({
@@ -89,7 +89,7 @@ function MultiCalendarEarningsReport() {
 
       {/* Table headers */}
       <Box sx={{ display: 'flex', mt: 3, ml: '120px', overflowX: 'auto' }}>
-        {days.map((day) => (
+        {days.map((day: string) => (
           <Box
             key={day}
             sx={{
@@ -105,7 +105,7 @@ function MultiCalendarEarningsReport() {
       </Box>
 
       {/* Listings */}
-      {listings.map((listing, idx) => (
+      {listings.map((listing: any, idx: number) => (
         <Box key={idx} sx={{ display: 'flex', alignItems: 'center' }}>
           {/* Listing name */}
           <Box
@@ -121,7 +121,7 @@ function MultiCalendarEarningsReport() {
 
           {/* Booking cells */}
           <Box sx={{ display: 'flex', overflowX: 'auto' }}>
-            {days.map((day) => {
+            {days.map((day: string) => {
               const booking = isBookedOn(listing, day);
               return (
                 <Box

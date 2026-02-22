@@ -10,6 +10,9 @@ import "./style.css";
 import { getApiBase } from "@/utils/env";
 import { initTenantFromEnv } from "@/tenant/store";
 import { setupMocks } from "@/mocks";
+import { validateEnv } from "@/utils/env-validation";
+
+validateEnv();
 
 let teardownMocks: (() => void) | undefined;
 

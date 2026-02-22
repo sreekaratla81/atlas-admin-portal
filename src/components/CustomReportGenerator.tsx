@@ -11,11 +11,11 @@ import { api, asArray } from '@/lib/api';
 import { safeIncludes } from '../utils/array';
 
 function CustomReportGenerator() {
-  const [startDate, setStartDate] = useState(dayjs().subtract(7, 'day'));
-  const [endDate, setEndDate] = useState(dayjs());
-  const [selectedListings, setSelectedListings] = useState([]);
-  const [listings, setListings] = useState([]);
-  const [allData, setAllData] = useState([]);
+  const [startDate, setStartDate] = useState<any>(dayjs().subtract(7, 'day'));
+  const [endDate, setEndDate] = useState<any>(dayjs());
+  const [selectedListings, setSelectedListings] = useState<string[]>([]);
+  const [listings, setListings] = useState<string[]>([]);
+  const [allData, setAllData] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -25,11 +25,11 @@ function CustomReportGenerator() {
             api.get(`/admin/reports/bookings`)
           ]);
         const listArr = asArray(listRes.data, 'listings');
-        setListings(listArr.map(l => l.name));
-        const listingMap = {};
-        listArr.forEach(l => { listingMap[l.id] = l.name; });
+        setListings(listArr.map((l: any) => l.name));
+        const listingMap: Record<string, string> = {};
+        listArr.forEach((l: any) => { listingMap[l.id] = l.name; });
         const bookArr = asArray(bookRes.data, 'bookings');
-        setAllData(bookArr.map(b => ({
+        setAllData(bookArr.map((b: any) => ({
           date: b.checkinDate,
           listing: listingMap[b.listingId] || b.listingId,
           amount: parseFloat(b.amountReceived) || 0
@@ -41,7 +41,7 @@ function CustomReportGenerator() {
     fetchData();
   }, []);
 
-  const filteredData = allData.filter(item => {
+  const filteredData = allData.filter((item: any) => {
     const date = dayjs(item.date);
     return date.isAfter(startDate.subtract(1, 'day')) &&
            date.isBefore(endDate.add(1, 'day')) &&
@@ -55,7 +55,7 @@ function CustomReportGenerator() {
     autoTable(doc, {
       startY: 30,
       head: [['Date', 'Listing', 'Amount ($)']],
-      body: filteredData.map(d => [d.date, d.listing, d.amount.toFixed(2)]),
+      body: filteredData.map((d: any) => [d.date, d.listing, d.amount.toFixed(2)]),
     });
 
     doc.save('Custom_Report.pdf');
@@ -64,7 +64,7 @@ function CustomReportGenerator() {
   const exportToCSV = () => {
     const csv = Papa.unparse({
       fields: ['Date', 'Listing', 'Amount ($)'],
-      data: filteredData.map(d => [d.date, d.listing, d.amount.toFixed(2)])
+      data: filteredData.map((d: any) => [d.date, d.listing, d.amount.toFixed(2)])
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -88,13 +88,13 @@ function CustomReportGenerator() {
           label="Start Date"
           value={startDate}
           onChange={setStartDate}
-          renderInput={(params) => <TextField {...params} />}
+          renderInput={(params: any) => <TextField {...params} />}
         />
         <DatePicker
           label="End Date"
           value={endDate}
           onChange={setEndDate}
-          renderInput={(params) => <TextField {...params} />}
+          renderInput={(params: any) => <TextField {...params} />}
         />
       </Box>
 
@@ -102,8 +102,8 @@ function CustomReportGenerator() {
         multiple
         options={listings}
         value={selectedListings}
-        onChange={(e, newVal) => setSelectedListings(newVal)}
-        renderInput={(params) => <TextField {...params} label="Select Listings" />}
+        onChange={(_e: any, newVal: string[]) => setSelectedListings(newVal)}
+        renderInput={(params: any) => <TextField {...params} label="Select Listings" />}
         sx={{ mb: 2 }}
       />
 

@@ -14,7 +14,7 @@ import {
 
 import { api, asArray } from '@/lib/api';
 
-const getStatusChip = (status) => {
+const getStatusChip = (status: string) => {
   switch (status) {
     case 'Sent':
       return <Chip label="Sent" color="success" size="small" />;
@@ -26,7 +26,7 @@ const getStatusChip = (status) => {
 };
 
 function DailyPayoutReport() {
-  const [payoutData, setPayoutData] = useState([]);
+  const [payoutData, setPayoutData] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,8 +39,8 @@ function DailyPayoutReport() {
           console.warn('Falling back to /payouts', err);
           api
             .get(`/admin/reports/payouts`)
-            .then((res) => setPayoutData(asArray(res.data, 'payouts')))
-            .catch((err2) => console.error(err2));
+            .then((res: any) => setPayoutData(asArray(res.data, 'payouts')))
+            .catch((err2: any) => console.error(err2));
         }
     }
     fetchData();
@@ -66,7 +66,7 @@ function DailyPayoutReport() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {payoutData.map((row, index) => (
+            {payoutData.map((row: any, index: number) => (
               <TableRow key={index}>
                 <TableCell>{row.date}</TableCell>
                 <TableCell>{row.listing}</TableCell>

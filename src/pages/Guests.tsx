@@ -22,15 +22,16 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import type { Guest } from '@/types/api';
 
-const Guests = () => {
-  const [guests, setGuests] = useState([]);
+const Guests: React.FC = () => {
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '', idProofUrl: '' });
-  const [editId, setEditId] = useState(null);
-  const [deleteGuest, setDeleteGuest] = useState(null);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [deleteGuest, setDeleteGuest] = useState<Guest | null>(null);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
 
@@ -58,7 +59,7 @@ const Guests = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  const handleOpen = (guest) => {
+  const handleOpen = (guest?: Guest) => {
     if (guest) {
       setForm({
         name: guest.name || '',
@@ -97,7 +98,7 @@ const Guests = () => {
     }
   };
 
-  const remove = async (id) => {
+  const remove = async (id: number) => {
     setLoading(true);
     setError('');
     try {
@@ -111,7 +112,7 @@ const Guests = () => {
     }
   };
 
-  const handleDelete = (guest) => {
+  const handleDelete = (guest: Guest) => {
     setDeleteGuest(guest);
   };
 
