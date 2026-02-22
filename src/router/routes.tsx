@@ -15,6 +15,7 @@ import AvailabilityCalendarPage from "@/pages/calendar/AvailabilityCalendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
 import { TemplatesPage, TemplateEditPage, MessagesPage } from "@/pages/messaging";
 import AppLayout from "@/components/layout/AppLayout";
+import NotFound from "@/pages/NotFound";
 
 export type AppRoute = {
   path?: string;
@@ -53,7 +54,7 @@ const baseRoutes: AppRoute[] = [
       { path: "messaging/templates/new", element: <TemplateEditPage /> },
       { path: "messaging/templates/:id", element: <TemplateEditPage /> },
       { path: "messaging/messages", element: <MessagesPage />, label: "Messages" },
-      { path: "*", element: <Navigate to="/reservations" replace /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ];

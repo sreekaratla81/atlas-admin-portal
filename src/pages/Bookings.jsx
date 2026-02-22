@@ -97,6 +97,7 @@ const Bookings = () => {
         setBankAccounts(asArray(bankRes.data, 'bankaccounts'));
       } catch (err) {
         console.error(err);
+        setErrorMsg('Failed to load listings or bank accounts.');
       }
     };
     fetchLookups();
@@ -110,6 +111,7 @@ const Bookings = () => {
         setGuests(all);
       } catch (err) {
         console.error('Failed to load guests', err);
+        setErrorMsg('Failed to load guests.');
       }
     };
     loadGuests();
@@ -481,7 +483,7 @@ const Bookings = () => {
 
           <Box ref={messageRef} sx={{ mb: 2 }}>
             {errorMsg && (
-              <Alert severity="error" sx={{ mb: 1 }}>
+              <Alert severity="error" onClose={() => setErrorMsg('')} sx={{ mb: 1 }}>
                 {errorMsg}
               </Alert>
             )}

@@ -139,7 +139,11 @@ const Guests = () => {
   return (
     <AdminShellLayout title="Guests">
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && (
+          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <Button variant="contained" onClick={() => handleOpen()}>

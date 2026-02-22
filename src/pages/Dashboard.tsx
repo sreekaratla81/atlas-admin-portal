@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Alert } from "@mui/material";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api } from "@/lib/api";
 
@@ -12,6 +13,7 @@ const TABS = [
 
 export default function DashboardPage() {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState("checkin");
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuFilter, setMenuFilter] = useState<string | null>(null);
@@ -20,6 +22,8 @@ export default function DashboardPage() {
   useEffect(() => {
     api.get("/bookings").then((res) => {
       setBookings(res.data || []);
+    }).catch(() => {
+      setError("Failed to load bookings.");
     });
   }, []);
 
@@ -68,6 +72,11 @@ export default function DashboardPage() {
 
   return (
     <AdminShellLayout title="Dashboard">
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: 20 }}>
         {/* LEFT CARD */}
         <div
