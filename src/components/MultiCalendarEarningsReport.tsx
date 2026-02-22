@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import { Box, Typography, Paper, Chip } from '@mui/material';
+import { Box, Typography, Chip } from '@mui/material';
 import { api, asArray } from '@/lib/api';
 import { safeFind } from '../utils/array';
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Alert } from "@mui/material";
 import AdminShellLayout from "@/components/layout/AdminShellLayout";
 import { api } from "@/lib/api";
@@ -17,6 +18,7 @@ export default function DashboardPage() {
   const [active, setActive] = useState("checkin");
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuFilter, setMenuFilter] = useState<string | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<string | null>(null);
 
   /* ---------- API ---------- */
   useEffect(() => {
@@ -25,6 +27,10 @@ export default function DashboardPage() {
     }).catch(() => {
       setError("Failed to load bookings.");
     });
+
+    api.get("/onboarding/status").then((res) => {
+      setOnboardingStatus(res.data?.overallStatus ?? null);
+    }).catch(() => {});
   }, []);
 
   /* ---------- Helpers ---------- */
@@ -77,6 +83,40 @@ export default function DashboardPage() {
           {error}
         </Alert>
       )}
+
+      {(onboardingStatus === "Draft" || onboardingStatus === "CompliancePending") && (
+        <div
+          style={{
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: 10,
+            padding: "12px 18px",
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontWeight: 600, fontSize: 14, color: "#92400e" }}>
+            Complete your onboarding to start accepting bookings.
+          </span>
+          <Link
+            to="/onboarding"
+            style={{
+              background: "#ea580c",
+              color: "#fff",
+              padding: "6px 16px",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Go to Onboarding
+          </Link>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: 20 }}>
         {/* LEFT CARD */}
         <div

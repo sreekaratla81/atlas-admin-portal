@@ -1027,6 +1027,7 @@ export default function AvailabilityCalendar() {
     applyOptimisticUpdate,
     blockType,
     clearSelection,
+    hasInventoryAction,
     hasPriceAction,
     hasSelection,
     listings,

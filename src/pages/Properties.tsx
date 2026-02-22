@@ -24,7 +24,7 @@ const Properties: React.FC = () => {
     try {
         const { data } = await api.get(`/properties`);
       setList(asArray(data, 'properties'));
-    } catch (err) {
+    } catch {
       setErrorMsg('Failed to fetch properties. Please try again.');
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ const Properties: React.FC = () => {
         }
       resetForm();
       fetchData();
-    } catch (err) {
+    } catch {
       setErrorMsg('Failed to save property. Please check your input and try again.');
     } finally {
       setLoading(false);
@@ -79,7 +79,7 @@ const Properties: React.FC = () => {
       try {
           await api.delete(`/properties/${id}`);
         fetchData();
-      } catch (err) {
+      } catch {
         setErrorMsg('Failed to delete property. Please try again.');
       } finally {
         setLoading(false);

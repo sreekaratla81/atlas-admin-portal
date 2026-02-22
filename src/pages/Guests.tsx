@@ -41,7 +41,7 @@ const Guests: React.FC = () => {
     try {
       const { data } = await api.get(`/guests`);
       setGuests(asArray(data, 'guests'));
-    } catch (err) {
+    } catch {
       setError('Failed to fetch guests.');
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ const Guests: React.FC = () => {
       await hydrateGuests(true);
       handleClose();
       fetchGuests();
-    } catch (err) {
+    } catch {
       setError('Failed to save guest.');
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ const Guests: React.FC = () => {
       await api.delete(`/guests/${id}`);
       await hydrateGuests(true);
       fetchGuests();
-    } catch (err) {
+    } catch {
       setError('Failed to delete guest.');
     } finally {
       setLoading(false);

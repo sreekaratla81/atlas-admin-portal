@@ -18,8 +18,12 @@ const navItems: NavItem[] = [
   { path: "/messaging/messages", label: "Messages" },
   { path: "/reports", label: "Reports" },
   { path: "/bank-accounts", label: "Bank Accounts" },
+  { path: "/onboarding", label: "Onboarding" },
+  { path: "/billing", label: "Billing" },
   { path: "/dashboard", label: "Dashboard" },
 ];
+
+const GUEST_PORTAL_URL = import.meta.env.VITE_GUEST_PORTAL_URL || "https://atlashomestays.com";
 
 export default function NavBar() {
   const { search } = useLocation();
@@ -56,6 +60,15 @@ export default function NavBar() {
               {item.label}
             </NavLink>
           ))}
+          <a
+            href={GUEST_PORTAL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="top-nav__link"
+            style={{ marginLeft: "auto", opacity: 0.8, fontSize: 13 }}
+          >
+            Switch to Guest View ↗
+          </a>
         </div>
       </nav>
     </header>

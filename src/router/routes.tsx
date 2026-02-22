@@ -14,6 +14,10 @@ import DashboardPage from "@/pages/Dashboard";
 import AvailabilityCalendarPage from "@/pages/calendar/AvailabilityCalendar";
 import ChannelManagerPage from "@/pages/ChannelManager";
 import { TemplatesPage, TemplateEditPage, MessagesPage } from "@/pages/messaging";
+import OnboardingDashboard from "@/pages/OnboardingDashboard";
+import HostProfile from "@/pages/HostProfile";
+import HostDocuments from "@/pages/HostDocuments";
+import BillingPage from "@/pages/BillingPage";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/NotFound";
 
@@ -54,6 +58,10 @@ const baseRoutes: AppRoute[] = [
       { path: "messaging/templates/new", element: <TemplateEditPage /> },
       { path: "messaging/templates/:id", element: <TemplateEditPage /> },
       { path: "messaging/messages", element: <MessagesPage />, label: "Messages" },
+      { path: "onboarding", element: <OnboardingDashboard />, label: "Onboarding" },
+      { path: "onboarding/profile", element: <HostProfile /> },
+      { path: "onboarding/documents", element: <HostDocuments /> },
+      { path: "billing", element: <BillingPage />, label: "Billing" },
       { path: "*", element: <NotFound /> },
     ],
   },

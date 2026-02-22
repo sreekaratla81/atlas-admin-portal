@@ -9,7 +9,6 @@ import "@testing-library/jest-dom/vitest";
 
 // Avoid loading full app (MUI icons etc.) to prevent EMFILE on Windows
 vi.mock("@/pages/Bookings", () => ({ default: () => <h1>Booking Details</h1> }));
-vi.mock("@/pages/AuthCallback", () => ({ default: () => null }));
 vi.mock("@/pages/Listings", () => ({ default: () => null }));
 vi.mock("@/pages/Properties", () => ({ default: () => null }));
 vi.mock("@/pages/Reports", () => ({ default: () => null }));

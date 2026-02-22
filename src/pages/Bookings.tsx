@@ -76,12 +76,6 @@ const Bookings: React.FC = () => {
     setPage(0);
   };
 
-  const timeOptions = [
-    "08:00", "09:00", "10:00", "11:00", "12:00",
-    "13:00", "14:00", "15:00", "16:00", "17:00",
-    "18:00", "19:00", "20:00", "21:00", "22:00"
-  ];
-
   useEffect(() => {
     const fetchLookups = async () => {
       try {
@@ -226,7 +220,7 @@ const Bookings: React.FC = () => {
         (a: any, b: any) => new Date(b.checkinDate).getTime() - new Date(a.checkinDate).getTime()
       );
       setBookings(sorted);
-    } catch (err) {
+    } catch {
       setFetchError('Failed to load bookings.');
     } finally {
       setIsLoading(false);
@@ -309,6 +303,7 @@ const Bookings: React.FC = () => {
         );
         setSuccessMsg('Booking updated successfully!');
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- id excluded for create payload
         const { id, ...createPayload } = payload;
         await api.post(`/bookings`, createPayload);
         setSuccessMsg('Booking created successfully!');

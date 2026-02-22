@@ -38,6 +38,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// 402 tenant-locked event bus
+type TenantLockedListener = (reason: string) => void;
+const tenantLockedListeners = new Set<TenantLockedListener>();
+
+export function onTenantLocked(fn: TenantLockedListener): () => void {
+  tenantLockedListeners.add(fn);
+  return () => { tenantLockedListeners.delete(fn); };
+}
+
 const RETRY_LIMIT = 2;
 const RETRY_DELAY_MS = 1000;
 const RETRYABLE_CODES = new Set([408, 429, 500, 502, 503, 504]);
@@ -73,6 +82,13 @@ api.interceptors.response.use(
       if (config.__retryCount <= RETRY_LIMIT) {
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * config.__retryCount));
         return api(config);
+      }
+    }
+
+    if (status === 402) {
+      const body = err.response?.data;
+      if (body?.code === "TENANT_LOCKED") {
+        tenantLockedListeners.forEach((fn) => fn(body.reason ?? "Subscription required"));
       }
     }
 

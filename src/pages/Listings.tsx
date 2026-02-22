@@ -51,7 +51,7 @@ const Listings: React.FC = () => {
       ]);
       setListings(asArray(listRes.data, 'listings'));
       setProperties(asArray(propRes.data, 'properties'));
-    } catch (err) {
+    } catch {
       setErrorMsg('Failed to fetch data. Please try again.');
     } finally {
       setLoading(false);
@@ -187,7 +187,7 @@ const Listings: React.FC = () => {
       }
       resetForm();
       fetchData();
-    } catch (err) {
+    } catch {
       setErrorMsg('Failed to save listing. Please try again.');
     } finally {
       setLoading(false);
@@ -207,7 +207,7 @@ const Listings: React.FC = () => {
       try {
         await api.delete(`/listings/${id}`);
         fetchData();
-      } catch (err) {
+      } catch {
         setErrorMsg('Failed to delete listing. Please try again.');
       } finally {
         setLoading(false);

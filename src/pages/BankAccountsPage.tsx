@@ -44,7 +44,7 @@ const BankAccountsPage: React.FC = () => {
     try {
       const data = await getBankAccounts();
       setAccounts(data);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch bank accounts.');
     } finally {
       setLoading(false);
@@ -86,7 +86,7 @@ const BankAccountsPage: React.FC = () => {
       }
       fetchData();
       handleClose();
-    } catch (err) {
+    } catch {
       setError('Failed to save bank account.');
     } finally {
       setLoading(false);
@@ -101,7 +101,7 @@ const BankAccountsPage: React.FC = () => {
       await deleteBankAccount(deleteItem.id);
       setSuccess('Bank account deleted');
       fetchData();
-    } catch (err) {
+    } catch {
       setError('Failed to delete bank account.');
     } finally {
       setLoading(false);
