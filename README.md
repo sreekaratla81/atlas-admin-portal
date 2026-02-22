@@ -41,6 +41,8 @@ Modern React/Vite dashboard used by Atlas Homestays staff to review bookings, li
 
 ## Documentation
 
+**System-level docs:** [atlas-e2e/docs](../atlas-e2e/docs/) — Canonical index (00–10 structure) for architecture, roadmap, local-dev setup, and cross-repo docs.
+
 - **CONTRIBUTING.md** — PR checklist, gate workflow, branch rules.
 - **docs/messaging-templates-implementation-plan.md** — Messaging templates UI and API integration.
 - **docs/admin-design-system.md** — Semantic tokens, status colors, theming.

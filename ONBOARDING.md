@@ -1,5 +1,7 @@
 # Onboarding Guide
 
+> **For full system setup (API + admin + guest + E2E in <60 min):** see [atlas-e2e/docs/08-implementation/local-dev-setup.md](../atlas-e2e/docs/08-implementation/local-dev-setup.md). This guide covers admin-portal–only onboarding.
+
 Welcome to the Atlas Admin Portal project! This guide walks you from cloning the repo to shipping your first pull request in roughly 90 minutes.
 
 ## 0–30 Minutes: Environment Setup
