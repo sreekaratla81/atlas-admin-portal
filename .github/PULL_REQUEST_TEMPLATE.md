@@ -1,3 +1,13 @@
+## Checklist
+
+- [ ] **Docs impacted?** (yes/no + links)
+- [ ] **ADR needed?** (yes/no; if yes, link ADR)
+- [ ] **API contract changed?** (yes/no; if yes, update `atlas-api/docs/api-contract.md` + OpenAPI)
+
+## Notes
+
+- If you changed operator workflows (calendar/pricing/bookings), ensure the canonical docs remain accurate: `atlas-e2e/docs/`.
+
 ### 📝 Pull Request Summary
 
 > Briefly explain the changes made in this PR.

@@ -1,0 +1,7 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/.git/**"],
+  "words": ["ADR", "Auth0", "Cloudflare", "DevSecOps", "Mermaid", "OpenAPI", "Playwright", "Razorpay", "TOGAF", "Vite"]
+}
+
